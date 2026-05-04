@@ -31,7 +31,13 @@ DJANGO_APPS = [
 ]
 
 PROJECT_APPS = [
-
+    'apps.users',
+    'apps.products',
+    'apps.landing',
+    'apps.orders',
+    'apps.carts',
+    'apps.catalog',
+    'apps.checkout',
 ]
 
 THIRD_PARTY_APPS = [
