@@ -1,0 +1,267 @@
+from __future__ import annotations
+
+from django.db.models import Q
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+
+from apps.products.models import Product, ProductAudit
+
+from .serializers import (
+    CartItemSerializer,
+    ProductAuditSerializer,
+    ProductDetailSerializer,
+    ProductImageCreateSerializer,
+    ProductListSerializer,
+    ProductPagination,
+    ProductWriteSerializer,
+    VariantCreateSerializer,
+)
+
+
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all().prefetch_related('images', 'variants', 'audit_entries')
+    pagination_class = ProductPagination
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        params = self.request.query_params
+
+        search = params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
+
+        is_active = params.get('is_active')
+        if is_active in {'true', 'false'}:
+            queryset = queryset.filter(is_active=is_active == 'true')
+
+        is_approved = params.get('is_approved')
+        if is_approved in {'true', 'false'}:
+            queryset = queryset.filter(is_approved=is_approved == 'true')
+
+        min_price = params.get('min_price')
+        if min_price:
+            queryset = queryset.filter(base_price__gte=min_price)
+
+        max_price = params.get('max_price')
+        if max_price:
+            queryset = queryset.filter(base_price__lte=max_price)
+
+        ordering = params.get('ordering', '-created_at')
+        allowed_ordering = {
+            'name', '-name', 'base_price', '-base_price', 
+            'created_at', '-created_at', 'updated_at', '-updated_at',
+            'is_active', '-is_active', 'is_approved', '-is_approved'
+        }
+        if ordering not in allowed_ordering:
+            ordering = '-created_at'
+
+        return queryset.order_by(ordering)
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ProductListSerializer
+        if self.action in {'create', 'update', 'partial_update'}:
+            return ProductWriteSerializer
+        return ProductDetailSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.kwargs.get('pk'):
+            context['product'] = self.get_object()
+        return context
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        product = serializer.save()
+        ProductAudit.objects.create(
+            product=product,
+            action=ProductAudit.ACTION_CREATED,
+            actor=getattr(request.user, 'username', '') or 'anonymous',
+            after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        response_serializer = ProductDetailSerializer(product, context=self.get_serializer_context())
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        product = self.get_object()
+        before_data = ProductDetailSerializer(product, context=self.get_serializer_context()).data
+
+        if product.orders.filter(status__in={'pending', 'paid', 'processing'}).exists() and 'name' in request.data:
+            return Response(
+                {'name': 'No se puede editar el nombre si existen pedidos activos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(product, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        product = serializer.save()
+        ProductAudit.objects.create(
+            product=product,
+            action=ProductAudit.ACTION_UPDATED,
+            actor=getattr(request.user, 'username', '') or 'anonymous',
+            before_data=before_data,
+            after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
+
+    @action(detail=True, methods=['get'], url_path='checklist')
+    def checklist(self, request, pk=None):
+        product = self.get_object()
+        return Response(product.checklist)
+
+    @action(detail=True, methods=['post'], url_path='publish')
+    def publish(self, request, pk=None):
+        product = self.get_object()
+        if not product.can_be_published:
+            return Response(
+                {
+                    'detail': 'El producto no cumple la configuración mínima.',
+                    'checklist': product.checklist,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        product.is_active = True
+        product.is_approved = True
+        product.save()
+        ProductAudit.objects.create(
+            product=product,
+            action=ProductAudit.ACTION_PUBLISHED,
+            actor=getattr(request.user, 'username', '') or 'anonymous',
+            after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
+
+    @action(detail=True, methods=['post'], url_path='images')
+    def add_image(self, request, pk=None):
+        product = self.get_object()
+        serializer = ProductImageCreateSerializer(data=request.data, context={'product': product, 'request': request})
+        serializer.is_valid(raise_exception=True)
+        image = serializer.save()
+        return Response(ProductImageCreateSerializer(image, context={'product': product}).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='variants')
+    def add_variant(self, request, pk=None):
+        product = self.get_object()
+        serializer = VariantCreateSerializer(data=request.data, context={'product': product})
+        serializer.is_valid(raise_exception=True)
+        variant = serializer.save()
+        return Response(VariantCreateSerializer(variant, context={'product': product}).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='audits')
+    def audits(self, request, pk=None):
+        product = self.get_object()
+        serializer = ProductAuditSerializer(product.audit_entries.all(), many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='add-to-cart')
+    def add_to_cart(self, request):
+        """Agregar producto al carrito desde catálogo o editor 3D"""
+        serializer = CartItemSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        product = serializer.validated_data['product']
+        variant = serializer.validated_data['variant']
+        quantity = serializer.validated_data['quantity']
+        
+        # Obtener o crear carrito (sesión o usuario)
+        from apps.carts.models import Cart, CartItem
+        
+        session_key = request.session.session_key
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+        
+        cart, created = Cart.objects.get_or_create(session_key=session_key)
+        
+        # Verificar si ya existe el item en el carrito
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            variant=variant,
+            defaults={'quantity': quantity, 'unit_price': product.base_price}
+        )
+        
+        if not created:
+            # Actualizar cantidad si ya existe
+            new_quantity = cart_item.quantity + quantity
+            if new_quantity > variant.stock:
+                return Response(
+                    {'error': 'La cantidad total supera el stock disponible.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            cart_item.quantity = new_quantity
+            cart_item.save()
+        
+        return Response({
+            'message': 'Producto agregado al carrito',
+            'cart_items': cart.total_items,
+            'cart_total': str(cart.total_amount),
+            'item_quantity': cart_item.quantity
+        })
+
+    @action(detail=False, methods=['get'], url_path='search')
+    def search(self, request):
+        """Búsqueda avanzada con filtros combinables"""
+        queryset = self.get_queryset()
+        
+        # Búsqueda parcial insensible a mayúsculas
+        search = request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search) |
+                Q(variants__size__icontains=search) |
+                Q(variants__color__icontains=search)
+            ).distinct()
+        
+        # Filtros combinables
+        filters = {
+            'is_active': request.query_params.get('is_active'),
+            'is_approved': request.query_params.get('is_approved'),
+            'min_price': request.query_params.get('min_price'),
+            'max_price': request.query_params.get('max_price'),
+            'has_images': request.query_params.get('has_images'),
+            'has_stock': request.query_params.get('has_stock'),
+        }
+        
+        if filters['is_active'] in {'true', 'false'}:
+            queryset = queryset.filter(is_active=filters['is_active'] == 'true')
+        
+        if filters['is_approved'] in {'true', 'false'}:
+            queryset = queryset.filter(is_approved=filters['is_approved'] == 'true')
+        
+        if filters['min_price']:
+            try:
+                queryset = queryset.filter(base_price__gte=float(filters['min_price']))
+            except ValueError:
+                pass
+        
+        if filters['max_price']:
+            try:
+                queryset = queryset.filter(base_price__lte=float(filters['max_price']))
+            except ValueError:
+                pass
+        
+        if filters['has_images'] == 'true':
+            queryset = queryset.filter(images__isnull=False).distinct()
+        
+        if filters['has_stock'] == 'true':
+            queryset = queryset.filter(variants__stock__gt=0).distinct()
+        
+        # Paginación
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = ProductListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = ProductListSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
