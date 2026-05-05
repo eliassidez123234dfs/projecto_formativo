@@ -1,9 +1,11 @@
 from pathlib import Path
-import os 
-import environ 
+import os
+
+import environ
+
 # Definir nuestras variables de ambiente
-env = environ.Env() # lo que vamos a usar cuando definamos variables de ambiente
-environ.Env.read_env() # funcion que activa el ambiente y lo lee
+env = environ.Env()
+environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,12 +14,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-projecto-formativo-dev-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG')
+DEBUG = env.bool('DEBUG', default=True)
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS_DEV')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost'])
 
 # Application definition
 
@@ -97,6 +99,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Usar SQLite para desarrollo (más fácil para el equipo)
+# Usar SQLite para desarrollo (más fácil para el equipo)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -104,6 +108,17 @@ DATABASES = {
     }
 }
 
+# Descomentar para PostgreSQL (cuando esté configurado)
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': env('DB_NAME'),
+#         'USER': env('DB_USER'),
+#         'PASSWORD': env('DB_PASSWORD'),
+#         'HOST': env('DB_HOST'),
+#         'PORT': env('DB_PORT'),
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -155,27 +170,28 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # indicar django restframework y sus permisos
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly'
+        'rest_framework.permissions.AllowAny',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 }
 
 # Definicion de que servicios pueden usar nuestro proyecto 
-CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST_DEV')
+CORS_ORIGIN_WHITELIST = env.list(
+    'CORS_ORIGIN_WHITELIST',
+    default=['http://127.0.0.1:5173', 'http://localhost:5173']
+)
 
 # Definir que dominios pueden hacer los request
-CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS_DEV')
+CSRF_TRUSTED_ORIGINS = env.list(
+    'CSRF_TRUSTED_ORIGINS',
+    default=['http://127.0.0.1:5173', 'http://localhost:5173']
+)
 
 
 # si no esta 
-if not DEBUG:
-    ALLOWED_HOSTS = env.list('ALLOWED_HOSTS_DEPLOY')
-
-    # servicios si no estamos en desarrollo el cual se usara para acceder 
-    CORS_ORIGIN_WHITELIST = env.list('CORS_ORIGIN_WHITELIST_DEPLOY')
-    # Si nuestra app no esta en modo desarrollo ejecutar el siguiente
-    CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS_DEPLOY')
-
+if not DEBUG and env('DATABASE_URL', default=''):
     DATABASES = {
-        "default": env.db("DATABASE_URL"),
+        'default': env.db('DATABASE_URL'),
     }
-    DATABASES['default']['ATOMIC_REQUESTS'] = True # Los envios y los responses eviten los duplicados   
+    DATABASES['default']['ATOMIC_REQUESTS'] = True
