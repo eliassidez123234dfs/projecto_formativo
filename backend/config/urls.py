@@ -16,11 +16,34 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-# debemos importar settings para trabajar con los archivos
-from django.conf import settings # Archivos o variables o cosas ubicadas en settings
+from django.conf import settings
 from django.conf.urls.static import static
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+# Importar viewsets
+from apps.users.api.viewset import RegistroViewSet, LoginViewSet, UsuarioViewSet
+from apps.users.api.admin_viewset import AdminUsuarioViewSet
+from apps.landing.api.viewset import ContactoViewSet
+
+# Crear router y registrar viewsets
+router = DefaultRouter()
+
+# Rutas para usuarios
+router.register(r'auth', RegistroViewSet, basename='auth')
+router.register(r'login', LoginViewSet, basename='login')
+router.register(r'usuarios', UsuarioViewSet, basename='usuario')
+router.register(r'admin/usuarios', AdminUsuarioViewSet, basename='admin-usuario')
+
+# Rutas para landing
+router.register(r'contacto', ContactoViewSet, basename='contacto')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', include(router.urls)),
+    
+    # JWT Endpoints
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

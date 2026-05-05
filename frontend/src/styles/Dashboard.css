@@ -1,0 +1,32 @@
+.dashboard {
+  font-family: sans-serif;
+  padding: 20px;
+}
+.dashboard-container {
+  display: flex;
+}
+.dashboard-sidebar {
+  width: 250px;
+  background: #f0f0f0;
+  padding: 15px;
+}
+.dashboard-content {
+  flex: 1;
+  padding: 20px;
+}
+.nav-item {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+}
+.active {
+  background: #007bff;
+  color: white;
+}
+.error {
+  color: red;
+}
+.success-message {
+  color: green;
+}

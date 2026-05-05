@@ -1,3 +1,173 @@
 from django.db import models
+from django.core.validators import EmailValidator
+from django.utils import timezone
+import uuid
 
-# Create your models here.
+class Usuario(models.Model):
+    """Modelo unificado de Usuario (RI-001)"""
+    ESTADO_CHOICES = (
+        ('Activo', 'Activo'),
+        ('Inactivo', 'Inactivo'),
+        ('Bloqueado', 'Bloqueado'),
+    )
+    
+    ROL_CHOICES = (
+        ('Administrador', 'Administrador'),
+        ('Usuario', 'Usuario'),
+    )
+    
+    # Campos principales
+    id = models.AutoField(primary_key=True)
+    usuario = models.CharField(max_length=100, unique=True, null=False)
+    correo = models.EmailField(unique=True, null=False, validators=[EmailValidator()])
+    contrasena = models.CharField(max_length=255, null=False)
+    
+    # Estado y rol
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='Inactivo')
+    rol = models.CharField(max_length=20, choices=ROL_CHOICES, default='Usuario')
+    
+    # Registro y sesiones
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    fecha_ultima_sesion = models.DateTimeField(null=True, blank=True)
+    
+    # Verificación de email
+    email_verificado = models.BooleanField(default=False)
+    
+    # Intentos fallidos de login y bloqueo
+    intentos_fallidos = models.IntegerField(default=0)
+    fecha_bloqueo = models.DateTimeField(null=True, blank=True)
+    fecha_desbloqueo = models.DateTimeField(null=True, blank=True)
+    admin_desbloqueador = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='usuarios_desbloqueados'
+    )
+    
+    # Soft delete
+    eliminado = models.BooleanField(default=False)
+    fecha_eliminacion = models.DateTimeField(null=True, blank=True)
+    admin_eliminador = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='usuarios_eliminados'
+    )
+    
+    class Meta:
+        db_table = 'usuarios'
+        indexes = [
+            models.Index(fields=['usuario']),
+            models.Index(fields=['correo']),
+            models.Index(fields=['estado', 'rol']),
+            models.Index(fields=['fecha_registro']),
+        ]
+    
+    def __str__(self):
+        return f"{self.usuario} ({self.correo})"
+
+
+class Token_Verificacion(models.Model):
+    """Modelo para manejar tokens de verificación de email, 
+    recuperación de contraseña y cambio de email (RI-009)"""
+    
+    TIPO_CHOICES = (
+        ('Verificacion_Email', 'Verificación de Email'),
+        ('Recuperacion_Password', 'Recuperación de Contraseña'),
+        ('Cambio_Email', 'Cambio de Email'),
+    )
+    
+    id = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='tokens_verificacion')
+    token = models.CharField(max_length=255, unique=True, default=uuid.uuid4)
+    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_expiracion = models.DateTimeField()
+    usado = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = 'tokens_verificacion'
+        indexes = [
+            models.Index(fields=['token']),
+            models.Index(fields=['usuario', 'tipo']),
+            models.Index(fields=['fecha_expiracion']),
+        ]
+    
+    def __str__(self):
+        return f"{self.usuario.usuario} - {self.tipo}"
+
+
+class Cambio_Email(models.Model):
+    """Modelo para gestionar solicitudes de cambio de email (RI-010)"""
+    
+    id = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='cambios_email')
+    email_anterior = models.EmailField()
+    email_nuevo = models.EmailField()
+    token = models.ForeignKey(Token_Verificacion, on_delete=models.CASCADE)
+    fecha_solicitud = models.DateTimeField(auto_now_add=True)
+    verificado = models.BooleanField(default=False)
+    fecha_verificacion = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'cambios_email'
+        indexes = [
+            models.Index(fields=['usuario', 'verificado']),
+        ]
+    
+    def __str__(self):
+        return f"{self.usuario.usuario}: {self.email_anterior} -> {self.email_nuevo}"
+
+
+class Historial_Estado_Usuario(models.Model):
+    """Modelo para auditar cambios de estado de usuarios"""
+    
+    ESTADO_CHOICES = (
+        ('Activo', 'Activo'),
+        ('Inactivo', 'Inactivo'),
+        ('Bloqueado', 'Bloqueado'),
+    )
+    
+    id = models.AutoField(primary_key=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='historial_estados')
+    estado_anterior = models.CharField(max_length=20, choices=ESTADO_CHOICES)
+    estado_nuevo = models.CharField(max_length=20, choices=ESTADO_CHOICES)
+    motivo = models.TextField(null=True, blank=True)
+    fecha_cambio = models.DateTimeField(auto_now_add=True)
+    admin = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, 
+                             related_name='cambios_estado_realizados')
+    
+    class Meta:
+        db_table = 'historial_estado_usuarios'
+        indexes = [
+            models.Index(fields=['usuario', 'fecha_cambio']),
+        ]
+
+
+class Log_Auditoria(models.Model):
+    """Modelo para registrar todas las acciones administrativas (RI-019)"""
+    
+    id = models.AutoField(primary_key=True)
+    usuario_admin = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True,
+                                      related_name='auditorias_realizadas')
+    usuario_afectado = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True,
+                                         related_name='auditorias_recibidas')
+    accion = models.CharField(max_length=255)
+    datos_anteriores = models.JSONField(null=True, blank=True)
+    datos_nuevos = models.JSONField(null=True, blank=True)
+    fecha_accion = models.DateTimeField(auto_now_add=True)
+    ip_admin = models.CharField(max_length=45, null=True, blank=True)
+    
+    class Meta:
+        db_table = 'logs_auditoria'
+        indexes = [
+            models.Index(fields=['usuario_admin', 'fecha_accion']),
+            models.Index(fields=['usuario_afectado', 'fecha_accion']),
+            models.Index(fields=['fecha_accion']),
+        ]
+    
+    def __str__(self):
+        return f"{self.accion} - {self.fecha_accion}"
+    
