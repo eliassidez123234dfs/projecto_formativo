@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import '../styles/Auth.css';
 
 export const RecuperarPassword = () => {
   const [correo, setCorreo] = useState('');

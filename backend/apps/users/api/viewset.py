@@ -16,6 +16,7 @@ from ..models import (
     Usuario, Token_Verificacion, Cambio_Email, 
     Log_Auditoria, Historial_Estado_Usuario
 )
+
 from .serializers import (
     UsuarioSerializer, UsuarioDetailSerializer, RegistroSerializer,
     LoginSerializer, VerificacionEmailSerializer, ReenvioVerificacionSerializer,
@@ -45,6 +46,7 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    # Funcion la cual verifica el email
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def verificar_email(self, request):
         """Endpoint para verificar email (RF-009)"""
@@ -94,6 +96,7 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def recuperar_password(self, request):
         """Endpoint para solicitar recuperación de contraseña (RF-002)"""
@@ -119,6 +122,7 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def nueva_password(self, request):
         """Endpoint para establecer nueva contraseña (RF-002)"""
@@ -144,6 +148,7 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
     def _enviar_email_verificacion(self, usuario, token=None):
         """Enviar email de verificación"""
         if not token:
@@ -173,6 +178,7 @@ class RegistroViewSet(viewsets.ViewSet):
                 fail_silently=True
             )
     
+
     def _enviar_email_recuperacion(self, usuario, token):
         """Enviar email de recuperación de contraseña"""
         enlace = f"{settings.FRONTEND_URL}/nueva-password?token={token}"
@@ -186,13 +192,7 @@ class RegistroViewSet(viewsets.ViewSet):
         Este enlace expira en 1 hora.
         """
         
-        send_mail(
-            asunto,
-            mensaje,
-            settings.DEFAULT_FROM_EMAIL,
-            [usuario.correo],
-            fail_silently=True
-        )
+        send_mail(asunto,mensaje, settings.DEFAULT_FROM_EMAIL, [usuario.correo], fail_silently=True)
 
 
 class LoginViewSet(viewsets.ViewSet):
@@ -241,6 +241,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     serializer_class = UsuarioSerializer
     permission_classes = [permissions.IsAuthenticated]
     
+
     @action(detail=False, methods=['get'])
     def perfil(self, request):
         """Obtener datos del perfil del usuario autenticado"""
@@ -248,16 +249,12 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = UsuarioDetailSerializer(usuario)
         return Response(serializer.data)
     
+    
     @action(detail=False, methods=['put', 'patch'])
     def actualizar_perfil(self, request):
         """Actualizar perfil del usuario (RF-010)"""
         usuario = request.user
-        serializer = ActualizarPerfilSerializer(
-            usuario, 
-            data=request.data,
-            partial=True,
-            context={'usuario': usuario}
-        )
+        serializer = ActualizarPerfilSerializer(usuario, data=request.data,partial=True, context={'usuario': usuario} )
         
         if serializer.is_valid():
             usuario = serializer.save()
@@ -272,10 +269,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def cambiar_password(self, request):
         """Cambiar contraseña del usuario autenticado (RF-010)"""
         usuario = request.user
-        serializer = CambioPasswordSerializer(
-            data=request.data,
-            context={'usuario': usuario}
-        )
+        serializer = CambioPasswordSerializer(data=request.data,context={'usuario': usuario})
         
         if serializer.is_valid():
             from django.contrib.auth.hashers import make_password

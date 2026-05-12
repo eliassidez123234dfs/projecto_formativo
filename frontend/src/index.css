@@ -1,483 +1,108 @@
-/* ============================================
-   VARIABLES GLOBALES Y COLORES
-   ============================================ */
+/* ⬇️ IMPORTS AL PRINCIPIO ⬇️ */
+@import './styles/components.css';
+@import './styles/Landing.css';
+@import './styles/Auth.css';
+@import './styles/Dashboard.css';
+@import './styles/Email.css';
+
+/* =========================================
+   VARIABLES GLOBALES (PALETA DE TIENDA + CORPORATIVA)
+   ========================================= */
 :root {
-  /* Colores principales */
-  --color-primary: #E74C3C;
-  --color-primary-light: #FF6B5B;
-  --color-primary-dark: #C0392B;
-  --color-secondary: #1a1a1a;
-  --color-white: #FFFFFF;
-  --color-black: #0f0f0f;
-  --color-gray-50: #f9f9f9;
-  --color-gray-100: #f5f5f5;
-  --color-gray-200: #e0e0e0;
-  --color-gray-300: #d0d0d0;
-  --color-gray-400: #999;
-  --color-gray-500: #666;
-  --color-gray-600: #333;
-  
-  /* Colores funcionales */
-  --color-success: #27AE60;
-  --color-error: #E74C3C;
-  --color-warning: #F39C12;
-  --color-info: #3498DB;
+  /* Colores de tienda */
+  --red:        #D72638;
+  --red-dark:   #A81C2A;
+  --red-light:  #FF3D50;
+  --black:      #0A0A0A;
+  --gray-dark:  #1A1A1A;
+  --gray-mid:   #2E2E2E;
+  --gray-line:  #3A3A3A;
+  --gray-soft:  #F2F2F2;
+  --gray-muted: #888;
+  --white:      #FFFFFF;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+  --radius:     8px;
+  --shadow:     0 4px 24px rgba(0,0,0,0.14);
+  --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Sombras */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.15);
-  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 25px 80px rgba(0, 0, 0, 0.4);
+  /* Corp colors */
+  --color-red:        var(--red);
+  --color-red-dark:   var(--red-dark);
+  --color-red-light:  var(--red-light);
+  --color-error:      var(--red);
+  --color-black:      var(--black);
+  --color-gray-50:    #f9f9f9;
+  --color-gray-100:   #f5f5f5;
+  --color-gray-200:   #e0e0e0;
+  --color-gray-300:   #d0d0d0;     /* ← Agregado para components.css */
+  --color-gray-400:   #999;
+  --color-gray-500:   #666;
+  --color-gray-600:   #333;
+  --color-gray-700:   #222;
+  --color-gray-900:   #111;        /* ← Agregado para components.css */
+  --color-white:      var(--white);
+  --color-success:    #27AE60;
+  --color-warning:    #F39C12;
+  --color-info:       #3498DB;
 
-  /* Transiciones */
-  --transition-fast: all 0.2s ease;
-  --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Espaciados */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  12px;
+  --spacing-lg:  20px;
+  --spacing-xl:  32px;
+  --spacing-2xl: 40px;
+  --spacing-3xl: 48px;
+  --spacing-4xl: 64px;
 
   /* Tipografía */
-  --font-sans: 'Segoe UI', 'Roboto', Tahoma, Geneva, Verdana, sans-serif;
-  --font-heading: 'Segoe UI', 'Roboto', Tahoma, Geneva, Verdana, sans-serif;
-  --font-mono: 'Courier New', monospace;
+  --font-family: var(--font-body);   /* ← Agregado para components.css */
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.25rem;
+  --font-size-xl:   1.5rem;
+  --font-size-2xl:  2rem;
+  --font-size-3xl:  2.5rem;
+  --font-size-4xl:  3rem;
 
-  /* Configuración base */
-  font-family: var(--font-sans);
-  font-size: 16px;
+  /* Peso de fuente */
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* Radios */
+  --radius-md:  var(--radius);
+  --radius-lg:  12px;
+  --radius-full: 9999px;
+
+  /* Sombras extra */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);   /* ← Agregado */
+  --shadow-md: var(--shadow);                /* ← Agregado */
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.3);  /* ← Agregado */
+
+  /* Transiciones */
+  --transition-base: var(--transition);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease;
+
+  /* z-index */
+  --z-sticky: 100;  /* ← Agregado para .header */
+
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* =========================================
+   RESET BÁSICO
+   ========================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--white);
+  color: var(--black);
   line-height: 1.6;
-  letter-spacing: 0.5px;
-  color-scheme: light dark;
-}
-
-/* ============================================
-   RESET Y ESTILOS BASE
-   ============================================ */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  background: linear-gradient(135deg, #f9f9f9 0%, #ffffff 100%);
-  color: var(--color-gray-600);
-  transition: var(--transition-base);
-  min-height: 100vh;
-}
-
-/* ============================================
-   TIPOGRAFÍA
-   ============================================ */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.5px;
-  color: var(--color-black);
-  margin-bottom: 1rem;
-}
-
-h1 {
-  font-size: 3.5rem;
-}
-
-h2 {
-  font-size: 2.5rem;
-}
-
-h3 {
-  font-size: 1.75rem;
-}
-
-h4 {
-  font-size: 1.5rem;
-}
-
-h5 {
-  font-size: 1.25rem;
-}
-
-h6 {
-  font-size: 1rem;
-}
-
-p {
-  margin-bottom: 1rem;
-  color: var(--color-gray-500);
-  line-height: 1.8;
-}
-
-a {
-  color: var(--color-primary);
-  text-decoration: none;
-  transition: var(--transition-fast);
-  position: relative;
-}
-
-a:hover {
-  color: var(--color-primary-dark);
-}
-
-/* ============================================
-   BOTONES GLOBALES
-   ============================================ */
-button, .btn {
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  font-weight: 700;
-  padding: 12px 28px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: var(--transition-base);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  position: relative;
-  overflow: hidden;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  outline: none;
-}
-
-.btn-primary, button[type="submit"] {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
-  color: var(--color-white);
-  box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
-}
-
-.btn-primary:hover, button[type="submit"]:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 30px rgba(231, 76, 60, 0.4);
-}
-
-.btn-primary:active, button[type="submit"]:active {
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background: var(--color-gray-100);
-  color: var(--color-black);
-  border: 2px solid var(--color-gray-200);
-}
-
-.btn-secondary:hover {
-  background: var(--color-gray-200);
-  border-color: var(--color-primary);
-}
-
-.btn-outline {
-  background: transparent;
-  color: var(--color-primary);
-  border: 2px solid var(--color-primary);
-}
-
-.btn-outline:hover {
-  background: rgba(231, 76, 60, 0.1);
-  border-color: var(--color-primary-dark);
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ============================================
-   FORMULARIOS GLOBALES
-   ============================================ */
-input, textarea, select {
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  padding: 12px 16px;
-  border: 2px solid var(--color-gray-200);
-  border-radius: 8px;
-  background: var(--color-white);
-  color: var(--color-black);
-  transition: var(--transition-base);
-  box-shadow: var(--shadow-xs);
-}
-
-input:hover, textarea:hover, select:hover {
-  border-color: var(--color-primary-light);
-  box-shadow: var(--shadow-sm);
-}
-
-input:focus, textarea:focus, select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.15), var(--shadow-md);
-}
-
-input::placeholder {
-  color: var(--color-gray-400);
-}
-
-label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 700;
-  font-size: 0.875rem;
-  color: var(--color-black);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* ============================================
-   ANIMACIONES GLOBALES
-   ============================================ */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-/* ============================================
-   CONTENEDORES
-   ============================================ */
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-section {
-  padding: 80px 0;
-  transition: var(--transition-base);
-}
-
-/* ============================================
-   MENSAJES Y ALERTAS
-   ============================================ */
-.alert {
-  padding: 16px 20px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  border-left: 5px solid;
-  animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  font-weight: 600;
-}
-
-.alert-success {
-  background: rgba(39, 174, 96, 0.1);
-  color: #27AE60;
-  border-color: #27AE60;
-}
-
-.alert-error {
-  background: rgba(231, 76, 60, 0.1);
-  color: var(--color-error);
-  border-color: var(--color-error);
-}
-
-.alert-warning {
-  background: rgba(243, 156, 18, 0.1);
-  color: #F39C12;
-  border-color: #F39C12;
-}
-
-.alert-info {
-  background: rgba(52, 152, 219, 0.1);
-  color: #3498DB;
-  border-color: #3498DB;
-}
-
-/* ============================================
-   UTILIDADES
-   ============================================ */
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-left { text-align: left; }
-
-.mt-1 { margin-top: 0.5rem; }
-.mt-2 { margin-top: 1rem; }
-.mt-3 { margin-top: 1.5rem; }
-.mt-4 { margin-top: 2rem; }
-.mt-5 { margin-top: 3rem; }
-
-.mb-1 { margin-bottom: 0.5rem; }
-.mb-2 { margin-bottom: 1rem; }
-.mb-3 { margin-bottom: 1.5rem; }
-.mb-4 { margin-bottom: 2rem; }
-.mb-5 { margin-bottom: 3rem; }
-
-.p-2 { padding: 1rem; }
-.p-3 { padding: 1.5rem; }
-.p-4 { padding: 2rem; }
-.p-5 { padding: 3rem; }
-
-.opacity-50 { opacity: 0.5; }
-.opacity-75 { opacity: 0.75; }
-
-/* ============================================
-   RESPONSIVE
-   ============================================ */
-@media (max-width: 768px) {
-  :root {
-    font-size: 14px;
-  }
-
-  h1 { font-size: 2.5rem; }
-  h2 { font-size: 1.75rem; }
-  h3 { font-size: 1.5rem; }
-
-  section {
-    padding: 60px 0;
-  }
-
-  button, .btn {
-    padding: 10px 20px;
-    font-size: 0.9rem;
-  }
-}
-
-@media (max-width: 480px) {
-  :root {
-    font-size: 13px;
-  }
-
-  h1 { font-size: 2rem; }
-  h2 { font-size: 1.5rem; }
-  h3 { font-size: 1.25rem; }
-
-  section {
-    padding: 40px 0;
-  }
-
-  button, .btn {
-    padding: 10px 16px;
-    font-size: 0.85rem;
-  }
-}
-}
-
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
