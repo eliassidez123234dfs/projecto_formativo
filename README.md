@@ -310,6 +310,24 @@ VITE_MEDIA_URL=http://localhost:8000/media/
 - **Features**: Gestión de carrito por sesión, validación de stock
 - **Integration**: Con products y catalog
 
+### ✅ Admin UI de Productos
+
+- Ruta de acceso en frontend: `/admin-products`
+- Crear productos con imagen principal y variantes
+- Editar productos existentes
+- Activar / desactivar productos
+- Reordenar imágenes y marcar imagen principal
+- Conexión directa con la API REST de `products`
+- Detalle admin por producto con auditoría real: `/admin-products/detail/{id}`
+
+### ✅ Catálogo + Vista Producto + Carrito (Frontend)
+
+- Catálogo público: `/catalogo`
+- Filtros visuales: búsqueda, categoría, talla, color, rango de precio, solo con stock
+- Vista de producto pública: `/products/{id}`
+- Agregar al carrito validando variante y stock
+- Carrito completo: `/cart` con aumentar/disminuir, eliminar y total dinámico
+
 ---
 
 ## 📚 API Documentation
