@@ -1,452 +1,356 @@
 /* ============================================
-   DASHBOARD - ESTILOS GENERALES
+   PÁGINA DE AUTENTICACIÓN - DISEÑO CORPORATIVO
    ============================================ */
 
-.dashboard-container {
-  display: grid;
-  grid-template-columns: 250px 1fr;
+.auth-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-white) 100%);
+  display: flex;
+  background-color: var(--color-white);
 }
 
 /* ============================================
-   SIDEBAR
+   LADO IZQUIERDO - FORMULARIO
    ============================================ */
-.dashboard-sidebar {
-  background: linear-gradient(180deg, var(--color-black) 0%, var(--color-gray-600) 100%);
-  color: var(--color-white);
-  padding: 30px 20px;
-  border-right: 3px solid var(--color-primary);
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-  animation: slideInLeft 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dashboard-sidebar h2 {
-  color: var(--color-white);
-  font-size: 1.5rem;
-  margin-bottom: 30px;
+.auth-form-section {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.dashboard-sidebar-menu {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.dashboard-sidebar-menu li {
-  margin-bottom: 15px;
-}
-
-.dashboard-sidebar-menu a,
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 15px;
-  color: rgba(255, 255, 255, 0.8);
-  border-radius: 8px;
-  transition: var(--transition-base);
-  font-weight: 600;
-  text-decoration: none;
-  border-left: 4px solid transparent;
-  cursor: pointer;
-  border: none;
-  width: 100%;
-  background: none;
-  font-size: 1rem;
-}
-
-.dashboard-sidebar-menu a:hover,
-.dashboard-sidebar-menu a.active,
-.nav-item:hover,
-.nav-item.active,
-.active {
-  background: rgba(231, 76, 60, 0.2);
-  color: var(--color-primary-light);
-  border-left: 4px solid var(--color-primary);
-  padding-left: 11px;
-}
-
-/* ============================================
-   CONTENIDO PRINCIPAL
-   ============================================ */
-.dashboard-content {
-  padding: 40px;
-  overflow-y: auto;
-  animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 40px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid var(--color-gray-200);
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.dashboard-header h1 {
-  font-size: 2.5rem;
-  margin: 0;
-}
-
-.dashboard-header-actions {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.dashboard-header-actions button {
-  padding: 10px 20px;
-  font-size: 0.95rem;
-}
-
-/* ============================================
-   TARJETAS DE DASHBOARD
-   ============================================ */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 25px;
-  margin-bottom: 40px;
-}
-
-.dashboard-card {
-  background: var(--color-white);
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
-  border: 2px solid var(--color-gray-200);
-  transition: var(--transition-smooth);
-  animation: scaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dashboard-card:hover {
-  transform: translateY(-8px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--color-primary);
-}
-
-.dashboard-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.dashboard-card h3 {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.dashboard-card-value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--color-primary);
-  margin-bottom: 10px;
-}
-
-.dashboard-card-label {
-  color: var(--color-gray-500);
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* ============================================
-   TABLAS
-   ============================================ */
-.dashboard-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--color-white);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  border: 2px solid var(--color-gray-200);
-}
-
-.dashboard-table thead {
-  background: linear-gradient(135deg, var(--color-black) 0%, var(--color-gray-600) 100%);
-  color: var(--color-white);
-}
-
-.dashboard-table th {
-  padding: 15px 20px;
-  text-align: left;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 0.875rem;
-}
-
-.dashboard-table td {
-  padding: 15px 20px;
-  border-top: 1px solid var(--color-gray-200);
-  color: var(--color-gray-600);
-}
-
-.dashboard-table tbody tr {
-  transition: var(--transition-fast);
-}
-
-.dashboard-table tbody tr:hover {
-  background: rgba(231, 76, 60, 0.05);
-}
-
-.dashboard-table tbody tr:hover td {
-  color: var(--color-black);
-}
-
-/* ============================================
-   MODAL / DIALOGS
-   ============================================ */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.3s ease;
-}
-
-.modal {
-  background: var(--color-white);
-  border-radius: 12px;
-  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-4xl);
+  border-right: 1px solid var(--color-gray-200);
   max-width: 500px;
-  width: 90%;
-  padding: 30px;
-  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid var(--color-gray-200);
+.auth-form-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
-.modal-header h2 {
+.auth-form-header {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.auth-form-header h1 {
+  font-size: var(--font-size-3xl);
+  margin-bottom: var(--spacing-sm);
+}
+
+.auth-form-header p {
+  color: var(--color-gray-600);
   margin: 0;
 }
 
-.modal-close {
-  background: none;
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.auth-tabs {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-2xl);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.auth-tab {
+  padding: var(--spacing-lg);
   border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
+  background: none;
   color: var(--color-gray-500);
-  transition: var(--transition-fast);
-  padding: 0;
-  width: 30px;
-  height: 30px;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.auth-tab.active {
+  color: var(--color-black);
+  border-bottom-color: var(--color-red);
+}
+
+.auth-tab:hover {
+  color: var(--color-black);
+}
+
+.auth-form-content {
+  display: none;
+}
+
+.auth-form-content.active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.form-footer {
+  text-align: center;
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-gray-200);
+}
+
+.form-footer p {
+  margin: 0;
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+}
+
+.form-footer a {
+  color: var(--color-red);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.form-footer a:hover {
+  text-decoration: underline;
+}
+
+.forgot-password {
+  text-align: right;
+}
+
+.forgot-password a {
+  color: var(--color-red);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ============================================
+   LADO DERECHO - BENEFICIOS
+   ============================================ */
+.auth-benefits-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--spacing-4xl);
+  background: linear-gradient(135deg, var(--color-red-light) 0%, var(--color-gray-50) 100%);
+  min-width: 400px;
+}
+
+.auth-benefits-container {
+  max-width: 400px;
+}
+
+.auth-benefits-header {
+  margin-bottom: var(--spacing-3xl);
+}
+
+.auth-benefits-header h2 {
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-black);
+}
+
+.auth-benefits-header p {
+  color: var(--color-gray-600);
+  font-size: var(--font-size-base);
+}
+
+.auth-benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.benefit-item {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: flex-start;
+}
+
+.benefit-icon {
+  width: 48px;
+  height: 48px;
+  background-color: var(--color-red);
+  color: var(--color-white);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: var(--font-size-xl);
+  flex-shrink: 0;
 }
 
-.modal-close:hover {
-  color: var(--color-error);
-}
-
-.modal-body {
-  margin-bottom: 20px;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 15px;
-  justify-content: flex-end;
-  padding-top: 20px;
-  border-top: 2px solid var(--color-gray-200);
-}
-
-/* ============================================
-   BREADCRUMB
-   ============================================ */
-.breadcrumb {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 30px;
-  font-size: 0.95rem;
-}
-
-.breadcrumb a {
-  color: var(--color-primary);
-  font-weight: 600;
-  transition: var(--transition-fast);
-}
-
-.breadcrumb a:hover {
-  color: var(--color-primary-dark);
-}
-
-.breadcrumb span {
-  color: var(--color-gray-400);
-}
-
-.breadcrumb .active {
+.benefit-content h3 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-xs);
   color: var(--color-black);
-  font-weight: 700;
 }
 
-/* ============================================
-   BADGES / TAGS
-   ============================================ */
-.badge {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: var(--transition-fast);
+.benefit-content p {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+  margin: 0;
+  line-height: 1.5;
 }
 
-.badge-primary {
-  background: rgba(231, 76, 60, 0.1);
-  color: var(--color-primary);
+.auth-benefits-highlight {
+  margin-top: var(--spacing-3xl);
+  padding: var(--spacing-lg);
+  background-color: var(--color-white);
+  border-left: 4px solid var(--color-red);
+  border-radius: var(--radius-md);
 }
 
-.badge-success {
-  background: rgba(39, 174, 96, 0.1);
-  color: #27AE60;
-}
-
-.badge-warning {
-  background: rgba(243, 156, 18, 0.1);
-  color: #F39C12;
-}
-
-.badge-error,
-.error {
-  background: rgba(231, 76, 60, 0.1);
-  color: var(--color-error);
-}
-
-.success-message {
-  background: rgba(39, 174, 96, 0.1);
-  color: #27AE60;
-  padding: 15px 20px;
-  border-radius: 8px;
-  border-left: 4px solid #27AE60;
-  margin-bottom: 20px;
-  font-weight: 600;
+.auth-benefits-highlight p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  line-height: 1.6;
 }
 
 /* ============================================
    RESPONSIVE
    ============================================ */
-@media (max-width: 768px) {
-  .dashboard-container {
-    grid-template-columns: 1fr;
+@media (max-width: 1024px) {
+  .auth-form-section {
+    padding: var(--spacing-2xl);
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-gray-200);
   }
 
-  .dashboard-sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 250px;
-    z-index: 999;
-    height: 100vh;
-    transform: translateX(-100%);
-    transition: var(--transition-base);
+  .auth-form-container {
+    max-width: 100%;
   }
 
-  .dashboard-sidebar.active {
-    transform: translateX(0);
+  .auth-benefits-section {
+    display: none;
   }
 
-  .dashboard-content {
-    padding: 20px;
-  }
-
-  .dashboard-header {
+  .auth-page {
     flex-direction: column;
-    align-items: flex-start;
   }
 
-  .dashboard-header h1 {
-    font-size: 1.75rem;
+  .auth-form-section {
+    justify-content: flex-start;
+    padding-top: var(--spacing-3xl);
+    padding-bottom: var(--spacing-3xl);
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-page {
+    flex-direction: column;
   }
 
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
+  .auth-form-section {
+    padding: var(--spacing-xl);
+    border: none;
+    border-bottom: 1px solid var(--color-gray-200);
   }
 
-  .dashboard-table {
-    font-size: 0.9rem;
+  .auth-form-container {
+    max-width: 100%;
   }
 
-  .dashboard-table th,
-  .dashboard-table td {
-    padding: 10px 12px;
+  .auth-form-header h1 {
+    font-size: var(--font-size-2xl);
   }
 
-  .modal {
-    width: 95%;
+  .auth-benefits-section {
+    display: flex;
+    padding: var(--spacing-xl);
+    background: linear-gradient(135deg, var(--color-red-light) 0%, var(--color-gray-50) 100%);
+    min-width: auto;
+    border-top: 1px solid var(--color-gray-200);
+  }
+
+  .auth-benefits-container {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .auth-benefits-header h2 {
+    font-size: var(--font-size-xl);
+  }
+
+  .auth-benefits-list {
+    gap: var(--spacing-lg);
+  }
+
+  .benefit-item {
+    gap: var(--spacing-md);
+  }
+
+  .benefit-icon {
+    width: 40px;
+    height: 40px;
+    font-size: var(--font-size-base);
+  }
+
+  .benefit-content h3 {
+    font-size: var(--font-size-sm);
+  }
+
+  .benefit-content p {
+    font-size: var(--font-size-xs);
   }
 }
 
 @media (max-width: 480px) {
-  .dashboard-content {
-    padding: 15px;
+  .auth-form-section {
+    padding: var(--spacing-lg);
   }
 
-  .dashboard-header h1 {
-    font-size: 1.5rem;
+  .auth-form-container {
+    max-width: 100%;
   }
 
-  .dashboard-card {
-    padding: 15px;
+  .auth-form-header h1 {
+    font-size: var(--font-size-2xl);
   }
 
-  .dashboard-card-value {
-    font-size: 1.5rem;
+  .auth-tabs {
+    flex-direction: row;
+    gap: 0;
   }
 
-  .dashboard-table {
-    font-size: 0.8rem;
-    overflow-x: auto;
+  .auth-tab {
+    flex: 1;
+    padding: var(--spacing-md);
+    font-size: var(--font-size-sm);
   }
 
-  .dashboard-table th,
-  .dashboard-table td {
-    padding: 8px 10px;
+  .auth-benefits-section {
+    padding: var(--spacing-lg);
   }
 
-  .modal {
-    padding: 20px;
-  }
-
-  .modal-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .modal-close {
-    position: absolute;
-    right: 20px;
-    top: 20px;
+  .auth-benefits-list {
+    gap: var(--spacing-md);
   }
 }
+
+/* ============================================
+   ANIMACIONES
+   ============================================ */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.auth-form-content.active {
+  animation: slideInLeft var(--transition-slow);
+}
+
+.form-group {
+  animation: slideInLeft var(--transition-slow);
+}
+
+.form-group:nth-child(1) { animation-delay: 50ms; }
+.form-group:nth-child(2) { animation-delay: 100ms; }
+.form-group:nth-child(3) { animation-delay: 150ms; }
+.form-group:nth-child(4) { animation-delay: 200ms; }

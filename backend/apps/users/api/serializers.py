@@ -20,7 +20,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'fecha_registro', 'fecha_ultima_sesion']
 
-
 class UsuarioDetailSerializer(UsuarioSerializer):
     """Serializer detallado para Usuario"""
     
@@ -28,7 +27,6 @@ class UsuarioDetailSerializer(UsuarioSerializer):
         fields = UsuarioSerializer.Meta.fields + [
             'intentos_fallidos', 'fecha_bloqueo', 'eliminado', 'fecha_eliminacion'
         ]
-
 
 class RegistroSerializer(serializers.Serializer):
     """Serializer para el registro de nuevos usuarios (RF-001)"""
@@ -132,7 +130,6 @@ class LoginSerializer(serializers.Serializer):
         data['usuario'] = usuario
         return data
 
-
 class VerificacionEmailSerializer(serializers.Serializer):
     """Serializer para verificación de email (RF-009)"""
     
@@ -164,6 +161,7 @@ class ReenvioVerificacionSerializer(serializers.Serializer):
     
     correo = serializers.EmailField(required=True)
     
+    # Funcion para validar el correo que el usuario exista y no este verificado
     def validate_correo(self, value):
         """Validar que el usuario existe y no está verificado"""
         try:
@@ -187,7 +185,6 @@ class ReenvioVerificacionSerializer(serializers.Serializer):
         
         return value
 
-
 class RecuperacionPasswordSerializer(serializers.Serializer):
     """Serializer para solicitud de recuperación de contraseña (RF-002)"""
     
@@ -201,7 +198,6 @@ class RecuperacionPasswordSerializer(serializers.Serializer):
             raise ValidationError("Usuario no encontrado.")
         
         return value
-
 
 class NuevaPasswordSerializer(serializers.Serializer):
     """Serializer para establecer nueva contraseña después de recuperación"""
@@ -244,7 +240,6 @@ class NuevaPasswordSerializer(serializers.Serializer):
         if data['contrasena'] != data['confirmar_contrasena']:
             raise ValidationError("Las contraseñas no coinciden.")
         return data
-
 
 class CambioPasswordSerializer(serializers.Serializer):
     """Serializer para cambio de contraseña autenticado (RF-010)"""

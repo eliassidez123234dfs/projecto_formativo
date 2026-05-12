@@ -9,3 +9,4 @@ django-ckeditor==6.7.3 ## crear cosas de manera mas rica para que se vea mejor
 psycopg2-binary==2.9.12 ## esto es para poder trabajar con postgresql
 python-decouple==3.8 ## para manejar variables de entorno
 celery==5.4.0 ## para tareas asincrónicas (email)
+django-ratelimit==4.1.0 ## para limitar el número de requests por IP

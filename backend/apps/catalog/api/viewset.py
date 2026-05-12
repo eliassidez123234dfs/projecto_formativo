@@ -117,10 +117,13 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         """Obtener filtros disponibles para el catálogo"""
         queryset = self.get_queryset()
         
-        # Categorías disponibles
+        # IDs de productos actualmente en el queryset
+        product_ids = queryset.values_list('id', flat=True)
+        
+        # Categorías disponibles a través del modelo intermedio (related_name='products')
         categories = Category.objects.filter(
             is_active=True,
-            products__in=queryset
+            products__product__in=product_ids
         ).distinct()
         
         # Tallas disponibles
