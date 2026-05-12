@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
-from apps.products.models import Product, ProductAudit
+from apps.products.models import Product, ProductAudit, ProductImage
 
 from .serializers import (
     CartItemSerializer,
     ProductAuditSerializer,
     ProductDetailSerializer,
     ProductImageCreateSerializer,
+    ProductImageSerializer,
     ProductListSerializer,
     ProductPagination,
     ProductWriteSerializer,
@@ -93,7 +96,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         product = self.get_object()
         before_data = ProductDetailSerializer(product, context=self.get_serializer_context()).data
 
-        if product.orders.filter(status__in={'pending', 'paid', 'processing'}).exists() and 'name' in request.data:
+        if product.has_active_order_items and 'name' in request.data:
             return Response(
                 {'name': 'No se puede editar el nombre si existen pedidos activos.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -110,6 +113,72 @@ class ProductViewSet(viewsets.ModelViewSet):
             before_data=before_data,
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
         )
+        return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
+
+    @action(detail=True, methods=['patch'], url_path=r'images/(?P<image_id>[^/.]+)')
+    def update_image(self, request, pk=None, image_id=None):
+        product = self.get_object()
+        image = get_object_or_404(ProductImage, pk=image_id, product=product)
+
+        order = request.data.get('order')
+        is_main = request.data.get('is_main')
+
+        if order not in {None, ''}:
+            image.order = int(order)
+        if is_main not in {None, ''}:
+            image.is_main = str(is_main).lower() in {'true', '1', 'yes'}
+
+        image.save()
+        return Response(ProductImageSerializer(image, context={'request': request}).data)
+
+    @action(detail=True, methods=['delete'], url_path=r'images/(?P<image_id>[^/.]+)')
+    def delete_image(self, request, pk=None, image_id=None):
+        product = self.get_object()
+        image = get_object_or_404(ProductImage, pk=image_id, product=product)
+
+        was_main = image.is_main
+        image.delete()
+
+        if was_main:
+            first_image = product.images.order_by('order', 'id').first()
+            if first_image:
+                first_image.is_main = True
+                first_image.save(update_fields=['is_main'])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['patch'], url_path='images/reorder')
+    def reorder_images(self, request, pk=None):
+        product = self.get_object()
+        items = request.data.get('items', [])
+        if not isinstance(items, list) or not items:
+            return Response({'items': 'Debe enviar una lista de imágenes.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        images = {str(image.id): image for image in product.images.all()}
+        ids = [str(item.get('id')) for item in items]
+        if set(ids) != set(images.keys()):
+            return Response({'items': 'La lista debe incluir todas las imágenes del producto.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            for image in images.values():
+                image.order = image.order + 1000
+                image.save(update_fields=['order'])
+
+            for item in items:
+                image = images.get(str(item.get('id')))
+                if image is None:
+                    continue
+                image.order = int(item.get('order', image.order))
+                image.save(update_fields=['order'])
+
+        ordered_images = product.images.order_by('order', 'id')
+        return Response(ProductImageSerializer(ordered_images, many=True, context={'request': request}).data)
+
+    @action(detail=True, methods=['patch'], url_path='toggle-active')
+    def toggle_active(self, request, pk=None):
+        product = self.get_object()
+        product.is_active = not product.is_active
+        product.save(update_fields=['is_active', 'updated_at'])
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=['get'], url_path='checklist')
