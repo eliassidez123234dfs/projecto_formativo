@@ -148,7 +148,9 @@ El sistema 3D de camisas puede estar desacoplado como microservicio:
 #### 1. Crear Entorno Virtual
 
 ```bash
-cd /home/South_Knight/Documentos/projecto_formativo/backend
+# cd /home/South_Knight/Documentos/projecto_formativo/backend
+# Primero se va a la carpeta backend del proyecto
+cd ./backend
 python -m venv venv
 
 # Linux/Mac
@@ -215,7 +217,9 @@ python manage.py runserver
 #### 1. Instalar Dependencias
 
 ```bash
-cd /home/South_Knight/Documentos/projecto_formativo/frontend
+# cd /home/South_Knight/Documentos/projecto_formativo/frontend
+# Primero se va a la carpeta frontend del proyecto
+cd ./backend
 npm install
 ```
 
@@ -830,3 +834,9 @@ Para problemas específicos:
 ---
 
 **¡El proyecto está listo para mostrar al instructor y para que tus compañeros integren el frontend!** 🚀
+
+# cd /home/South_Knight/Documentos/projecto_formativo/backend
+
+# Primero se va a la carpeta backend del proyecto
+
+cd ./backend
