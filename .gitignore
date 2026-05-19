@@ -483,3 +483,6 @@ sketch
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django,node,linux,react,visualstudiocode,macos
 venv/
+
+.github/
+.github/*
