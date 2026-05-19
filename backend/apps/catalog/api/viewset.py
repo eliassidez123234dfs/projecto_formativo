@@ -117,10 +117,14 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         """Obtener filtros disponibles para el catálogo"""
         queryset = self.get_queryset()
         
-        # Categorías disponibles
+        # Categorías disponibles - obtener categorías de productos activos
+        from apps.catalog.models import ProductCategory, Category
+        category_ids = queryset.filter(
+            categories__isnull=False
+        ).values_list('categories__category_id', flat=True).distinct()
+        
         categories = Category.objects.filter(
-            is_active=True,
-            products__in=queryset
+            id__in=category_ids
         ).distinct()
         
         # Tallas disponibles
@@ -194,43 +198,44 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
 
-class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Category.objects.filter(is_active=True)
-    serializer_class = CategorySerializer
-    lookup_field = 'slug'
+# class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+#     queryset = Category.objects.filter(is_active=True)
+#     serializer_class = CategorySerializer
+#     lookup_field = 'slug'
 
-    @action(detail=True, methods=['get'], url_path='products')
-    def products(self, request, slug=None):
-        """Obtener productos de una categoría específica"""
-        category = self.get_object()
-        products = Product.objects.filter(
-            categories__category=category,
-            is_active=True,
-            is_approved=True
-        ).prefetch_related('images', 'variants')
+#     @action(detail=True, methods=['get'], url_path='products')
+#     def products(self, request, slug=None):
+#         """Obtener productos de una categoría específica"""
+#         category = self.get_object()
+#         products = Product.objects.filter(
+#             categories__category=category,
+#             is_active=True,
+#             is_approved=True
+#         ).prefetch_related('images', 'variants')
         
-        # Aplicar filtros adicionales
-        serializer = CatalogSearchSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        params = serializer.validated_data
+#         # Aplicar filtros adicionales
+#         serializer = CatalogSearchSerializer(data=request.query_params)
+#         serializer.is_valid(raise_exception=True)
+#         params = serializer.validated_data
 
-        if params.get('min_price'):
-            products = products.filter(base_price__gte=params['min_price'])
-        if params.get('max_price'):
-            products = products.filter(base_price__lte=params['max_price'])
-        if params.get('size'):
-            products = products.filter(variants__size__iexact=params['size'])
-        if params.get('color'):
-            products = products.filter(variants__color__iexact=params['color'])
-        if params.get('has_stock'):
-            products = products.filter(variants__stock__gt=0).distinct()
+#         if params.get('min_price'):
+#             products = products.filter(base_price__gte=params['min_price'])
+#         if params.get('max_price'):
+#             products = products.filter(base_price__lte=params['max_price'])
+#         if params.get('size'):
+#             products = products.filter(variants__size__iexact=params['size'])
+#         if params.get('color'):
+#             products = products.filter(variants__color__iexact=params['color'])
+#         if params.get('has_stock'):
+#             products = products.filter(variants__stock__gt=0).distinct()
 
-        # Paginación
-        paginator = CatalogPagination()
-        page = paginator.paginate_queryset(products, request)
-        if page is not None:
-            serializer = CatalogProductSerializer(page, many=True, context={'request': request})
-            return paginator.get_paginated_response(serializer.data)
+#         # Paginación
+#         paginator = CatalogPagination()
+#         page = paginator.paginate_queryset(products, request)
+#         if page is not None:
+#             serializer = CatalogProductSerializer(page, many=True, context={'request': request})
+#             return paginator.get_paginated_response(serializer.data)
 
-        serializer = CatalogProductSerializer(products, many=True, context={'request': request})
+#         serializer = CatalogProductSerializer(products, many=True, context={'request': request})
+#         return Response(serializer.data)
         return Response(serializer.data)
