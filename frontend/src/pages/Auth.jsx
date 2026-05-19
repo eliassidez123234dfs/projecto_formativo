@@ -28,6 +28,13 @@ export const Auth = () => {
     setSuccess(false);
   }, [isLogin]);
 
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      navigate('/');
+    }
+  }, [navigate]);
+
   // --- Funciones handle sin cambios (las dejé igual, solo asegúrate de que siguen funcionando) ---
   const handleLoginChange = (e) => {
     const { name, value } = e.target;
@@ -53,7 +60,7 @@ export const Auth = () => {
         localStorage.setItem('access_token', data.access);
         localStorage.setItem('refresh_token', data.refresh);
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
-        navigate('/dashboard');
+        navigate('/');
       }
     } catch (error) {
       setErrors({ general: 'Error al conectar con el servidor' });

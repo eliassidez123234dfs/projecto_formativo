@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchProductDetail } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
+import { Header } from '../components/Header';
 
 export const ProductDetail = () => {
   const { id } = useParams();
@@ -11,7 +12,7 @@ export const ProductDetail = () => {
   const [error, setError] = useState(null);
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const { addItem } = useCart();
+  const { cart, addItem } = useCart();
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -78,12 +79,24 @@ export const ProductDetail = () => {
   }
 
   return (
-    <div className="container" style={{ paddingTop: 'var(--spacing-2xl)', paddingBottom: '4rem' }}>
-      <Link to="/catalog" style={{ color: 'var(--color-red)', textDecoration: 'none', marginBottom: '1rem', display: 'inline-block' }}>
-        ← Volver al catálogo
-      </Link>
+    <>
+      <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={cart?.total_items || 0} />
+      <div className="container" style={{ paddingTop: 'var(--spacing-2xl)', paddingBottom: '4rem' }}>
+        <Link to="/catalog" style={{ color: 'var(--color-red)', textDecoration: 'none', marginBottom: '1rem', display: 'inline-block' }}>
+          ← Volver al catálogo
+        </Link>
 
-      <div className="product-detail" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', marginTop: '1rem' }}>
+        {product.categories?.length > 0 && (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            {product.categories.map((category) => (
+              <span key={category} style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem', background: 'var(--color-gray-100)', borderRadius: '999px' }}>
+                {category}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="product-detail" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', marginTop: '1rem' }}>
         {/* Galería de imágenes */}
         <div className="product-gallery">
           <div
@@ -161,9 +174,30 @@ export const ProductDetail = () => {
             <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '2rem' }}>
               <p style={{ color: '#991B1B', fontWeight: 600, marginBottom: '0.5rem' }}>⚠️ Producto no publicable</p>
               <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#991B1B' }}>
-                {product.checklist?.map((item, idx) => (
-                  <li key={idx} style={{ fontSize: '0.9rem' }}>{item}</li>
-                ))}
+                {(() => {
+                  const checklist = product.checklist;
+                  if (!checklist) return null;
+                  if (Array.isArray(checklist)) {
+                    return checklist.map((item, idx) => (
+                      <li key={idx} style={{ fontSize: '0.9rem' }}>{item}</li>
+                    ));
+                  }
+                  if (typeof checklist === 'object') {
+                    const labels = {
+                      name: 'Nombre',
+                      description: 'Descripción',
+                      main_image: 'Imagen principal',
+                      variant_with_stock: 'Variante con stock',
+                      ready_to_publish: 'Listo para publicar',
+                    };
+                    return Object.entries(checklist).map(([key, val]) => (
+                      <li key={key} style={{ fontSize: '0.9rem' }}>
+                        {labels[key] || key}: {val ? '✓' : '✗'}
+                      </li>
+                    ));
+                  }
+                  return null;
+                })()}
               </ul>
             </div>
           )}
@@ -218,6 +252,30 @@ export const ProductDetail = () => {
             </div>
           )}
 
+          {/* Botones del modelo 3D: ver, editar o crear desde cero */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => window.location.href = `/product/${id}/3d?mode=view`}
+            >
+              Ver Modelo 3D
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => window.location.href = `/product/${id}/3d?mode=edit`}
+            >
+              Editar Modelo 3D
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => window.location.href = `/product/${id}/3d?mode=new`}
+            >
+              Crear en 3D (usar este producto)
+            </Button>
+          </div>
+
           {/* Botón agregar al carrito */}
           <Button
             size="lg"
@@ -236,5 +294,6 @@ export const ProductDetail = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };

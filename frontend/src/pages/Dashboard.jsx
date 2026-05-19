@@ -1,6 +1,8 @@
 // frontend/src/pages/Dashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Header } from '../components/Header';
+import '../styles/dashboard-new.css';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -26,6 +28,12 @@ export const Dashboard = () => {
     }
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (!loading && !usuario) {
+      navigate('/login');
+    }
+  }, [loading, usuario, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -103,11 +111,23 @@ export const Dashboard = () => {
     navigate('/login');
   };
 
-  if (loading) return <div className="dashboard"><p>Cargando...</p></div>;
-  if (!usuario) return <div className="dashboard"><p>No hay sesión activa</p></div>;
+  if (loading) return (
+    <>
+      <Header cartCount={0} />
+      <div className="dashboard"><p>Cargando...</p></div>
+    </>
+  );
+  if (!usuario) return (
+    <>
+      <Header cartCount={0} />
+      <div className="dashboard"><p>No hay sesión activa</p></div>
+    </>
+  );
 
   return (
-    <div className="dashboard">
+    <>
+      <Header cartCount={0} />
+      <div className="dashboard">
       {/* ===== SIDEBAR ===== */}
       <aside className="dashboard-sidebar">
         <div className="dashboard-user-card">
@@ -144,11 +164,48 @@ export const Dashboard = () => {
 
       {/* ===== MAIN CONTENT ===== */}
       <main className="dashboard-main">
+        <section className="dashboard-panel active">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <p style={{ margin: 0, color: 'var(--color-red)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '0.75rem' }}>
+                Mi Cuenta
+              </p>
+              <h2 style={{ margin: '0.5rem 0 0', fontSize: '2rem' }}>Hola, {usuario.usuario}</h2>
+              <p style={{ margin: '0.75rem 0 0', color: 'var(--color-gray-600)', maxWidth: '640px' }}>
+                Controla tu perfil, cambia tu contraseña y accede de forma rápida al catálogo, al carrito y al editor 3D.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-outline" onClick={() => navigate('/catalog')}>
+                Ver Catálogo
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => window.open('http://localhost:4173', '_blank')}>
+                Abrir Editor 3D
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => navigate('/cart')}>
+                Mi Carrito
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="dashboard-panel active">
         {message && <div className="message-box success"><span className="message-icon">✅</span> {message}</div>}
         {errors.general && <div className="message-box error"><span className="message-icon">❌</span> {errors.general}</div>}
 
         {activeTab === 'perfil' && (
           <div className="dashboard-panel active">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+              <button type="button" className="btn btn-outline" onClick={() => navigate('/catalog')}>
+                Ver Catálogo
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => window.open('http://localhost:4173', '_blank')}>
+                Abrir Editor 3D
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => navigate('/cart')}>
+                Ir a mi Carrito
+              </button>
+            </div>
             <h3>Mi Perfil</h3>
             <form onSubmit={handleUpdatePerfil} className="profile-form">
               <div className="profile-form-full">
@@ -227,7 +284,9 @@ export const Dashboard = () => {
             </form>
           </div>
         )}
+        </section>
       </main>
-    </div>
+      </div>
+    </>
   );
 };

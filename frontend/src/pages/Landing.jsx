@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Header } from '../components/Header';
 
 export const Landing = () => {
+  const loggedIn = typeof window !== 'undefined' ? Boolean(localStorage.getItem('access_token')) : false;
   const [formData, setFormData] = useState({
     nombre: '',
     correo: '',
@@ -60,9 +61,32 @@ export const Landing = () => {
           <h1>Bienvenido a <span className="highlight">Nuestro Sistema</span></h1>
           <p>Gestión completa de usuarios y administración con la mejor experiencia.</p>
           <div className="hero-cta">
-            <a href="/login" className="btn btn-primary btn-lg">Iniciar Sesión</a>
-            <a href="/register" className="btn btn-outline btn-lg">Crear Cuenta</a>
+            {loggedIn ? (
+              <>
+                <a href="/catalog" className="btn btn-primary btn-lg">Ver Catálogo</a>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-lg"
+                  onClick={() => {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    localStorage.removeItem('usuario');
+                    window.location.href = '/';
+                  }}
+                >
+                  Cerrar Sesión
+                </button>
+              </>
+            ) : (
+              <>
+                <a href="/login" className="btn btn-primary btn-lg">Iniciar Sesión</a>
+                <a href="/register" className="btn btn-outline btn-lg">Crear Cuenta</a>
+              </>
+            )}
           </div>
+          <p style={{ marginTop: '1rem', color: 'var(--color-gray-600)', fontSize: '0.95rem' }}>
+            El diseño 3D se ve en cada producto con el botón «Ver Modelo 3D» en la página de detalle.
+          </p>
         </div>
         <div className="hero-image">
           [Imagen del sistema]
