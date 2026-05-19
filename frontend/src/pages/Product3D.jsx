@@ -35,7 +35,7 @@ export const Product3D = () => {
   }, [id]);
 
   const openEditor = () => {
-    const base = 'http://localhost:4173/';
+    const base = 'http://localhost:5174/';
     const url = `${base}?mode=${encodeURIComponent(mode)}${id ? `&productId=${encodeURIComponent(id)}` : ''}`;
     window.open(url, '_blank');
   };

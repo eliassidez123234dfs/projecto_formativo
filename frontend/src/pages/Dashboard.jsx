@@ -179,7 +179,7 @@ export const Dashboard = () => {
               <button type="button" className="btn btn-outline" onClick={() => navigate('/catalog')}>
                 Ver Catálogo
               </button>
-              <button type="button" className="btn btn-outline" onClick={() => window.open('http://localhost:4173', '_blank')}>
+              <button type="button" className="btn btn-outline" onClick={() => window.open('http://localhost:5174', '_blank')}>
                 Abrir Editor 3D
               </button>
               <button type="button" className="btn btn-outline" onClick={() => navigate('/cart')}>
@@ -199,7 +199,7 @@ export const Dashboard = () => {
               <button type="button" className="btn btn-outline" onClick={() => navigate('/catalog')}>
                 Ver Catálogo
               </button>
-              <button type="button" className="btn btn-outline" onClick={() => window.open('http://localhost:4173', '_blank')}>
+              <button type="button" className="btn btn-outline" onClick={() => window.open('http://localhost:5174', '_blank')}>
                 Abrir Editor 3D
               </button>
               <button type="button" className="btn btn-outline" onClick={() => navigate('/cart')}>
