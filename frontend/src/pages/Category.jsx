@@ -1,43 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fetchCatalog, fetchProductDetail } from '../services/api';
+import { useParams, Link } from 'react-router-dom';
+import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
 import { Header } from '../components/Header';
 
-export const Catalog = () => {
+export const Category = () => {
+  const { id } = useParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     q: '',
-    category: '',
     min_price: '',
     max_price: '',
     ordering: '',
     page: 1,
   });
-  const [filtersData, setFiltersData] = useState({
-    categories: [],
-    sizes: [],
-    colors: [],
-    price_range: { min: 0, max: 0 },
-  });
   const [pageInfo, setPageInfo] = useState(null);
-  const navigate = useNavigate();
+  const [categoryName, setCategoryName] = useState('Categoría');
+  const [filtersData, setFiltersData] = useState({ categories: [] });
   const { cart, addItem } = useCart();
 
   const loadProducts = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const data = await fetchCatalog(filters);
+      const data = await fetchCatalog({ ...filters, category: Number(id) });
       setProducts(data.results || data);
       setPageInfo(data.next ? { next: data.next, previous: data.previous, count: data.count } : null);
       if (data.filters) {
         setFiltersData(data.filters);
+        const selected = data.filters.categories.find((category) => category.id === Number(id));
+        setCategoryName(selected?.name || 'Categoría');
       }
-    } catch (error) {
-      console.error('Error al cargar catálogo:', error);
+    } catch (err) {
+      console.error('Error al cargar categoría:', err);
+      setError('No se pudo cargar la categoría.');
       setProducts([]);
     } finally {
       setLoading(false);
@@ -46,46 +46,21 @@ export const Catalog = () => {
 
   useEffect(() => {
     loadProducts();
-  }, [filters]);
-
-  const handleResetFilters = () => {
-    setFilters({
-      q: '',
-      category: '',
-      min_price: '',
-      max_price: '',
-      ordering: '',
-      page: 1,
-    });
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    loadProducts();
-  };
+  }, [filters, id]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({
-      ...prev,
-      [name]: name === 'category' ? (value ? Number(value) : '') : value,
-      page: 1,
-    }));
+    setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
   };
 
   const handleAddToCart = async (product) => {
+    const variantId = product.variants?.[0]?.id;
+    if (!variantId) {
+      alert('Este producto no tiene variantes disponibles');
+      return;
+    }
     try {
-      // Si el listado no incluye variantes, pedir el detalle antes de agregar
-      let prod = product;
-      if (!prod.variants) {
-        prod = await fetchProductDetail(product.id);
-      }
-      const variantId = prod.variants?.find(v => v.stock > 0)?.id;
-      if (!variantId) {
-        alert('Este producto no tiene variantes disponibles');
-        return;
-      }
-      await addItem(prod.id, variantId, 1);
+      await addItem(product.id, variantId, 1);
       alert('Producto agregado al carrito');
     } catch (error) {
       const msg = error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito';
@@ -97,34 +72,19 @@ export const Catalog = () => {
     <>
       <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={cart?.total_items || 0} />
       <div className="container" style={{ paddingTop: '2rem' }}>
-        <h1>Catálogo</h1>
+        <Link to="/catalog" style={{ color: 'var(--color-red)', textDecoration: 'none', display: 'inline-block', marginBottom: '1rem' }}>
+          ← Volver al catálogo
+        </Link>
+        <h1>{categoryName}</h1>
+        <p style={{ color: 'var(--color-gray-600)', marginBottom: '1.5rem' }}>
+          Explora los productos disponibles para esta categoría. Usa filtros para encontrar rápido lo que necesitas.
+        </p>
 
-        {filtersData.categories.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            {filtersData.categories.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => navigate(`/category/${category.id}`)}
-              >
-                {category.name}
-              </button>
-            ))}
-            {filters.category && (
-              <button type="button" className="btn btn-sm btn-secondary" onClick={handleResetFilters}>
-                Limpiar categoría
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Filtros */}
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
           <input
             type="text"
             name="q"
-            placeholder="Buscar..."
+            placeholder="Buscar dentro de la categoría..."
             value={filters.q}
             onChange={handleFilterChange}
             className="form-input"
@@ -136,12 +96,6 @@ export const Catalog = () => {
             <option value="base_price">Precio (menor primero)</option>
             <option value="-base_price">Precio (mayor primero)</option>
             <option value="popularity">Popularidad</option>
-          </select>
-          <select name="category" value={filters.category} onChange={handleFilterChange} className="form-input">
-            <option value="">Todas las categorías</option>
-            {filtersData.categories.map((category) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
           </select>
           <input
             type="number"
@@ -159,13 +113,14 @@ export const Catalog = () => {
             onChange={handleFilterChange}
             className="form-input"
           />
-          <Button type="submit">Buscar</Button>
         </form>
 
         {loading ? (
           <p>Cargando productos...</p>
+        ) : error ? (
+          <p style={{ color: 'var(--color-red)' }}>{error}</p>
         ) : products.length === 0 ? (
-          <p>No se encontraron productos con esos filtros.</p>
+          <p>No hay productos que coincidan con esta categoría.</p>
         ) : (
           <>
             <div className="products-grid">
@@ -179,7 +134,7 @@ export const Catalog = () => {
                     badge: product.is_new ? 'Nuevo' : null,
                     image: product.main_image || '👕',
                   }}
-                  onView={(id) => navigate(`/product/${id}`)}
+                  onView={(id) => window.location.href = `/product/${id}`}
                   onAdd={() => handleAddToCart(product)}
                 />
               ))}

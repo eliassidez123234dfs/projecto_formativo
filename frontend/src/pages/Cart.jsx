@@ -1,34 +1,43 @@
 import React from 'react';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
+import { Header } from '../components/Header';
 
 export const Cart = () => {
   const { cart, loading, updateQuantity, removeItem } = useCart();
 
   if (loading) {
     return (
-      <div className="container" style={{ paddingTop: '2rem' }}>
-        <h1>Carrito de Compras</h1>
-        <p>Cargando carrito...</p>
-      </div>
+      <>
+        <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={0} />
+        <div className="container" style={{ paddingTop: '2rem' }}>
+          <h1>Carrito de Compras</h1>
+          <p>Cargando carrito...</p>
+        </div>
+      </>
     );
   }
 
   if (!cart || cart.items?.length === 0) {
     return (
-      <div className="container" style={{ paddingTop: '2rem', textAlign: 'center' }}>
-        <h1>Carrito de Compras</h1>
-        <div style={{ marginTop: '3rem' }}>
-          <p style={{ fontSize: '1.2rem', color: 'var(--color-gray-500)' }}>Tu carrito está vacío</p>
-          <a href="/catalog" style={{ color: 'var(--color-red)', fontWeight: 600 }}>Ir al catálogo</a>
+      <>
+        <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={0} />
+        <div className="container" style={{ paddingTop: '2rem', textAlign: 'center' }}>
+          <h1>Carrito de Compras</h1>
+          <div style={{ marginTop: '3rem' }}>
+            <p style={{ fontSize: '1.2rem', color: 'var(--color-gray-500)' }}>Tu carrito está vacío</p>
+            <a href="/catalog" style={{ color: 'var(--color-red)', fontWeight: 600 }}>Ir al catálogo</a>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-      <h1>Carrito de Compras</h1>
+    <>
+      <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={cart?.total_items || 0} />
+      <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
+        <h1>Carrito de Compras</h1>
 
       {/* Lista de items */}
       <div className="cart-items" style={{ marginTop: '2rem' }}>
@@ -139,5 +148,6 @@ export const Cart = () => {
         </Button>
       </div>
     </div>
+    </>
   );
 };

@@ -15,6 +15,9 @@ export const ProductCard = ({ product, onView, onAdd }) => {
           <Button size="sm" variant="outline" onClick={() => onView(product.id)}>
             Ver
           </Button>
+          <Button size="sm" variant="outline" onClick={() => window.location.href = `/product/${product.id}/3d?mode=new`}>
+            3D
+          </Button>
           <Button size="sm" onClick={() => onAdd(product.id)}>
             Agregar
           </Button>
