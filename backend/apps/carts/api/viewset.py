@@ -73,4 +73,10 @@ class CartViewSet(viewsets.ViewSet):
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=False, methods=['delete'], url_path='clear')
+    def clear(self, request):
+        cart = self._get_cart(request)
+        cart.items.all().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 

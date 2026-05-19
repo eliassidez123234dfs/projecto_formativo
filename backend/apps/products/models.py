@@ -53,6 +53,10 @@ class Product(models.Model):
 			'ready_to_publish': self.can_be_published,
 		}
 
+	@property
+	def has_active_order_items(self) -> bool:
+		return self.orderitem_set.filter(order__status__in={'pending', 'paid', 'processing'}).exists()
+
 	def clean(self):
 		super().clean()
 		if not self.name or not self.name.strip():

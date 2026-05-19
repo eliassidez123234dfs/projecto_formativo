@@ -148,7 +148,9 @@ El sistema 3D de camisas puede estar desacoplado como microservicio:
 #### 1. Crear Entorno Virtual
 
 ```bash
-cd /home/South_Knight/Documentos/projecto_formativo/backend
+# cd /home/South_Knight/Documentos/projecto_formativo/backend
+# Primero se va a la carpeta backend del proyecto
+cd ./backend
 python -m venv venv
 
 # Linux/Mac
@@ -215,7 +217,9 @@ python manage.py runserver
 #### 1. Instalar Dependencias
 
 ```bash
-cd /home/South_Knight/Documentos/projecto_formativo/frontend
+# cd /home/South_Knight/Documentos/projecto_formativo/frontend
+# Primero se va a la carpeta frontend del proyecto
+cd ./frontend
 npm install
 ```
 
@@ -309,6 +313,24 @@ VITE_MEDIA_URL=http://localhost:8000/media/
 - **Models**: Cart, CartItem
 - **Features**: Gestión de carrito por sesión, validación de stock
 - **Integration**: Con products y catalog
+
+### ✅ Admin UI de Productos
+
+- Ruta de acceso en frontend: `/admin-products`
+- Crear productos con imagen principal y variantes
+- Editar productos existentes
+- Activar / desactivar productos
+- Reordenar imágenes y marcar imagen principal
+- Conexión directa con la API REST de `products`
+- Detalle admin por producto con auditoría real: `/admin-products/detail/{id}`
+
+### ✅ Catálogo + Vista Producto + Carrito (Frontend)
+
+- Catálogo público: `/catalogo`
+- Filtros visuales: búsqueda, categoría, talla, color, rango de precio, solo con stock
+- Vista de producto pública: `/products/{id}`
+- Agregar al carrito validando variante y stock
+- Carrito completo: `/cart` con aumentar/disminuir, eliminar y total dinámico
 
 ---
 
@@ -812,3 +834,9 @@ Para problemas específicos:
 ---
 
 **¡El proyecto está listo para mostrar al instructor y para que tus compañeros integren el frontend!** 🚀
+
+# cd /home/South_Knight/Documentos/projecto_formativo/backend
+
+# Primero se va a la carpeta backend del proyecto
+
+cd ./backend

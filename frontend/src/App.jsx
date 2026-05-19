@@ -11,11 +11,19 @@ import { Cart } from './pages/Cart';
 import { VerificarEmail, VerificacionPendiente } from './pages/Email';
 import { RecuperarPassword } from './pages/Password';
 
+// Nuevos imports desde la rama jose
+import AdminProducts from './pages/AdminProducts';
+import AdminProductDetail from './pages/AdminProductDetail';
+import CheckoutPage from './pages/CheckoutPage';
+// Si CatalogPage es diferente a Catalog, renómbralo o unifica
+// import CatalogPage from './pages/CatalogPage';
+
 function App() {
   return (
     <CartProvider>
       <BrowserRouter>
         <Routes>
+          {/* Rutas existentes de integracion-total */}
           <Route path="/" element={<Landing />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/category/:id" element={<Category />} />
@@ -29,6 +37,14 @@ function App() {
           <Route path="/verificar-email" element={<VerificarEmail />} />
           <Route path="/verificar-email-pendiente" element={<VerificacionPendiente />} />
           <Route path="/password" element={<RecuperarPassword />} />
+
+          {/* Nuevas rutas desde jose */}
+          <Route path="/admin-products" element={<AdminProducts />} />
+          <Route path="/admin-products/detail/:id" element={<AdminProductDetail />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+
+          {/* Opcional: si quieres mantener también /catalogo como alias de /catalog */}
+          <Route path="/catalogo" element={<Catalog />} />
         </Routes>
       </BrowserRouter>
     </CartProvider>
