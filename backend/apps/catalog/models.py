@@ -20,7 +20,7 @@ class Category(models.Model):
 
     @property
     def product_count(self) -> int:
-        return self.products.filter(is_active=True, is_approved=True).count()
+        return self.products.filter(product__is_active=True, product__is_approved=True).count()
 
 
 class ProductCategory(models.Model):

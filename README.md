@@ -168,14 +168,14 @@ pip install -r requirements.txt
 
 #### 3. Configurar Base de Datos
 
-**Opción A: SQLite (Recomendado para desarrollo)**
+### Opción A: SQLite (Recomendado para desarrollo)
 
 ```bash
 # Ya configurado por defecto
 # Solo ejecutar migrations
 ```
 
-**Opción B: PostgreSQL**
+### Opción B: PostgreSQL
 
 ```bash
 # Crear base de datos
@@ -192,7 +192,7 @@ export DB_PORT=5432
 #### 4. Crear y Ejecutar Migrations
 
 ```bash
-python manage.py makemigrations products catalog carts
+# python manage.py makemigrations products catalog carts
 python manage.py migrate
 ```
 
@@ -219,7 +219,7 @@ python manage.py runserver
 ```bash
 # cd /home/South_Knight/Documentos/projecto_formativo/frontend
 # Primero se va a la carpeta frontend del proyecto
-cd ./backend
+cd ./frontend
 npm install
 ```
 
@@ -235,7 +235,7 @@ npm run dev
 
 ## 🗂️ Estructura del Proyecto
 
-```
+```bash
 projecto_formativo/
 ├── backend/                    # Django API
 │   ├── apps/
@@ -338,7 +338,7 @@ VITE_MEDIA_URL=http://localhost:8000/media/
 
 ### Base URL
 
-```
+```bash
 http://localhost:8000/api/
 ```
 
@@ -716,7 +716,7 @@ urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 ### 5. Error: No existe el rol 'South_Knight' (PostgreSQL)
 
-**Solución 1: Usar SQLite (Recomendado para desarrollo)**
+#### Solución 1: Usar SQLite (Recomendado para desarrollo)
 
 ```python
 # En settings.py
@@ -728,7 +728,7 @@ DATABASES = {
 }
 ```
 
-**Solución 2: Configurar PostgreSQL correctamente**
+#### Solución 2: Configurar PostgreSQL correctamente
 
 ```bash
 # Crear rol de usuario
@@ -827,7 +827,7 @@ Para problemas específicos:
 ✅ **Módulos Products, Catalog y Cart implementados**
 ✅ **Validaciones completas según user stories**
 ✅ **API RESTful documentada y lista para consumir**
-✅ **Servidor corriendo en http://localhost:8000**
+✅ **Servidor corriendo en `http://localhost:8000`**
 
 🔄 **Pendiente: Frontend React + Three.js**
 
@@ -835,8 +835,10 @@ Para problemas específicos:
 
 **¡El proyecto está listo para mostrar al instructor y para que tus compañeros integren el frontend!** 🚀
 
-# cd /home/South_Knight/Documentos/projecto_formativo/backend
+## 🚀 **Comandos de Inicio Rápido**
 
-# Primero se va a la carpeta backend del proyecto
-
+### Backend
+```bash
+cd /home/South_Knight/Documentos/projecto_formativo/backend
 cd ./backend
+```

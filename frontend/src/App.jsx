@@ -4,6 +4,7 @@ import PublicProductDetail from './pages/PublicProductDetail'
 import AdminProductDetail from './pages/AdminProductDetail'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
+import Navigation from './components/Navigation'
 import './App.css'
 
 function App() {
@@ -12,27 +13,57 @@ function App() {
   const productDetailMatch = path.match(/^\/(?:productos|products)\/(\d+)\/?$/)
 
   if (adminDetailMatch) {
-    return <AdminProductDetail productId={adminDetailMatch[1]} />
+    return (
+      <>
+        <Navigation />
+        <AdminProductDetail productId={adminDetailMatch[1]} />
+      </>
+    )
   }
 
   if (path.startsWith('/admin-products')) {
-    return <AdminProducts />
+    return (
+      <>
+        <Navigation />
+        <AdminProducts />
+      </>
+    )
   }
 
   if (path.startsWith('/cart') || path.startsWith('/carrito')) {
-    return <CartPage />
+    return (
+      <>
+        <Navigation />
+        <CartPage />
+      </>
+    )
   }
 
   if (path.startsWith('/checkout')) {
-    return <CheckoutPage />
+    return (
+      <>
+        <Navigation />
+        <CheckoutPage />
+      </>
+    )
   }
 
   if (productDetailMatch) {
-    return <PublicProductDetail productId={productDetailMatch[1]} />
+    return (
+      <>
+        <Navigation />
+        <PublicProductDetail productId={productDetailMatch[1]} />
+      </>
+    )
   }
 
   if (path.startsWith('/catalogo') || path === '/' || path.startsWith('/catalog')) {
-    return <CatalogPage />
+    return (
+      <>
+        <Navigation />
+        <CatalogPage />
+      </>
+    )
   }
 
   return (

@@ -114,7 +114,7 @@ export default function AdminProductDetail({ productId }) {
                         getAuditDiff(entry).map(diff => (
                           <li key={`${entry.id}-${diff.key}`} className="audit-diff-row">
                             <span><strong>{diff.key}</strong></span>
-                            <span>{diff.before} -> {diff.after}</span>
+                            <span>{diff.before} → {diff.after}</span>
                           </li>
                         ))
                       )}

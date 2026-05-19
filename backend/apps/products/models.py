@@ -109,14 +109,14 @@ class ProductImage(models.Model):
 			from PIL import Image
 
 			self.image.seek(0)
-			with Image.open(self.image) as image_file:
-				width, height = image_file.size
-				if width < 400 or height < 400:
-					raise ValidationError({'image': 'La resolución mínima es 400x400 píxeles.'})
+			img = Image.open(self.image)
+			width, height = img.size
+			if width < 400 or height < 400:
+				raise ValidationError({'image': 'La resolución mínima es 400x400 píxeles.'})
 		except ValidationError:
 			raise
 		except Exception as exc:
-			raise ValidationError({'image': f'No se pudo validar la imagen: {exc}'})
+			raise ValidationError({'image': f'No se pudo validar la imagen: {exc}'}) from exc
 
 	def save(self, *args, **kwargs):
 		if self.product_id and not self.order:
