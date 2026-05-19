@@ -219,7 +219,7 @@ python manage.py runserver
 ```bash
 # cd /home/South_Knight/Documentos/projecto_formativo/frontend
 # Primero se va a la carpeta frontend del proyecto
-cd ./backend
+cd ./frontend
 npm install
 ```
 
