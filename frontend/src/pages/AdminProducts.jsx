@@ -23,16 +23,19 @@ export default function AdminProducts() {
   return (
     <main className="admin-container">
       <header className="admin-header">
-        <h1>Admin — Gestión de Productos</h1>
+        <div>
+          <p className="admin-eyebrow">Panel administrativo</p>
+          <h1>Gestion de productos</h1>
+        </div>
         <div>
           <button
-            className="btn"
+            className="btn btn-danger"
             onClick={() => {
               setEditingProduct(null)
               setShowForm(true)
             }}
           >
-            ➕ Crear Producto
+            Crear producto
           </button>
         </div>
       </header>
