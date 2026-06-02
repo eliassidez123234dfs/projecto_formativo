@@ -1,0 +1,120 @@
+/* =========================================
+   EMAIL.CSS – Verificación de Email & Pendiente
+   ========================================= */
+
+/* Contenedor principal centrado */
+.auth-container {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  background: var(--color-gray-50);
+}
+
+/* Tarjeta blanca */
+.auth-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: var(--spacing-3xl);
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+}
+
+.auth-card h1 {
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--spacing-lg);
+  color: var(--color-black);
+}
+
+.auth-card p {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Mensajes */
+.auth-card .success-message,
+.auth-card .error-message {
+  width: 100%;
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: var(--font-size-sm);
+}
+
+.auth-card .success-message {
+  background: rgba(39, 174, 96, 0.1);
+  color: var(--color-success);
+  border: 1px solid rgba(39, 174, 96, 0.2);
+}
+
+.auth-card .error-message {
+  background: rgba(215, 38, 56, 0.1);
+  color: var(--color-error);
+  border: 1px solid rgba(215, 38, 56, 0.2);
+}
+
+/* Formulario */
+.auth-card .form-group {
+  text-align: left;
+  margin-bottom: var(--spacing-lg);
+}
+
+.auth-card label {
+  display: block;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-gray-700);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-card input {
+  width: 100%;
+  padding: 12px var(--spacing-md);
+  border: 1.5px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  transition: border var(--transition);
+}
+
+.auth-card input:focus {
+  border-color: var(--color-red);
+  box-shadow: 0 0 0 3px rgba(215, 38, 56, 0.1);
+  outline: none;
+}
+
+/* Botón (usa los estilos globales, pero aseguramos display) */
+.auth-card .btn-primary {
+  width: 100%;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Enlace inferior */
+.auth-link {
+  margin-top: var(--spacing-md);
+}
+
+.auth-link a {
+  color: var(--color-red);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: var(--spacing-xl);
+  }
+}
