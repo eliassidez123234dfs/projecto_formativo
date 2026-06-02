@@ -128,7 +128,7 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Categorías disponibles a través del modelo intermedio (related_name='products')
         categories = Category.objects.filter(
-            id__in=category_ids
+            id__in=category_ids,
             is_active=True,
             products__product__in=product_ids
         ).distinct()
