@@ -6,3 +6,6 @@ pillow==12.1.1 # nos permite trabajar con imagenes
 django-storages==1.14.6 ## poder guardar las imagenes en AWS o videos, cosas que pesen o se guardan en gran cantidad se guardan en un sdn 
 django-ckeditor==6.7.3 ## crear cosas de manera mas rica para que se vea mejor
 psycopg2-binary==2.9.12 ## esto es para poder trabajar con postgresql
+# mysqlclient>=2.2,<3.0 ## esto es para poder trabajar con mysql, esta es la version que se recomienda usar, pero a veces da problemas en windows, por eso se uso mysqlconnector
+# mysqlconnector>=8.0,<9.0 ## esto es para poder trabajar con mysql
+mysql-connector-python==8.4.0 ## esto es para poder trabajar con mysql, esta es la version que se recomienda usar, pero a veces da problemas en windows, por eso se uso mysqlclient
