@@ -171,7 +171,7 @@ REST_FRAMEWORK = {
     ],
 
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'apps.users.api.auth_backend.UsuarioJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
 

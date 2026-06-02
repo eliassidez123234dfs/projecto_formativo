@@ -42,7 +42,7 @@ export const Product3D = () => {
 
   return (
     <>
-      <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={cart?.total_items || 0} />
+      <Header cartCount={cart?.total_items || 0} />
       <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
         <Link to={`/product/${id}`} style={{ color: 'var(--color-red)', textDecoration: 'none', display: 'inline-block', marginBottom: '1rem' }}>
           ← Volver al producto

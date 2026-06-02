@@ -4,6 +4,7 @@ import { fetchProductDetail } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
 import { Header } from '../components/Header';
+import { DEFAULT_IMAGE } from '../constants';
 
 export const ProductDetail = () => {
   const { id } = useParams();
@@ -14,6 +15,7 @@ export const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const { cart, addItem } = useCart();
   const [adding, setAdding] = useState(false);
+  const [mainImage, setMainImage] = useState(null);
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -21,14 +23,14 @@ export const ProductDetail = () => {
         setLoading(true);
         const data = await fetchProductDetail(id);
         setProduct(data);
-        // Si hay variantes, seleccionar la primera con stock por defecto
         const firstAvailable = data.variants?.find((v) => v.stock > 0);
         if (firstAvailable) {
           setSelectedVariantId(firstAvailable.id);
           setQuantity(1);
         }
+        const img = data.images?.[0]?.image_url || data.main_image || null;
+        setMainImage(img);
       } catch (err) {
-        console.error(err);
         setError('No se pudo cargar el producto.');
       } finally {
         setLoading(false);
@@ -53,247 +55,266 @@ export const ProductDetail = () => {
     }
   };
 
-  // Cambia la cantidad, respetando el stock de la variante seleccionada
   const handleQuantityChange = (newQty) => {
     const stock = selectedVariant?.stock || 1;
-    if (newQty >= 1 && newQty <= stock) {
-      setQuantity(newQty);
-    }
+    if (newQty >= 1 && newQty <= stock) setQuantity(newQty);
   };
+
+  const r = 'var(--color-primary)';
 
   if (loading) {
     return (
-      <div className="container" style={{ paddingTop: '2rem', textAlign: 'center' }}>
-        <p>Cargando producto...</p>
-      </div>
+      <>
+        <Header cartCount={0} />
+        <div className="container pd-skeleton">
+          <div className="pd-sk-gallery" />
+          <div className="pd-sk-info">
+            <div className="pd-sk-line" style={{ width: '65%', height: 28 }} />
+            <div className="pd-sk-line" style={{ width: '35%', height: 32, marginTop: 16 }} />
+            <div className="pd-sk-line" style={{ width: '100%', height: 72, marginTop: 20 }} />
+            <div className="pd-sk-line" style={{ width: '50%', height: 44, marginTop: 28 }} />
+          </div>
+        </div>
+        <style>{`
+          .pd-skeleton { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; padding-top: 2rem; padding-bottom: 4rem; }
+          .pd-sk-gallery { aspect-ratio: 1; background: var(--color-bg-tertiary); border-radius: 12px; animation: skPulse 1.5s ease-in-out infinite; }
+          .pd-sk-info { display: flex; flex-direction: column; }
+          .pd-sk-line { background: var(--color-bg-tertiary); border-radius: 6px; animation: skPulse 1.5s ease-in-out infinite; }
+          @keyframes skPulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }
+        `}</style>
+      </>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="container" style={{ paddingTop: '2rem', textAlign: 'center' }}>
-        <p style={{ color: 'red' }}>{error || 'Producto no encontrado'}</p>
-        <Link to="/catalog" style={{ color: 'var(--color-red)' }}>Volver al catálogo</Link>
-      </div>
+      <>
+        <Header cartCount={0} />
+        <div className="container" style={{ paddingTop: '3rem', textAlign: 'center' }}>
+          <p style={{ color: r, marginBottom: 16 }}>{error || 'Producto no encontrado'}</p>
+          <Link to="/catalog" className="btn btn-primary" style={{ textDecoration: 'none' }}>Volver al catálogo</Link>
+        </div>
+      </>
     );
   }
 
   return (
     <>
-      <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={cart?.total_items || 0} />
-      <div className="container" style={{ paddingTop: 'var(--spacing-2xl)', paddingBottom: '4rem' }}>
-        <Link to="/catalog" style={{ color: 'var(--color-red)', textDecoration: 'none', marginBottom: '1rem', display: 'inline-block' }}>
-          ← Volver al catálogo
+      <Header cartCount={cart?.total_items || 0} />
+      <div className="container" style={{ paddingTop: '1.5rem', paddingBottom: '4rem' }}>
+        <Link to="/catalog" style={{ color: r, textDecoration: 'none', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Volver al catálogo
         </Link>
 
-        {product.categories?.length > 0 && (
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            {product.categories.map((category) => (
-              <span key={category} style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem', background: 'var(--color-gray-100)', borderRadius: '999px' }}>
-                {category}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="product-detail" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', marginTop: '1rem' }}>
-        {/* Galería de imágenes */}
-        <div className="product-gallery">
-          <div
-            className="main-image"
-            style={{
-              width: '100%',
-              aspectRatio: '1',
-              background: 'var(--color-gray-50)',
-              borderRadius: 'var(--radius-lg)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '4rem',
-              overflow: 'hidden',
-              marginBottom: '1rem',
-            }}
-          >
-            {product.images?.length > 0 ? (
-              <img
-                src={product.images[0].image_url}
-                alt={product.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : product.main_image ? (
-              <img
-                src={product.main_image}
-                alt={product.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              '👕'
+        <div className="pd-layout">
+          <div className="pd-gallery">
+            <div className="pd-main-image">
+              {mainImage ? (
+                <img src={mainImage} alt={product.name} onError={(e) => { e.target.src = DEFAULT_IMAGE; e.target.style.objectFit = 'contain'; }} />
+              ) : (
+                <img src={DEFAULT_IMAGE} alt="" />
+              )}
+            </div>
+            {product.images?.length > 1 && (
+              <div className="pd-thumbs">
+                {product.images.map((img) => (
+                  <button key={img.id} className={`pd-thumb ${img.image_url === mainImage ? 'active' : ''}`}
+                    onClick={() => setMainImage(img.image_url)}>
+                    <img src={img.image_url} alt="" />
+                  </button>
+                ))}
+                {product.main_image && !product.images?.some(i => i.image_url === product.main_image) && (
+                  <button className={`pd-thumb ${mainImage === product.main_image ? 'active' : ''}`}
+                    onClick={() => setMainImage(product.main_image)}>
+                    <img src={product.main_image} alt="" />
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
-          {product.images?.length > 1 && (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {product.images.map((img) => (
-                <div
-                  key={img.id}
-                  style={{
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                    cursor: 'pointer',
-                    border: img.id === product.images[0].id ? '2px solid var(--color-red)' : '2px solid transparent',
-                  }}
-                  onClick={() => {
-                    // Opcional: cambiar imagen principal al hacer clic (puede implementarse con estado)
-                  }}
-                >
-                  <img
-                    src={img.image_url}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+          <div className="pd-info">
+            {product.categories?.length > 0 && (
+              <div className="pd-cats">
+                {product.categories.map((cat) => (
+                  <span key={cat}>{cat}</span>
+                ))}
+              </div>
+            )}
+
+            <h1 className="pd-name">{product.name}</h1>
+            <p className="pd-price">${Number(product.base_price).toFixed(2)}</p>
+
+            {!product.ready_to_publish && product.checklist && (
+              <div className="pd-checklist">
+                <p>Producto no publicable</p>
+                <ul>
+                  {(Array.isArray(product.checklist) ? product.checklist : []).map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {product.variants?.length > 0 ? (
+              <div className="pd-variant-selector">
+                <label>Selecciona talla y color:</label>
+                <select value={selectedVariantId} onChange={(e) => { setSelectedVariantId(e.target.value); setQuantity(1); }}>
+                  {product.variants.map((variant) => (
+                    <option key={variant.id} value={variant.id} disabled={variant.stock === 0}>
+                      {variant.display_label} {variant.stock === 0 ? '(agotado)' : `(${variant.stock} disponible/s)`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No hay variantes disponibles para este producto.</p>
+            )}
+
+            {selectedVariant && selectedVariant.stock > 0 && (
+              <div className="pd-qty">
+                <label>Cantidad:</label>
+                <div className="pd-qty-controls">
+                  <button className="btn btn-sm btn-outline" disabled={quantity <= 1} onClick={() => handleQuantityChange(quantity - 1)}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
+                  <span>{quantity}</span>
+                  <button className="btn btn-sm btn-outline" disabled={quantity >= selectedVariant.stock} onClick={() => handleQuantityChange(quantity + 1)}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
                 </div>
+              </div>
+            )}
+
+            <div className="pd-actions">
+              <Button size="lg" onClick={handleAddToCart}
+                disabled={!selectedVariant || selectedVariant.stock === 0 || adding}
+                style={{ flex: 1 }}>
+                {adding ? 'Agregando...' : 'Agregar al Carrito'}
+              </Button>
+              <Button size="lg" variant="outline"
+                onClick={() => window.location.href = `/product/${id}/3d?mode=view`}>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                3D
+              </Button>
+            </div>
+
+            {product.publication_message && (
+              <p className="pd-pub-msg">{product.publication_message}</p>
+            )}
+
+            {product.description && (
+              <div className="pd-description">
+                <h3>Descripción</h3>
+                <p>{product.description}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {product.related_products?.length > 0 && (
+          <div className="pd-related">
+            <h2>Productos Relacionados</h2>
+            <div className="pd-related-grid">
+              {product.related_products.map((rp) => (
+                <Link key={rp.id} to={`/product/${rp.id}`} className="pd-related-card">
+                  <div className="pd-related-img">
+                    <img src={rp.main_image || DEFAULT_IMAGE} alt={rp.name} onError={(e) => { e.target.src = DEFAULT_IMAGE }} />
+                  </div>
+                  <div className="pd-related-info">
+                    <p className="pd-related-name">{rp.name}</p>
+                    <p className="pd-related-price">${Number(rp.base_price).toFixed(2)}</p>
+                  </div>
+                </Link>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Información del producto */}
-        <div className="product-info-section">
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', marginBottom: '0.5rem' }}>{product.name}</h1>
-          <p style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-red)', marginBottom: '1.5rem' }}>
-            ${Number(product.base_price).toFixed(2)}
-          </p>
-          <p style={{ color: 'var(--color-gray-600)', lineHeight: 1.8, marginBottom: '2rem' }}>
-            {product.description}
-          </p>
-
-          {/* Checklist de publicación (opcional, solo visible si no está listo) */}
-          {!product.ready_to_publish && (
-            <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '2rem' }}>
-              <p style={{ color: '#991B1B', fontWeight: 600, marginBottom: '0.5rem' }}>⚠️ Producto no publicable</p>
-              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#991B1B' }}>
-                {(() => {
-                  const checklist = product.checklist;
-                  if (!checklist) return null;
-                  if (Array.isArray(checklist)) {
-                    return checklist.map((item, idx) => (
-                      <li key={idx} style={{ fontSize: '0.9rem' }}>{item}</li>
-                    ));
-                  }
-                  if (typeof checklist === 'object') {
-                    const labels = {
-                      name: 'Nombre',
-                      description: 'Descripción',
-                      main_image: 'Imagen principal',
-                      variant_with_stock: 'Variante con stock',
-                      ready_to_publish: 'Listo para publicar',
-                    };
-                    return Object.entries(checklist).map(([key, val]) => (
-                      <li key={key} style={{ fontSize: '0.9rem' }}>
-                        {labels[key] || key}: {val ? '✓' : '✗'}
-                      </li>
-                    ));
-                  }
-                  return null;
-                })()}
-              </ul>
-            </div>
-          )}
-
-          {/* Selector de variante */}
-          {product.variants?.length > 0 ? (
-            <div style={{ marginBottom: '2rem' }}>
-              <label style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Selecciona talla y color:</label>
-              <select
-                className="form-input"
-                value={selectedVariantId}
-                onChange={(e) => {
-                  setSelectedVariantId(e.target.value);
-                  setQuantity(1);
-                }}
-                style={{ width: '100%' }}
-              >
-                {product.variants.map((variant) => (
-                  <option key={variant.id} value={variant.id} disabled={variant.stock === 0}>
-                    {variant.display_label} {variant.stock === 0 ? '(agotado)' : `(${variant.stock} disponible/s)`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <p style={{ color: 'var(--color-gray-500)' }}>No hay variantes disponibles para este producto.</p>
-          )}
-
-          {/* Cantidad */}
-          {selectedVariant && selectedVariant.stock > 0 && (
-            <div style={{ marginBottom: '2rem' }}>
-              <label style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>Cantidad:</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={quantity <= 1}
-                  onClick={() => handleQuantityChange(quantity - 1)}
-                >
-                  −
-                </Button>
-                <span style={{ fontWeight: 600, minWidth: '2rem', textAlign: 'center' }}>{quantity}</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={quantity >= selectedVariant.stock}
-                  onClick={() => handleQuantityChange(quantity + 1)}
-                >
-                  +
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Botones del modelo 3D: ver, editar o crear desde cero */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => window.location.href = `/product/${id}/3d?mode=view`}
-            >
-              Ver Modelo 3D
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => window.location.href = `/product/${id}/3d?mode=edit`}
-            >
-              Editar Modelo 3D
-            </Button>
-            <Button
-              size="lg"
-              onClick={() => window.location.href = `/product/${id}/3d?mode=new`}
-            >
-              Crear en 3D (usar este producto)
-            </Button>
           </div>
-
-          {/* Botón agregar al carrito */}
-          <Button
-            size="lg"
-            onClick={handleAddToCart}
-            disabled={!selectedVariant || selectedVariant.stock === 0 || adding}
-          >
-            {adding ? 'Agregando...' : 'Agregar al Carrito'}
-          </Button>
-
-          {/* Mensaje de publicación (si existe) */}
-          {product.publication_message && (
-            <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--color-gray-500)' }}>
-              {product.publication_message}
-            </p>
-          )}
-        </div>
+        )}
       </div>
-    </div>
+
+      <style>{`
+        .pd-layout {
+          display: grid;
+          grid-template-columns: 1.2fr 1fr;
+          gap: 3rem;
+          margin-top: 1.5rem;
+        }
+        .pd-gallery { position: sticky; top: 88px; align-self: start; }
+        .pd-main-image {
+          aspect-ratio: 1;
+          background: #FAFAFA;
+          border-radius: 12px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--color-border);
+        }
+        .pd-main-image img { width: 100%; height: 100%; object-fit: cover; }
+        .pd-thumbs { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .pd-thumb {
+          width: 56px; height: 56px; border-radius: 8px; overflow: hidden;
+          border: 2px solid transparent; cursor: pointer; padding: 0; background: none;
+          transition: border-color 0.15s;
+        }
+        .pd-thumb.active { border-color: #DC2626; }
+        .pd-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .pd-cats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .pd-cats span {
+          font-size: 0.75rem; padding: 4px 10px;
+          background: var(--color-bg-tertiary); border-radius: 999px;
+          color: var(--color-text-secondary);
+        }
+        .pd-name { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; line-height: 1.2; }
+        .pd-price { font-size: 1.5rem; font-weight: 700; color: #DC2626; margin-bottom: 1.5rem; }
+        .pd-checklist {
+          background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px;
+          padding: 12px 16px; margin-bottom: 1.5rem;
+        }
+        .pd-checklist p { color: #991B1B; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem; }
+        .pd-checklist ul { margin: 0; padding-left: 1.2rem; }
+        .pd-checklist li { color: #991B1B; font-size: 0.8rem; }
+        .pd-variant-selector { margin-bottom: 1.25rem; }
+        .pd-variant-selector label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; }
+        .pd-variant-selector select {
+          width: 100%; padding: 10px 12px; border: 1px solid var(--color-border);
+          border-radius: 8px; font-size: 0.9rem; background: var(--color-bg); color: var(--color-text);
+          outline: none;
+        }
+        .pd-qty { margin-bottom: 1.5rem; }
+        .pd-qty label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; }
+        .pd-qty-controls { display: flex; align-items: center; gap: 12px; }
+        .pd-qty-controls span { font-weight: 600; min-width: 24px; text-align: center; }
+        .pd-actions { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+        .pd-pub-msg { font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1.5rem; }
+        .pd-description { border-top: 1px solid var(--color-border); padding-top: 1.25rem; }
+        .pd-description h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
+        .pd-description p { font-size: 0.9rem; color: var(--color-text-secondary); line-height: 1.7; }
+
+        .pd-related { border-top: 1px solid var(--color-border); margin-top: 3rem; padding-top: 2rem; }
+        .pd-related h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.25rem; }
+        .pd-related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+        .pd-related-card {
+          text-decoration: none; border-radius: 10px; overflow: hidden;
+          border: 1px solid var(--color-border); transition: box-shadow 0.15s;
+        }
+        .pd-related-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .pd-related-img { aspect-ratio: 1; background: #FAFAFA; }
+        .pd-related-img img { width: 100%; height: 100%; object-fit: cover; }
+        .pd-related-info { padding: 10px 12px; }
+        .pd-related-name { font-size: 0.85rem; font-weight: 600; color: var(--color-text); margin: 0 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pd-related-price { font-size: 0.85rem; font-weight: 700; color: #DC2626; margin: 0; }
+
+        @media (max-width: 768px) {
+          .pd-layout { grid-template-columns: 1fr; gap: 2rem; }
+          .pd-gallery { position: static; }
+          .pd-name { font-size: 1.35rem; }
+          .pd-price { font-size: 1.25rem; }
+          .pd-actions { flex-direction: column; }
+          .pd-skeleton { grid-template-columns: 1fr; }
+        }
+      `}</style>
     </>
   );
 };

@@ -4,7 +4,8 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value, IntegerField
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.hashers import make_password
 import uuid
 from datetime import timedelta
@@ -31,6 +32,12 @@ class AdminPermission(permissions.BasePermission):
         )
 
 
+class AdminPagination(PageNumberPagination):
+    page_size = settings.REST_FRAMEWORK.get('PAGE_SIZE', 20)
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class AdminUsuarioViewSet(viewsets.ModelViewSet):
     """ViewSet para administración de usuarios (RF-016 a RF-024)"""
     queryset = Usuario.objects.all()
@@ -40,7 +47,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     search_fields = ['usuario', 'correo', 'id']
     ordering_fields = ['fecha_registro', 'fecha_ultima_sesion']
     ordering = ['-fecha_registro']
-    pagination_class = None  # Usará la paginación por defecto de REST_FRAMEWORK
+    pagination_class = AdminPagination
     
     def get_queryset(self):
         """Filtrar usuarios según parámetros (RF-016, RN-025)"""
@@ -64,17 +71,109 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         # Búsqueda por texto
         search = self.request.query_params.get('search')
         if search:
-            queryset = queryset.filter(
-                Q(usuario__icontains=search) |
-                Q(correo__icontains=search) |
-                Q(id__icontains=search)
-            )
+            # Priorizar coincidencia exacta por ID si se pasa un número
+            is_numeric = False
+            try:
+                int_search = int(search)
+                is_numeric = True
+            except Exception:
+                int_search = None
+
+            if is_numeric:
+                # Anotar coincidencia exacta por id para ordenar al inicio
+                queryset = queryset.annotate(
+                    _id_match=Case(
+                        When(id=int_search, then=Value(1)),
+                        default=Value(0),
+                        output_field=IntegerField()
+                    )
+                ).filter(
+                    Q(usuario__icontains=search) |
+                    Q(correo__icontains=search) |
+                    Q(id__exact=int_search)
+                ).order_by('-_id_match')
+            else:
+                queryset = queryset.filter(
+                    Q(usuario__icontains=search) |
+                    Q(correo__icontains=search) |
+                    Q(id__icontains=search)
+                )
         
         return queryset
     
     def list(self, request, *args, **kwargs):
-        """Listar usuarios con filtros y búsqueda (RF-016, RF-017)"""
+        """Listar usuarios con filtros y búsqueda (RF-016, RF-017).
+        Registra auditoría y protege contra extracción masiva.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        total = queryset.count()
+
+        # Límite total absoluto para prevenir extracción masiva
+        MAX_TOTAL = 10000
+        if total > MAX_TOTAL:
+            return Response({
+                'error': f'Refina los filtros. La consulta devuelve {total} registros (máx {MAX_TOTAL}).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Si es una búsqueda que devuelve muchos resultados, registrar en auditoría
+        search = request.query_params.get('search')
+        if search and total > 200:
+            self._registrar_auditoria(
+                request.user, None, 'Consulta masiva de usuarios',
+                datos_nuevos={'filtros': request.query_params.dict()},
+                ip_admin=self._obtener_ip_cliente(request)
+            )
+
+        # Control mínimo de page_size si es provisto
+        page_size_param = request.query_params.get(self.pagination_class.page_size_query_param)
+        if page_size_param:
+            try:
+                ps = int(page_size_param)
+                if ps < 5:
+                    # Forzar mínimo
+                    request.GET._mutable = True
+                    request.GET[self.pagination_class.page_size_query_param] = '5'
+                    request.GET._mutable = False
+            except Exception:
+                pass
+
+        # Registrar auditoría del listado normal
+        self._registrar_auditoria(
+            request.user, None, 'Listar usuarios',
+            datos_nuevos={'filtros': request.query_params.dict(), 'resultados_estimados': total},
+            ip_admin=self._obtener_ip_cliente(request)
+        )
+
         return super().list(request, *args, **kwargs)
+
+    @action(detail=False, methods=['get'])
+    def suggest(self, request):
+        """Sugerencias para typeahead (RN-BUS-07). Requiere >=3 caracteres."""
+        q = request.query_params.get('q', '')
+        if len(q) < 3:
+            return Response({'error': 'Ingresa al menos 3 caracteres para sugerencias.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Priorizar coincidencias por email exacto o id
+        try:
+            q_int = int(q)
+        except Exception:
+            q_int = None
+
+        queryset = Usuario.objects.filter(
+            Q(usuario__icontains=q) |
+            Q(correo__icontains=q) |
+            Q(id__icontains=q)
+        )
+
+        if q_int is not None:
+            queryset = queryset.annotate(
+                _id_match=Case(When(id=q_int, then=Value(1)), default=Value(0), output_field=IntegerField())
+            ).order_by('-_id_match')
+
+        queryset = queryset[:10]
+        serializer = UsuarioSerializer(queryset, many=True)
+        return Response(serializer.data)
     
     def create(self, request, *args, **kwargs):
         """Crear usuario manualmente desde admin (RF-018, RN-027)"""
@@ -130,26 +229,43 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_201_CREATED)
         
         except Exception as e:
+            msg = str(e)
+            if 'UNIQUE constraint' in msg:
+                if 'usuario' in msg:
+                    msg = 'Ya existe un usuario con ese nombre'
+                elif 'correo' in msg:
+                    msg = 'Ya existe un usuario con ese correo'
             return Response({
-                'error': str(e)
+                'error': msg
             }, status=status.HTTP_400_BAD_REQUEST)
     
     def update(self, request, pk=None, *args, **kwargs):
         """Editar usuario (RF-019)"""
         usuario = self.get_object()
         
-        # Validar que no se edite si es el único admin
-        if usuario.rol == 'Administrador' and request.data.get('rol') != 'Administrador':
+        # No permitir que un admin se edite a sí mismo en campos críticos
+        if request.user.pk == usuario.pk:
+            nuevo_rol = request.data.get('rol')
+            nuevo_estado = request.data.get('estado')
+            if nuevo_rol is not None and nuevo_rol != 'Administrador':
+                return Response({
+                    'error': 'No puedes cambiar tu propio rol de administrador'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if nuevo_estado is not None and nuevo_estado != 'Activo':
+                return Response({
+                    'error': 'No puedes desactivar o bloquear tu propia cuenta'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Evitar que el único administrador activo pierda su rol
+        if usuario.rol == 'Administrador' and request.data.get('rol', usuario.rol) != 'Administrador':
             admins_activos = Usuario.objects.filter(
-                rol='Administrador', 
-                estado='Activo',
-                eliminado=False
+                rol='Administrador', estado='Activo', eliminado=False
             ).count()
-            if admins_activos == 1:
+            if admins_activos <= 1:
                 return Response({
                     'error': 'No puedes cambiar el rol del único administrador activo'
                 }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Guardar datos anteriores para auditoría
         datos_anteriores = {
             'usuario': usuario.usuario,
