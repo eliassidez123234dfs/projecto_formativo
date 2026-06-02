@@ -123,8 +123,14 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
             categories__isnull=False
         ).values_list('categories__category_id', flat=True).distinct()
         
+        # IDs de productos actualmente en el queryset
+        product_ids = queryset.values_list('id', flat=True)
+        
+        # Categorías disponibles a través del modelo intermedio (related_name='products')
         categories = Category.objects.filter(
             id__in=category_ids
+            is_active=True,
+            products__product__in=product_ids
         ).distinct()
         
         # Tallas disponibles

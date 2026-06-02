@@ -1,6 +1,98 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
+/* ⬇️ IMPORTS AL PRINCIPIO ⬇️ */
+@import './styles/components.css';
+@import './styles/Landing.css';
+@import './styles/Auth.css';
+@import './styles/Dashboard.css';
+@import './styles/Email.css';
+
+/* =========================================
+   VARIABLES GLOBALES (PALETA DE TIENDA + CORPORATIVA)
+   ========================================= */
 :root {
+  /* Colores de tienda */
+  --red:        #D72638;
+  --red-dark:   #A81C2A;
+  --red-light:  #FF3D50;
+  --black:      #0A0A0A;
+  --gray-dark:  #1A1A1A;
+  --gray-mid:   #2E2E2E;
+  --gray-line:  #3A3A3A;
+  --gray-soft:  #F2F2F2;
+  --gray-muted: #888;
+  --white:      #FFFFFF;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+  --radius:     8px;
+  --shadow:     0 4px 24px rgba(0,0,0,0.14);
+  --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Corp colors */
+  --color-red:        var(--red);
+  --color-red-dark:   var(--red-dark);
+  --color-red-light:  var(--red-light);
+  --color-error:      var(--red);
+  --color-black:      var(--black);
+  --color-gray-50:    #f9f9f9;
+  --color-gray-100:   #f5f5f5;
+  --color-gray-200:   #e0e0e0;
+  --color-gray-300:   #d0d0d0;     /* ← Agregado para components.css */
+  --color-gray-400:   #999;
+  --color-gray-500:   #666;
+  --color-gray-600:   #333;
+  --color-gray-700:   #222;
+  --color-gray-900:   #111;        /* ← Agregado para components.css */
+  --color-white:      var(--white);
+  --color-success:    #27AE60;
+  --color-warning:    #F39C12;
+  --color-info:       #3498DB;
+
+  /* Espaciados */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  12px;
+  --spacing-lg:  20px;
+  --spacing-xl:  32px;
+  --spacing-2xl: 40px;
+  --spacing-3xl: 48px;
+  --spacing-4xl: 64px;
+
+  /* Tipografía */
+  --font-family: var(--font-body);   /* ← Agregado para components.css */
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.25rem;
+  --font-size-xl:   1.5rem;
+  --font-size-2xl:  2rem;
+  --font-size-3xl:  2.5rem;
+  --font-size-4xl:  3rem;
+
+  /* Peso de fuente */
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* Radios */
+  --radius-md:  var(--radius);
+  --radius-lg:  12px;
+  --radius-full: 9999px;
+
+  /* Sombras extra */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);   /* ← Agregado */
+  --shadow-md: var(--shadow);                /* ← Agregado */
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.3);  /* ← Agregado */
+
+  /* Transiciones */
+  --transition-base: var(--transition);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease;
+
+  /* z-index */
+  --z-sticky: 100;  /* ← Agregado para .header */
+  
+  /* Corp colors */
   --pf-red: #c1121f;
   --pf-red-dark: #8a0b14;
   --pf-black: #111111;
@@ -20,16 +112,18 @@
   --bs-body-line-height: 1.55;
   --bs-body-color: var(--pf-gray-900);
   --bs-body-bg: var(--pf-gray-100);
+  
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-* {
+/* =========================================
+   RESET BÁSICO
+   ========================================= */
+*, *::before, *::after {
   box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  min-height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
@@ -40,6 +134,14 @@ body {
     radial-gradient(circle at 12% -16%, rgba(193, 18, 31, 0.18), transparent 38%),
     radial-gradient(circle at 88% 0%, rgba(17, 17, 17, 0.08), transparent 33%),
     var(--pf-gray-100);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
 }
 
 #root {
