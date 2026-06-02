@@ -192,7 +192,7 @@ export DB_PORT=5432
 #### 4. Crear y Ejecutar Migrations
 
 ```bash
-# python manage.py makemigrations products catalog carts
+# python manage.py makemigrations
 python manage.py migrate
 ```
 
@@ -226,6 +226,7 @@ npm install
 #### 2. Iniciar Servidor de Desarrollo
 
 ```bash
+# npm run build
 npm run dev
 ```
 
