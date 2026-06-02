@@ -10,9 +10,9 @@
    ========================================= */
 :root {
   /* Colores de tienda */
-  --red:        #D72638;
-  --red-dark:   #A81C2A;
-  --red-light:  #FF3D50;
+  --red:        #dc2626;
+  --red-dark:   #b91c1c;
+  --red-light:  #fef2f2;
   --black:      #0A0A0A;
   --gray-dark:  #1A1A1A;
   --gray-mid:   #2E2E2E;
@@ -89,9 +89,6 @@
 
   /* z-index */
   --z-sticky: 100;  /* ← Agregado para .header */
-
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 /* =========================================

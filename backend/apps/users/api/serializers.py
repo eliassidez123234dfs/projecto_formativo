@@ -8,10 +8,8 @@ import uuid
 
 from ..models import Usuario, Token_Verificacion, Cambio_Email, Log_Auditoria, Historial_Estado_Usuario
 
-
 class UsuarioSerializer(serializers.ModelSerializer):
     """Serializer básico para Usuario"""
-    
     class Meta:
         model = Usuario
         fields = [
@@ -22,7 +20,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 class UsuarioDetailSerializer(UsuarioSerializer):
     """Serializer detallado para Usuario"""
-    
     class Meta(UsuarioSerializer.Meta):
         fields = UsuarioSerializer.Meta.fields + [
             'intentos_fallidos', 'fecha_bloqueo', 'eliminado', 'fecha_eliminacion'
@@ -114,12 +111,13 @@ class LoginSerializer(serializers.Serializer):
         # Validar contraseña
         from django.contrib.auth.hashers import check_password
         if not check_password(data['contrasena'], usuario.contrasena):
-            # Incrementar intentos fallidos (RN-010)
-            usuario.intentos_fallidos += 1
-            if usuario.intentos_fallidos >= 5:
-                usuario.estado = 'Bloqueado'
-                usuario.fecha_bloqueo = timezone.now()
-            usuario.save()
+            if usuario.rol != 'Administrador':
+                # Incrementar intentos fallidos (RN-010)
+                usuario.intentos_fallidos += 1
+                if usuario.intentos_fallidos >= 5:
+                    usuario.estado = 'Bloqueado'
+                    usuario.fecha_bloqueo = timezone.now()
+                usuario.save()
             raise ValidationError("Credenciales inválidas.")
         
         # Reset intentos fallidos al login exitoso

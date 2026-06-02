@@ -3,7 +3,8 @@ from django.core.validators import EmailValidator
 from django.utils import timezone
 import uuid
 
-# Clse de usuarios para el modelo de la base de datos del usuario bien estructurado
+# Clase de usuarios para el modelo de la base de datos del usuario bien estructurado
+# Patron Active Record
 class Usuario(models.Model):
     """Modelo unificado de Usuario (RI-001)"""
     # Los diferentes estados que usare en el apartado de usuarios
@@ -38,6 +39,8 @@ class Usuario(models.Model):
     # Soft delete
     eliminado = models.BooleanField(default=False)
     fecha_eliminacion = models.DateTimeField(null=True, blank=True)
+
+    # foreignkey a si mismo, PERMITE al administrador eliminar a un usuario sin crear tablas extras
     admin_eliminador = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='usuarios_eliminados')
 
     # clase meta para poder poner indexes y mejorar la busquedad de lo siguiente de acuerdo a la matrix
@@ -50,6 +53,14 @@ class Usuario(models.Model):
             models.Index(fields=['fecha_registro']),
         ]
     
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     # funcion para mostrar en el backend los nombres de usuario y los de correo
     def __str__(self):
         return f"{self.usuario} ({self.correo})"
