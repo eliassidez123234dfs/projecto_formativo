@@ -40,6 +40,7 @@ PROJECT_APPS = [
     'apps.carts',
     'apps.catalog',
     'apps.checkout',
+    'apps.models3d',
 ]
 
 THIRD_PARTY_APPS = [
