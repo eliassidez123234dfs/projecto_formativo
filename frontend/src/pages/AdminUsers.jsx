@@ -14,15 +14,14 @@ function useUserStats() {
       const token = localStorage.getItem('access_token')
       const headers = token ? { Authorization: 'Bearer ' + token } : {}
       try {
-        const res = await fetch('/api/admin/usuarios/?page_size=1', { headers })
+        const res = await fetch('/api/admin/stats/', { headers })
         const data = await res.json()
         if (!mounted) return
-        const count = data.count ?? 0
         setStats({
-          total: count,
-          active: count,
-          admin: Math.ceil(count * 0.2),
-          blocked: Math.floor(count * 0.05),
+          total: data.usuarios?.total ?? 0,
+          active: data.usuarios?.activos ?? 0,
+          admin: data.usuarios?.administradores ?? 0,
+          blocked: data.usuarios?.bloqueados ?? 0,
         })
       } catch { /* ignore */ }
     }
