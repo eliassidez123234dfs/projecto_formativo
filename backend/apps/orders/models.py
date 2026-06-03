@@ -28,10 +28,18 @@ class Order(models.Model):
 		on_delete=models.SET_NULL,
 		related_name='orders',
 	)
-	customer_name = models.CharField(max_length=150)
+	customer_name = models.CharField(max_length=150, blank=True, null=True)
 	customer_email = models.EmailField(blank=True)
 	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
 	total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+	image = models.TextField(blank=True, null=True, help_text='Imagen capturada del pedido en Base64')
+	image_url = models.URLField(blank=True, null=True, help_text='URL segura de Cloudinary')
+	cloudinary_public_id = models.CharField(max_length=255, blank=True, null=True)
+	design_color = models.CharField(max_length=50, blank=True, null=True)
+	logo_texture = models.TextField(blank=True, null=True)
+	full_texture = models.TextField(blank=True, null=True)
+	logo_scale = models.FloatField(blank=True, null=True)
+	notes = models.TextField(blank=True, null=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 

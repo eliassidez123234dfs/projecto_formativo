@@ -50,12 +50,15 @@ urlpatterns = [
     # Catálogo
     path('api/catalog/', include('apps.catalog.api.urls')),
 
+    # Modelos 3D
+    path('api/models3d/', include('apps.models3d.api.urls')),
+
     # Carrito
     path('api/cart/', include('apps.carts.api.urls')),
 
     # Órdenes
     path('api/checkout/', include('apps.checkout.urls')),
-    path('api/orders/', include('apps.orders.urls')),
+    path('api/orders/', include('apps.orders.api.urls')),
 ]
 
 # Media files
