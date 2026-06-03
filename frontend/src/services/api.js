@@ -1,13 +1,16 @@
 import axios from 'axios';
 
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+export const buildApiUrl = (endpoint) => `${API_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: API_BASE_URL,
   withCredentials: true,   // ← para enviar la cookie de sesión
 });
 
 // Cliente público para endpoints que deben ser accesibles sin sesión/token
 const publicApi = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: API_BASE_URL,
   withCredentials: false,
 });
 

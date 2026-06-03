@@ -17,6 +17,7 @@ from apps.users.api.viewset import (
 )
 
 from apps.users.api.admin_viewset import AdminUsuarioViewSet
+from apps.users.api.stats_viewset import AdminStatsViewSet
 from apps.landing.api.viewset import ContactoViewSet
 
 # Crear router
@@ -27,6 +28,7 @@ router.register(r'auth', RegistroViewSet, basename='auth')
 router.register(r'login', LoginViewSet, basename='login')
 router.register(r'usuarios', UsuarioViewSet, basename='usuario')
 router.register(r'admin/usuarios', AdminUsuarioViewSet, basename='admin-usuario')
+router.register(r'admin/stats', AdminStatsViewSet, basename='admin-stats')
 
 # Landing
 router.register(r'contacto', ContactoViewSet, basename='contacto')

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MainLayout from '../components/MainLayout'
+import { buildApiUrl } from '../services/api'
 
 const Icons = {
   Package: () => (
@@ -69,7 +70,7 @@ export function Dashboard() {
     setSaving(true); setErrors({}); setMessage('')
     const accessToken = localStorage.getItem('access_token')
     try {
-      const response = await fetch('http://localhost:8000/api/usuarios/actualizar_perfil/', {
+      const response = await fetch(buildApiUrl('usuarios/actualizar_perfil/'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
         body: JSON.stringify(formData),
@@ -90,7 +91,7 @@ export function Dashboard() {
     setSaving(true); setErrors({}); setMessage('')
     const accessToken = localStorage.getItem('access_token')
     try {
-      const response = await fetch('http://localhost:8000/api/usuarios/cambiar_password/', {
+      const response = await fetch(buildApiUrl('usuarios/cambiar_password/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
         body: JSON.stringify(passwordForm),
@@ -105,27 +106,24 @@ export function Dashboard() {
     finally { setSaving(false) }
   }
 
-  const [stats, setStats] = useState({ products: '—', users: '—', orders: '—' })
+  const [stats, setStats] = useState({ products: '—', users: '—', orders: '—', ventas: '—' })
 
   useEffect(() => {
     let mounted = true
     async function loadStats() {
       const token = localStorage.getItem('access_token')
       const h = token ? { Authorization: `Bearer ${token}` } : {}
-      const [pRes, uRes] = await Promise.allSettled([
-        fetch('/api/products/?page_size=1', { headers: h }),
-        fetch('/api/admin/usuarios/?page_size=1', { headers: h }),
-      ])
-      if (mounted) {
-        let pCount = '—', uCount = '—'
-        if (pRes.status === 'fulfilled') {
-          try { const d = await pRes.value.json(); pCount = d.count ?? '—' } catch {}
-        }
-        if (uRes.status === 'fulfilled') {
-          try { const d = await uRes.value.json(); uCount = d.count ?? '—' } catch {}
-        }
-        setStats({ products: pCount, users: uCount, orders: '—' })
-      }
+      try {
+        const res = await fetch(buildApiUrl('admin/stats/'), { headers: h })
+        const data = await res.json()
+        if (!mounted) return
+        setStats({
+          products: data.productos?.total ?? '—',
+          users: data.usuarios?.total ?? '—',
+          orders: data.ordenes?.del_mes ?? '—',
+          ventas: data.ordenes?.total_ventas != null ? '$' + parseFloat(data.ordenes.total_ventas).toLocaleString() : '—',
+        })
+      } catch { /* ignore */ }
     }
     loadStats()
     return () => { mounted = false }
@@ -149,7 +147,7 @@ export function Dashboard() {
     { value: stats.products, label: 'Productos Activos', icon: Icons.Package, color: 'primary' },
     { value: stats.users, label: 'Usuarios Registrados', icon: Icons.Users, color: 'info' },
     { value: stats.orders, label: 'Órdenes del Mes', icon: Icons.ShoppingCart, color: 'success' },
-    { value: '—', label: 'Ventas Totales', icon: Icons.TrendingUp, color: 'warning' },
+    { value: stats.ventas, label: 'Ventas Totales', icon: Icons.TrendingUp, color: 'warning' },
   ]
 
   return (

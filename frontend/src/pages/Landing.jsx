@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
+import { buildApiUrl } from '../services/api'
 
 const ProfessionalTshirtSVG = () => (
   <svg viewBox="0 0 200 180" width="200" height="180" xmlns="http://www.w3.org/2000/svg">
@@ -46,7 +47,7 @@ export const Landing = () => {
     e.preventDefault()
     setLoading(true); setErrors({}); setMessage('')
     try {
-      const response = await fetch('http://localhost:8000/api/contacto/', {
+      const response = await fetch(buildApiUrl('contacto/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

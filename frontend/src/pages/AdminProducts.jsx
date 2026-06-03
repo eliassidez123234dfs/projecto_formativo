@@ -10,15 +10,17 @@ function useAdminStats() {
   useEffect(() => {
     let mounted = true
     async function load() {
+      const token = localStorage.getItem('access_token')
+      const headers = token ? { Authorization: 'Bearer ' + token } : {}
       try {
-        const res = await fetch('/api/products/?page_size=1')
+        const res = await fetch('/api/admin/stats/', { headers })
         const data = await res.json()
         if (!mounted) return
         setStats({
-          total: data.count || 0,
-          active: data.count || 0,
-          approved: Math.floor((data.count || 0) * 0.7),
-          pending: Math.floor((data.count || 0) * 0.3),
+          total: data.productos?.total ?? 0,
+          active: data.productos?.activos ?? 0,
+          approved: data.productos?.aprobados ?? 0,
+          pending: data.productos?.no_aprobados ?? 0,
         })
       } catch { /* ignore */ }
       finally { if (mounted) setLoading(false) }

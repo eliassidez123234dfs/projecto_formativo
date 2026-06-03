@@ -1,28 +1,28 @@
-import { DEFAULT_IMAGE } from '../constants';
+                                                                              import { DEFAULT_IMAGE } from '../constants';
 
-export const ProductCard = ({ product, onView, onAdd }) => {
-  const imgSrc = product.image || DEFAULT_IMAGE;
+                                                                              export const ProductCard = ({ product, onView, onAdd }) => {
+                                                                                const imgSrc = product.image || DEFAULT_IMAGE;
 
-  return (
-    <div className="pc-wrap">
-      <div className="pc-img-box">
-        {product.badge && <span className="pc-badge">{product.badge}</span>}
-        <img src={imgSrc} alt={product.name} onError={(e) => { e.target.src = DEFAULT_IMAGE }} className="pc-img" />
-        <div className="pc-img-shine" />
-      </div>
-      <div className="pc-body">
-        <p className="pc-name">{product.name}</p>
-        <p className="pc-price">${product.price.toFixed(2)}</p>
-        <div className="pc-actions">
-          <button className="pc-act pc-act--view" onClick={() => onView(product.id)}>
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            Ver
-          </button>
-          <button className="pc-act pc-act--3d" onClick={() => window.location.href = `/product/${product.id}/3d?mode=new`}>
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            3D
-          </button>
-          <button className="pc-act pc-act--add" onClick={() => onAdd(product.id)}>
+                                                                                return (
+                                                                                  <div className="pc-wrap">
+                                                                                    <div className="pc-img-box">
+                                                                                      {product.badge && <span className="pc-badge">{product.badge}</span>}
+                                                                                      <img src={imgSrc} alt={product.name} onError={(e) => { e.target.src = DEFAULT_IMAGE }} className="pc-img" />
+                                                                                      <div className="pc-img-shine" />
+                                                                                    </div>
+                                                                                    <div className="pc-body">
+                                                                                      <p className="pc-name">{product.name}</p>
+                                                                                      <p className="pc-price">${product.price.toFixed(2)}</p>
+                                                                                      <div className="pc-actions">
+                                                                                        <button className="pc-act pc-act--view" onClick={() => onView(product.id)}>
+                                                                                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                                                          Ver
+                                                                                        </button>
+                                                                                        <button className="pc-act pc-act--3d" onClick={() => window.location.href = `/product/${product.id}/3d?mode=new`}>
+                                                                                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                                                                          3D
+                                                                                        </button>
+                                                                                        <button className="pc-act pc-act--add" onClick={() => onAdd(product.id)}>
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Agregar
           </button>

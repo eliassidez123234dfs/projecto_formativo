@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { buildApiUrl } from '../services/api'
 
 function passwordStrength(pw) {
   let score = 0
@@ -82,7 +83,7 @@ export const Auth = () => {
     if (!validateLogin()) return
     setLoading(true); setErrors({})
     try {
-      const response = await fetch('http://localhost:8000/api/login/login/', {
+      const response = await fetch(buildApiUrl('login/login/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData),
@@ -106,7 +107,7 @@ export const Auth = () => {
     if (!validateRegister()) return
     setLoading(true); setErrors({})
     try {
-      const response = await fetch('http://localhost:8000/api/auth/registro/', {
+      const response = await fetch(buildApiUrl('auth/registro/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registerData),
