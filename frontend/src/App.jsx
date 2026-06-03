@@ -16,11 +16,8 @@ import CatalogPage from './pages/CatalogPage'
 import PublicProductDetail from './pages/PublicProductDetail'
 import AdminProductDetail from './pages/AdminProductDetail'
 import CartPage from './pages/CartPage'
-import CheckoutPage from './pages/CheckoutPage'
 import Navigation from './components/Navigation'
 import './App.css'
-import AdminProducts from './pages/AdminProducts';
-import AdminProductDetail from './pages/AdminProductDetail';
 import CheckoutPage from './pages/CheckoutPage';
 // Si CatalogPage es diferente a Catalog, renómbralo o unifica ambos componentes para evitar confusiones.
 
