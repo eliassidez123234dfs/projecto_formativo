@@ -28,7 +28,7 @@
     env_file:
       - .env
     environment:
-      - VITE_API_URL=http://localhost:8000/api/
+      - VITE_API_URL=http://backend:8000/api/
     depends_on:
       - backend
 
