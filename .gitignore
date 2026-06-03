@@ -486,3 +486,11 @@ venv/
 
 .github/
 .github/*
+
+# Auxly - AI Task Management (internal data)
+.auxly/
+
+.cursorrules
+.cursor/*
+.sixthsense
+.sixth/*
