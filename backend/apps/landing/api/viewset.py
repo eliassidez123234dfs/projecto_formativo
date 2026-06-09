@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -5,6 +7,8 @@ from rest_framework.throttling import AnonRateThrottle
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from ..models import Contacto
 from .serializers import (
@@ -132,9 +136,9 @@ class ContactoViewSet(viewsets.ModelViewSet):
                 [admin_email],
                 fail_silently=False
             )
-        except Exception as e:
+        except Exception as exc:
             # RN-032: Si falla el email, el mensaje se guarda igual
-            print(f"Error al enviar email: {str(e)}")
+            logger.exception('Error al enviar email de notificación de contacto: %s', exc)
     
     def _obtener_ip_cliente(self, request):
         """Obtener IP del cliente para rate limiting"""

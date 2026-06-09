@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.validators import EmailValidator
 from django.utils import timezone
-import uuid
+import secrets
 
 # Clase de usuarios para el modelo de la base de datos del usuario bien estructurado
 # Patron Active Record
@@ -76,7 +76,7 @@ class Token_Verificacion(models.Model):
     
     id = models.AutoField(primary_key=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='tokens_verificacion') # nombre para identificar
-    token = models.CharField(max_length=255, unique=True, default=uuid.uuid4)
+    token = models.CharField(max_length=255, unique=True, default=secrets.token_urlsafe)
     tipo = models.CharField(max_length=30, choices=TIPO_CHOICES)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_expiracion = models.DateTimeField()

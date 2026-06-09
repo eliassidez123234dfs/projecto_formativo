@@ -5,10 +5,12 @@ import environ
 
 # Definir nuestras variables de ambiente
 env = environ.Env()
-environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Cargar .env desde la raíz del proyecto
+environ.Env.read_env(BASE_DIR.parent / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -218,21 +220,37 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5174',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
+    'http://192.168.1.93:5173',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Frontend URL para enlaces en emails
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+# SameSite/ Secure cookies: HTTP (dev) -> Lax, HTTPS (prod) -> None + Secure
+if DEBUG:
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+else:
+    SESSION_COOKIE_SAMESITE = 'None'
+    CSRF_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# URLs para enlaces en emails
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
+BACKEND_URL = env('BACKEND_URL', default='http://localhost:8000')
 
 # Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', True)
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@sistema.com')
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
+EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=10)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
 
 # Rate limiting para formulario de contacto
 RATELIMIT_ENABLE = True
@@ -247,13 +265,21 @@ PASSWORD_REQUIRE_SPECIAL = True
 # Definicion de que servicios pueden usar nuestro proyecto 
 CORS_ORIGIN_WHITELIST = env.list(
     'CORS_ORIGIN_WHITELIST',
-    default=['http://127.0.0.1:5173', 'http://localhost:5173']
+    default=[
+        'http://127.0.0.1:5173',
+        'http://localhost:5173',
+        'http://192.168.1.93:5173'
+    ]
 )
 
 # Definir que dominios pueden hacer los request
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
-    default=['http://127.0.0.1:5173', 'http://localhost:5173']
+    default=[
+        'http://127.0.0.1:5173',
+        'http://localhost:5173',
+        'http://192.168.1.93:5173'
+    ]
 )
 
 

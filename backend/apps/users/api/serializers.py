@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from datetime import timedelta
 import re
-import uuid
+import secrets
 
 from ..models import Usuario, Token_Verificacion, Cambio_Email, Log_Auditoria, Historial_Estado_Usuario
 
@@ -80,7 +80,7 @@ class RegistroSerializer(serializers.Serializer):
         fecha_expiracion = timezone.now() + timedelta(hours=24)
         Token_Verificacion.objects.create(
             usuario=usuario,
-            token=str(uuid.uuid4()),
+            token=secrets.token_urlsafe(32),
             tipo='Verificacion_Email',
             fecha_expiracion=fecha_expiracion
         )

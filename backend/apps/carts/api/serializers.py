@@ -10,15 +10,18 @@ class CartItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_image = serializers.SerializerMethodField()
     variant_label = serializers.SerializerMethodField()
+    variant_size = serializers.CharField(source='variant.size', read_only=True)
+    variant_color = serializers.CharField(source='variant.color', read_only=True)
     subtotal = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
         fields = [
             'id', 'product', 'product_name', 'product_image', 'variant', 'variant_label',
+            'variant_size', 'variant_color',
             'quantity', 'unit_price', 'subtotal', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'product_name', 'product_image', 'variant_label', 'subtotal', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'product_name', 'product_image', 'variant_label', 'variant_size', 'variant_color', 'subtotal', 'created_at', 'updated_at']
 
     def get_product_image(self, obj):
         image = obj.product.main_image
@@ -46,6 +49,46 @@ class CartSerializer(serializers.ModelSerializer):
 
     def get_total_amount(self, obj):
         return str(obj.total_amount)
+
+
+class AdminCartListSerializer(serializers.ModelSerializer):
+    items_count = serializers.SerializerMethodField()
+    total_amount = serializers.SerializerMethodField()
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cart
+        fields = ['id', 'session_key', 'user', 'user_name', 'items_count', 'total_amount', 'created_at', 'updated_at']
+
+    def get_items_count(self, obj):
+        return obj.items.count()
+
+    def get_total_amount(self, obj):
+        return str(obj.total_amount)
+
+    def get_user_name(self, obj):
+        if obj.user:
+            return f"{obj.user.usuario} ({obj.user.correo})"
+        return "Anónimo"
+
+
+class AdminCartDetailSerializer(serializers.ModelSerializer):
+    items = CartItemSerializer(many=True, read_only=True)
+    total_items = serializers.IntegerField(read_only=True)
+    total_amount = serializers.SerializerMethodField()
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Cart
+        fields = ['id', 'session_key', 'user', 'user_name', 'items', 'total_items', 'total_amount', 'created_at', 'updated_at']
+
+    def get_total_amount(self, obj):
+        return str(obj.total_amount)
+
+    def get_user_name(self, obj):
+        if obj.user:
+            return f"{obj.user.usuario} ({obj.user.correo})"
+        return "Anónimo"
 
 
 class CartAddSerializer(serializers.Serializer):

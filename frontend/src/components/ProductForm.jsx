@@ -5,7 +5,14 @@ async function safeJson(res) {
 }
 
 function VariantRow({ v, onChange, onRemove }) {
-  const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 2 }
+  const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', 'Único']
+const COLORS = ['Rojo', 'Azul', 'Negro', 'Blanco', 'Gris', 'Verde', 'Amarillo', 'Naranja', 'Rosa', 'Morado', 'Marrón', 'Beige', 'Plateado', 'Dorado']
+const selectStyle = {
+  width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)',
+  borderRadius: 'var(--radius-md)', background: 'var(--color-bg)',
+  color: 'var(--color-text)', fontSize: 13, outline: 'none',
+}
+const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 2 }
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'flex-end', marginTop: 8,
@@ -14,29 +21,17 @@ function VariantRow({ v, onChange, onRemove }) {
     }}>
       <div style={{ flex: 1 }}>
         <label style={labelSm}>Talla</label>
-        <input
-          placeholder="Ej: M, L, XL, 42"
-          value={v.size}
-          onChange={e => onChange({ ...v, size: e.target.value })}
-          style={{
-            width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-md)', background: 'var(--color-bg)',
-            color: 'var(--color-text)', fontSize: 13, outline: 'none',
-          }}
-        />
+        <select value={v.size} onChange={e => onChange({ ...v, size: e.target.value })} style={selectStyle}>
+          <option value="">Seleccionar talla</option>
+          {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
       </div>
       <div style={{ flex: 1 }}>
         <label style={labelSm}>Color</label>
-        <input
-          placeholder="Ej: Rojo, Azul, Negro"
-          value={v.color}
-          onChange={e => onChange({ ...v, color: e.target.value })}
-          style={{
-            width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-md)', background: 'var(--color-bg)',
-            color: 'var(--color-text)', fontSize: 13, outline: 'none',
-          }}
-        />
+        <select value={v.color} onChange={e => onChange({ ...v, color: e.target.value })} style={selectStyle}>
+          <option value="">Seleccionar color</option>
+          {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
       <div style={{ width: 90 }}>
         <label style={labelSm}>Stock</label>

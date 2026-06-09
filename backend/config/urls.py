@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.shortcuts import redirect
+from django.utils import timezone
 
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
@@ -19,6 +21,7 @@ from apps.users.api.viewset import (
 from apps.users.api.admin_viewset import AdminUsuarioViewSet
 from apps.users.api.stats_viewset import AdminStatsViewSet
 from apps.landing.api.viewset import ContactoViewSet
+from apps.users.models import Token_Verificacion
 
 # Crear router
 router = DefaultRouter()
@@ -33,9 +36,35 @@ router.register(r'admin/stats', AdminStatsViewSet, basename='admin-stats')
 # Landing
 router.register(r'contacto', ContactoViewSet, basename='contacto')
 
+# Vista directa para verificar email desde el link del correo
+def verificar_email_directo(request):
+    token = request.GET.get('token', '')
+    if not token:
+        return redirect(f"{settings.FRONTEND_URL}/login?error=token-no-encontrado")
+    try:
+        token_obj = Token_Verificacion.objects.get(
+            token=token,
+            tipo='Verificacion_Email',
+            usado=False
+        )
+        if timezone.now() > token_obj.fecha_expiracion:
+            return redirect(f"{settings.FRONTEND_URL}/login?error=token-expirado")
+        usuario = token_obj.usuario
+        usuario.email_verificado = True
+        usuario.estado = 'Activo'
+        usuario.save()
+        token_obj.usado = True
+        token_obj.save()
+        return redirect(f"{settings.FRONTEND_URL}/login?verified=1")
+    except Token_Verificacion.DoesNotExist:
+        return redirect(f"{settings.FRONTEND_URL}/login?error=token-invalido")
+
 urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
+
+    # Verificación directa de email desde el link del correo
+    path('api/auth/verificar-email/', verificar_email_directo, name='verificar-email-directo'),
 
     # API Router
     path('api/', include(router.urls)),
@@ -55,6 +84,9 @@ urlpatterns = [
 
     # Carrito
     path('api/cart/', include('apps.carts.api.urls')),
+
+    # Admin carritos
+    path('api/admin/carts/', include('apps.carts.api.admin_urls')),
 
     # Órdenes
     path('api/checkout/', include('apps.checkout.urls')),
