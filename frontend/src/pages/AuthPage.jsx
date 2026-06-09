@@ -17,6 +17,7 @@ function passwordStrength(pw) {
 
 export default function AuthPage({ defaultMode = 'login' }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [mode, setMode] = useState(defaultMode)
   const [animKey, setAnimKey] = useState(0)
   const [loginData, setLoginData] = useState({ correo: '', contrasena: '' })
@@ -27,6 +28,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
   const [success, setSuccess] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [pwTouched, setPwTouched] = useState(false)
+  const [verifiedMsg, setVerifiedMsg] = useState('')
 
   useEffect(() => {
     setErrors({}); setFieldErrors({}); setSuccess(false); setAnimKey(k => k + 1); setShowConfirm(false); setPwTouched(false)
@@ -36,6 +38,17 @@ export default function AuthPage({ defaultMode = 'login' }) {
     const token = localStorage.getItem('access_token')
     if (token) navigate('/dashboard')
   }, [navigate])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('verified') === '1') {
+      setVerifiedMsg('Email verificado exitosamente. Ya puedes iniciar sesión.')
+    } else if (params.get('error') === 'token-expirado') {
+      setErrors({ general: 'El enlace de verificación ha expirado.' })
+    } else if (params.get('error') === 'token-invalido') {
+      setErrors({ general: 'El enlace de verificación no es válido.' })
+    }
+  }, [location.search])
 
   function getError(errors, field) {
     const val = errors[field]
@@ -171,6 +184,9 @@ export default function AuthPage({ defaultMode = 'login' }) {
           </div>
 
           <div key={animKey} className="auth-form-body">
+            {verifiedMsg && (
+              <div className="auth-alert auth-alert--success">{verifiedMsg}</div>
+            )}
             {generalError(errors) && (
               <div className="auth-alert auth-alert--error">{generalError(errors)}</div>
             )}

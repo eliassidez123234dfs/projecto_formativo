@@ -107,8 +107,10 @@ export function Dashboard() {
   }
 
   const [stats, setStats] = useState({ products: '—', users: '—', orders: '—', ventas: '—' })
+  const isAdmin = usuario?.rol === 'Administrador'
 
   useEffect(() => {
+    if (!isAdmin) return
     let mounted = true
     async function loadStats() {
       const token = localStorage.getItem('access_token')
@@ -127,9 +129,7 @@ export function Dashboard() {
     }
     loadStats()
     return () => { mounted = false }
-  }, [])
-
-  const isAdmin = usuario?.rol === 'Administrador'
+  }, [isAdmin])
 
   if (loading) return <MainLayout><div className="card"><div className="empty-state"><p>Cargando...</p></div></div></MainLayout>
   if (!usuario) return <MainLayout><div className="card"><div className="empty-state"><p>No hay sesión activa</p></div></div></MainLayout>
@@ -139,6 +139,7 @@ export function Dashboard() {
     ...(isAdmin ? [
       { label: 'Productos', action: () => navigate('/admin-products'), variant: 'btn-secondary' },
       { label: 'Usuarios', action: () => navigate('/admin-users'), variant: 'btn-secondary' },
+      { label: 'Carritos', action: () => navigate('/admin-cart'), variant: 'btn-secondary' },
     ] : []),
     { label: 'Mi Carrito', action: () => navigate('/cart'), variant: 'btn-secondary' },
   ]

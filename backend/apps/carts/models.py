@@ -11,6 +11,7 @@ from apps.products.models import Product, Variant
 
 class Cart(models.Model):
 	session_key = models.CharField(max_length=64, unique=True)
+	user = models.ForeignKey('users.Usuario', null=True, blank=True, on_delete=models.SET_NULL, related_name='carts')
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 

@@ -13,8 +13,9 @@ import { ProductDetail } from './pages/ProductDetail';
 import { Product3D } from './pages/Product3D';
 import { Cart } from './pages/Cart';
 import AdminCart from './pages/AdminCart';
+import AdminCartDetail from './pages/AdminCartDetail';
 import { VerificarEmail, VerificacionPendiente } from './pages/Email';
-import { RecuperarPassword } from './pages/Password';
+import { RecuperarPassword, NuevaPassword } from './pages/Password';
 
 // Nuevos imports desde la rama jose
 import AdminProducts from './pages/AdminProducts';
@@ -49,12 +50,14 @@ function App() {
             <Route path="/verificar-email" element={<VerificarEmail />} />
             <Route path="/verificar-email-pendiente" element={<VerificacionPendiente />} />
             <Route path="/password" element={<RecuperarPassword />} />
+            <Route path="/nueva-password" element={<NuevaPassword />} />
 
             {/* Nuevas rutas desde jose */}
             <Route path="/admin-products" element={<AdminProducts />} />
             <Route path="/admin-products/detail/:id" element={<AdminProductDetail />} />
             <Route path="/admin-users" element={<AdminUsers />} />
             <Route path="/admin-cart" element={<AdminCart />} />
+            <Route path="/admin-cart/:id" element={<AdminCartDetail />} />
             <Route path="/admin-contact" element={<AdminContact />} />
             <Route path="/admin-audit" element={<AdminAudit />} />
             <Route path="/checkout" element={<CheckoutPage />} />

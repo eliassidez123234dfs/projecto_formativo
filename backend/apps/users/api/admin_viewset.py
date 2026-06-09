@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -11,6 +13,8 @@ import uuid
 from datetime import timedelta
 import secrets
 import string
+
+logger = logging.getLogger(__name__)
 
 from ..models import (
     Usuario, Token_Verificacion, Log_Auditoria, Historial_Estado_Usuario
@@ -448,7 +452,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         
         return Response({
             'mensaje': 'Usuario eliminado exitosamente'
-        }, status=status.HTTP_204_NO_CONTENT)
+        }, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get'])
     def auditoria(self, request):
@@ -517,7 +521,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     
     def _enviar_email_bienvenida(self, usuario, contrasena_temporal, token):
         """Enviar email de bienvenida con credenciales"""
-        enlace = f"{settings.FRONTEND_URL}/verificar-email?token={token}"
+        enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
         asunto = "Bienvenido - Tu cuenta ha sido creada"
         mensaje = f"""
         Hola {usuario.usuario},
@@ -534,13 +538,16 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         Después podrás cambiar tu contraseña.
         """
         
-        send_mail(
-            asunto,
-            mensaje,
-            settings.DEFAULT_FROM_EMAIL,
-            [usuario.correo],
-            fail_silently=True
-        )
+        try:
+            send_mail(
+                asunto,
+                mensaje,
+                settings.DEFAULT_FROM_EMAIL,
+                [usuario.correo],
+                fail_silently=False
+            )
+        except Exception as exc:
+            logger.exception('Error al enviar email de bienvenida a %s: %s', usuario.correo, exc)
     
     def _enviar_email_reset_password(self, usuario, contrasena_temporal, token):
         """Enviar email de reseteo de contraseña"""
@@ -559,13 +566,16 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         Este enlace expira en 1 hora.
         """
         
-        send_mail(
-            asunto,
-            mensaje,
-            settings.DEFAULT_FROM_EMAIL,
-            [usuario.correo],
-            fail_silently=True
-        )
+        try:
+            send_mail(
+                asunto,
+                mensaje,
+                settings.DEFAULT_FROM_EMAIL,
+                [usuario.correo],
+                fail_silently=False
+            )
+        except Exception as exc:
+            logger.exception('Error al enviar email de reseteo a %s: %s', usuario.correo, exc)
     
     def _registrar_auditoria(self, admin, usuario_afectado, accion, 
                             datos_anteriores=None, datos_nuevos=None, ip_admin=None):

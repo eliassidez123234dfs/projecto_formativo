@@ -3,11 +3,13 @@ from __future__ import annotations
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from apps.carts.models import Cart, CartItem
+from apps.users.api.admin_viewset import AdminPermission
 
-from .serializers import CartAddSerializer, CartItemSerializer, CartSerializer
+from .serializers import CartAddSerializer, CartItemSerializer, CartSerializer, AdminCartListSerializer, AdminCartDetailSerializer
 
 
 class CartViewSet(viewsets.ViewSet):
@@ -15,6 +17,9 @@ class CartViewSet(viewsets.ViewSet):
         if not request.session.session_key:
             request.session.save()
         cart, _ = Cart.objects.get_or_create(session_key=request.session.session_key)
+        if request.user.is_authenticated and cart.user_id != request.user.id:
+            cart.user = request.user
+            cart.save()
         return cart
 
     def list(self, request):
@@ -78,5 +83,23 @@ class CartViewSet(viewsets.ViewSet):
         cart = self._get_cart(request)
         cart.items.all().delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminCartViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [AdminPermission]
+    pagination_class = PageNumberPagination
+    serializer_class = AdminCartListSerializer
+
+    def get_queryset(self):
+        return Cart.objects.prefetch_related('items__product', 'items__variant').select_related('user').all().order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        self.pagination_class.page_size = request.query_params.get('page_size', 20)
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = AdminCartDetailSerializer(instance, context={'request': request})
+        return Response(serializer.data)
 
 
