@@ -6,7 +6,7 @@ export default ({ mode }) => {
   const apiUrl = process.env.VITE_API_URL || '/api/'
   const backendHost = apiUrl.startsWith('http')
     ? apiUrl.replace(/\/api\/?$/, '')
-    : 'http://backend:8000'
+    : 'http://localhost:8000'
 
   return defineConfig({
     plugins: [react()],

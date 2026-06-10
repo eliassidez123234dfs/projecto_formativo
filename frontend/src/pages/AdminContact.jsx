@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchContactMessages, markContactRead, deleteContactMessage } from '../services/api'
 import MainLayout from '../components/MainLayout'
 import InfoModal from '../components/InfoModal'
 
@@ -9,11 +10,6 @@ export default function AdminContact() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ total: 0, unread: 0 })
   const [viewMsg, setViewMsg] = useState(null)
-
-  function authHeaders() {
-    const t = localStorage.getItem('access_token')
-    return t ? { Authorization: 'Bearer ' + t } : {}
-  }
 
   useEffect(() => {
     const u = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
@@ -25,9 +21,7 @@ export default function AdminContact() {
   async function loadMessages() {
     setLoading(true)
     try {
-      const res = await fetch('/api/contacto/', { headers: authHeaders() })
-      if (!res.ok) { setMessages([]); return }
-      const data = await res.json()
+      const data = await fetchContactMessages()
       const list = data.results || data
       setMessages(Array.isArray(list) ? list : [])
       setStats({
@@ -40,19 +34,15 @@ export default function AdminContact() {
 
   async function marcarLeido(id) {
     try {
-      const res = await fetch(`/api/contacto/${id}/marcar_leido/`, {
-        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      })
-      if (res.ok) loadMessages()
+      await markContactRead(id)
+      loadMessages()
     } catch { /* ignore */ }
   }
 
   async function eliminar(id) {
     if (!confirm('¿Eliminar este mensaje?')) return
     try {
-      await fetch(`/api/contacto/${id}/eliminar/`, {
-        method: 'DELETE', headers: authHeaders(),
-      })
+      await deleteContactMessage(id)
       loadMessages()
     } catch { /* ignore */ }
   }

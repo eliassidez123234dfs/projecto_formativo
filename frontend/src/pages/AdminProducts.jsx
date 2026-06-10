@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchAdminStats } from '../services/api'
 import MainLayout from '../components/MainLayout'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
@@ -10,11 +11,8 @@ function useAdminStats() {
   useEffect(() => {
     let mounted = true
     async function load() {
-      const token = localStorage.getItem('access_token')
-      const headers = token ? { Authorization: 'Bearer ' + token } : {}
       try {
-        const res = await fetch('/api/admin/stats/', { headers })
-        const data = await res.json()
+        const data = await fetchAdminStats()
         if (!mounted) return
         setStats({
           total: data.productos?.total ?? 0,

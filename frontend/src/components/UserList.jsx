@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { fetchAdminUsers, adminUserAction } from '../services/api'
 import UserEditModal from './UserEditModal'
 import InfoModal from './InfoModal'
 
@@ -12,18 +13,12 @@ export default function UserList({ filters, onPageChange, onSaved }) {
   const [actionLoading, setActionLoading] = useState(null)
   const [modal, setModal] = useState(null)
 
-  const token = localStorage.getItem('access_token')
-  const authHeaders = token ? { 'Authorization': 'Bearer ' + token } : {}
-
   useEffect(() => {
     let aborted = false
     ;(async () => {
       setLoading(true)
       try {
-        const params = new URLSearchParams(filters)
-        const res = await fetch(`/api/admin/usuarios/?${params.toString()}`, { headers: authHeaders })
-        if (!res.ok) { setUsers([]); setCount(0); setLoading(false); return }
-        const data = await res.json()
+        const data = await fetchAdminUsers(filters)
         const list = data.results || data
         if (!aborted) {
           setUsers(list)
@@ -40,20 +35,11 @@ export default function UserList({ filters, onPageChange, onSaved }) {
   async function doAction(userId, action, payload = {}) {
     setActionLoading(`${action}-${userId}`)
     try {
-      const res = await fetch(`/api/admin/usuarios/${userId}/${action}/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setModal({ type: 'error', title: 'Error', message: data.error || data.detail || `Error al ejecutar ${action}` })
-        return
-      }
+      const data = await adminUserAction(userId, action, payload)
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...(data.usuario || {}) } : u))
       setModal({ type: 'success', title: '', message: data.mensaje || 'Acción completada' })
     } catch (e) {
-      setModal({ type: 'error', title: 'Error de red', message: e.message })
+      setModal({ type: 'error', title: 'Error', message: e.response?.data?.error || e.response?.data?.detail || e.message })
     } finally {
       setActionLoading(null)
     }

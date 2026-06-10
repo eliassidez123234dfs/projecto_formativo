@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { fetchAdminCartDetail } from '../services/api'
 import MainLayout from '../components/MainLayout'
 
 export default function AdminCartDetail() {
@@ -16,11 +17,8 @@ export default function AdminCartDetail() {
   useEffect(() => {
     let mounted = true
     async function load() {
-      const token = localStorage.getItem('access_token')
-      const h = token ? { Authorization: 'Bearer ' + token } : {}
       try {
-        const res = await fetch(`/api/admin/carts/${id}/`, { headers: h })
-        const data = await res.json()
+        const data = await fetchAdminCartDetail(id)
         if (mounted) setCart(data)
       } catch { if (mounted) setCart(null) }
       finally { if (mounted) setLoading(false) }
