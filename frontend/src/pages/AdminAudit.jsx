@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchAuditLogs } from '../services/api'
 import MainLayout from '../components/MainLayout'
 
 export default function AdminAudit() {
@@ -9,11 +10,6 @@ export default function AdminAudit() {
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
-
-  function authHeaders() {
-    const t = localStorage.getItem('access_token')
-    return t ? { Authorization: 'Bearer ' + t } : {}
-  }
 
   useEffect(() => {
     const u = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
@@ -25,9 +21,7 @@ export default function AdminAudit() {
   async function loadLogs() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/usuarios/auditoria/?page=${page}&page_size=${pageSize}`, { headers: authHeaders() })
-      if (!res.ok) { setLogs([]); return }
-      const data = await res.json()
+      const data = await fetchAuditLogs(page, pageSize)
       const list = data.results || data
       setLogs(Array.isArray(list) ? list : [])
       setCount(data.count || list.length || 0)

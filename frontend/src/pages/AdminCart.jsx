@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { fetchAdminCarts } from '../services/api'
 import MainLayout from '../components/MainLayout'
 
 export default function AdminCart() {
@@ -17,11 +18,7 @@ export default function AdminCart() {
   const loadCarts = useCallback(async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('access_token')
-      const h = token ? { Authorization: 'Bearer ' + token } : {}
-      const res = await fetch(`/api/admin/carts/?page=${page}&page_size=${pageSize}`, { headers: h })
-      if (!res.ok) { setCarts({ results: [], count: 0 }); return }
-      const data = await res.json()
+      const data = await fetchAdminCarts(page, pageSize)
       setCarts(data)
     } catch { setCarts({ results: [], count: 0 }) }
     finally { setLoading(false) }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MainLayout from '../components/MainLayout'
-import { buildApiUrl } from '../services/api'
+import { buildApiUrl, fetchAdminStats } from '../services/api'
 
 const Icons = {
   Package: () => (
@@ -113,11 +113,8 @@ export function Dashboard() {
     if (!isAdmin) return
     let mounted = true
     async function loadStats() {
-      const token = localStorage.getItem('access_token')
-      const h = token ? { Authorization: `Bearer ${token}` } : {}
       try {
-        const res = await fetch(buildApiUrl('admin/stats/'), { headers: h })
-        const data = await res.json()
+        const data = await fetchAdminStats()
         if (!mounted) return
         setStats({
           products: data.productos?.total ?? '—',

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchAdminStats, createAdminUser } from '../services/api'
 import MainLayout from '../components/MainLayout'
 import UserFilters from '../components/UserFilters'
 import UserList from '../components/UserList'
@@ -11,11 +12,8 @@ function useUserStats() {
   useEffect(() => {
     let mounted = true
     async function load() {
-      const token = localStorage.getItem('access_token')
-      const headers = token ? { Authorization: 'Bearer ' + token } : {}
       try {
-        const res = await fetch('/api/admin/stats/', { headers })
-        const data = await res.json()
+        const data = await fetchAdminStats()
         if (!mounted) return
         setStats({
           total: data.usuarios?.total ?? 0,
@@ -56,27 +54,7 @@ export default function AdminUsers() {
     setCreating(true)
     setCreateError(null)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await fetch('/api/admin/usuarios/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(formData),
-      })
-      if (!res.ok) {
-        const err = await (async () => { try { return await res.json() } catch { return {} } })()
-        const known = { usuario: 'Nombre de usuario', correo: 'Correo', contrasena: 'Contraseña', password: 'Contraseña', rol: 'Rol', estado: 'Estado', email_verificado: 'Email verificado' }
-        const parts = []
-        for (const [key, msgs] of Object.entries(err)) {
-          if (key === 'detail' || key === 'error') parts.push(Array.isArray(msgs) ? msgs[0] : msgs)
-          else {
-            const label = known[key] || key
-            const msg = Array.isArray(msgs) ? msgs[0] : msgs
-            parts.push(`${label}: ${msg}`)
-          }
-        }
-        setCreateError(parts.join('. ') || 'Error al crear usuario')
-        return
-      }
+      await createAdminUser(formData)
       setShowCreateModal(false)
       setRefreshKey(k => k + 1)
     } catch (err) {

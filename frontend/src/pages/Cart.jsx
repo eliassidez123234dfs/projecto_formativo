@@ -6,7 +6,7 @@ import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 
 export const Cart = () => {
-  const { cart, loading, updateQuantity, removeItem } = useCart();
+  const { cart, loading, updateQuantity, removeItem, clearCartItems } = useCart();
 
   if (loading) {
     return (
@@ -144,6 +144,9 @@ export const Cart = () => {
         </div>
 
         <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button className="btn btn-outline" style={{ textDecoration: 'none', color: 'var(--color-error)' }} onClick={clearCartItems}>
+            Vaciar carrito
+          </button>
           <Link to="/catalog" className="btn btn-outline" style={{ textDecoration: 'none' }}>
             Seguir comprando
           </Link>
