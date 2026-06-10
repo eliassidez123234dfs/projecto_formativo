@@ -221,6 +221,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
     'http://192.168.1.93:5173',
+    'http://192.168.137.7:5173',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -268,7 +269,8 @@ CORS_ORIGIN_WHITELIST = env.list(
     default=[
         'http://127.0.0.1:5173',
         'http://localhost:5173',
-        'http://192.168.1.93:5173'
+        'http://192.168.1.93:5173',
+        'http://192.168.137.7:5173',
     ]
 )
 
@@ -278,7 +280,8 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=[
         'http://127.0.0.1:5173',
         'http://localhost:5173',
-        'http://192.168.1.93:5173'
+        'http://192.168.1.93:5173',
+        'http://192.168.137.7:5173',
     ]
 )
 
