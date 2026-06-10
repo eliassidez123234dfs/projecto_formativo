@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 async function safeJson(res) {
   try { return await res.json() } catch { return null }
@@ -70,7 +71,6 @@ export default function ProductForm({ product, onClose, onSaved }) {
   const [variants, setVariants] = useState([])
   const currentVariants = product?.variants || []
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState(null)
 
   function addVariant() {
     setVariants(vs => [...vs, { size: '', color: '', stock: 0 }])
@@ -164,13 +164,12 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setError(null)
 
-    if (!name.trim()) return setError('Nombre requerido')
-    if (!description.trim()) return setError('Descripción requerida')
-    if (!price || Number(price) <= 0) return setError('Precio inválido')
-    if (!isEditing && !mainImage) return setError('Imagen principal requerida')
-    if (!isEditing && variants.length === 0) return setError('Agregar al menos una variante')
+    if (!name.trim()) return toast.error('Nombre requerido')
+    if (!description.trim()) return toast.error('Descripción requerida')
+    if (!price || Number(price) <= 0) return toast.error('Precio inválido')
+    if (!isEditing && !mainImage) return toast.error('Imagen principal requerida')
+    if (!isEditing && variants.length === 0) return toast.error('Agregar al menos una variante')
 
     setSaving(true)
     try {
@@ -191,9 +190,10 @@ export default function ProductForm({ product, onClose, onSaved }) {
         await reorderImages(nextImages)
       }
 
+      toast.success(isEditing ? 'Producto actualizado' : 'Producto creado')
       onSaved && onSaved()
     } catch (err) {
-      setError(err.message || 'Error')
+      toast.error(err.message || 'Error')
     } finally {
       setSaving(false)
     }
@@ -204,7 +204,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
     const targetIndex = index + direction
     if (targetIndex < 0 || targetIndex >= next.length) return
     ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
-    reorderImages(next).catch(err => setError(err.message))
+    reorderImages(next).catch(err => toast.error(err.message))
   }
 
   const inputStyle = {
@@ -228,8 +228,6 @@ export default function ProductForm({ product, onClose, onSaved }) {
         </div>
 
         <form onSubmit={handleSubmit} className="form-modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          {error && <div className="form-error-box">{error}</div>}
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className="form-group">
               <label style={labelStyle}>Nombre</label>
