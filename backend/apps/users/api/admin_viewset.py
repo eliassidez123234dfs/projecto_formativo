@@ -142,13 +142,6 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
-        # Registrar auditoría del listado normal
-        self._registrar_auditoria(
-            request.user, None, 'Listar usuarios',
-            datos_nuevos={'filtros': request.query_params.dict(), 'resultados_estimados': total},
-            ip_admin=self._obtener_ip_cliente(request)
-        )
-
         return super().list(request, *args, **kwargs)
 
     @action(detail=False, methods=['get'])

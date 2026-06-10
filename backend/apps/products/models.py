@@ -119,7 +119,7 @@ class ProductImage(models.Model):
 			raise ValidationError({'image': f'No se pudo validar la imagen: {exc}'})
 
 	def save(self, *args, **kwargs):
-		if self.product_id and not self.order:
+		if self.product_id and (not self.order or ProductImage.objects.filter(product=self.product, order=self.order).exclude(pk=self.pk).exists()):
 			last_order = self.product.images.exclude(pk=self.pk).aggregate(models.Max('order'))['order__max'] or 0
 			self.order = last_order + 1
 

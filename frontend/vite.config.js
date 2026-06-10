@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default ({ mode }) => {
   process.env = { ...process.env, ...loadEnv(mode, process.cwd()) }
-  const backendHost = process.env.VITE_API_URL
-    ? process.env.VITE_API_URL.replace(/\/api\/?$/, '')
-    : 'http://localhost:8000'
+  const apiUrl = process.env.VITE_API_URL || '/api/'
+  const backendHost = apiUrl.startsWith('http')
+    ? apiUrl.replace(/\/api\/?$/, '')
+    : 'http://backend:8000'
 
   return defineConfig({
     plugins: [react()],

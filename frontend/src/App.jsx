@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -34,6 +35,7 @@ function App() {
       <CartProvider>
         <BrowserRouter>
           <ErrorBoundary>
+          <Toaster position="top-right" toastOptions={{ duration: 4000, style: { fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
           <Routes>
             {/* Rutas existentes de integracion-total */}
             <Route path="/" element={<Landing />} />
