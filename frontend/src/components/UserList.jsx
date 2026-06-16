@@ -92,14 +92,18 @@ export default function UserList({ filters, onPageChange, onSaved }) {
           </thead>
           <tbody>
             {users.map(u => (
-              <tr key={u.id}>
+              <tr key={u.id} className={u.eliminado ? 'row-eliminado' : ''}>
                 <td><code>{u.id}</code></td>
-                <td><strong>{u.usuario}</strong></td>
+                <td><strong style={u.eliminado ? { textDecoration: 'line-through', opacity: 0.6 } : {}}>{u.usuario}</strong></td>
                 <td>{u.correo}</td>
                 <td>
-                  <span className={`badge badge-${u.estado.toLowerCase()}`}>
-                    {u.estado}
-                  </span>
+                  {u.eliminado ? (
+                    <span className="badge badge-eliminado">Eliminado</span>
+                  ) : (
+                    <span className={`badge badge-${u.estado.toLowerCase()}`}>
+                      {u.estado}
+                    </span>
+                  )}
                 </td>
                 <td>
                   <span className={`badge ${u.rol === 'Administrador' ? 'badge-admin' : 'badge-user'}`}>

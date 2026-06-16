@@ -56,13 +56,19 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Filtrar usuarios según parámetros (RF-016, RN-025)"""
-        queryset = Usuario.objects.all()
+        queryset = Usuario.objects.all().order_by('-fecha_registro')
         
         # Filtros
         estado = self.request.query_params.get('estado')
         rol = self.request.query_params.get('rol')
         email_verificado = self.request.query_params.get('email_verificado')
-        eliminado = self.request.query_params.get('eliminado')
+        eliminado_param = self.request.query_params.get('eliminado')
+        
+        # Por defecto ocultar eliminados, a menos que se pida explicitamente
+        if eliminado_param:
+            queryset = queryset.filter(eliminado=eliminado_param.lower() == 'true')
+        else:
+            queryset = queryset.filter(eliminado=False)
         
         if estado:
             queryset = queryset.filter(estado=estado)
@@ -70,8 +76,6 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(rol=rol)
         if email_verificado:
             queryset = queryset.filter(email_verificado=email_verificado.lower() == 'true')
-        if eliminado:
-            queryset = queryset.filter(eliminado=eliminado.lower() == 'true')
         
         # Búsqueda por texto
         search = self.request.query_params.get('search')
