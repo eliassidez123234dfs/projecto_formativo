@@ -15,7 +15,7 @@ class Usuario(models.Model):
     
     # Campos principales
     id = models.AutoField(primary_key=True)
-    usuario = models.CharField(max_length=100, unique=True, null=False)
+    usuario = models.CharField(max_length=100, unique=True, null=False, verbose_name='username')
     correo = models.EmailField(unique=True, null=False, validators=[EmailValidator()])
     contrasena = models.CharField(max_length=255, null=False)
     
@@ -42,6 +42,11 @@ class Usuario(models.Model):
 
     # foreignkey a si mismo, PERMITE al administrador eliminar a un usuario sin crear tablas extras
     admin_eliminador = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='usuarios_eliminados')
+
+    # Django auth required attributes
+    USERNAME_FIELD = 'usuario'
+    REQUIRED_FIELDS = ['correo']
+    is_active = True
 
     # clase meta para poder poner indexes y mejorar la busquedad de lo siguiente de acuerdo a la matrix
     class Meta:

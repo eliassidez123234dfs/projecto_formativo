@@ -37,7 +37,7 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         if not image:
             return None
         request = self.context.get('request')
-        url = image.image.url
+        url = image.image_url
         return request.build_absolute_uri(url) if request else url
 
     def get_available_sizes(self, obj):

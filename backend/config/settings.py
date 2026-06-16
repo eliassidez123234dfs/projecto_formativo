@@ -51,7 +51,12 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt',
 ]
 
-INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS
+CLOUDINARY_APPS = [
+    'cloudinary_storage',
+    'cloudinary',
+]
+
+INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
 
 CKEDITOR_CONFIGS = {
     'default': {
@@ -103,6 +108,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+AUTH_USER_MODEL = 'users.Usuario'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -305,3 +311,38 @@ if not DEBUG and env('DATABASE_URL', default=''):
         'default': env.db('DATABASE_URL'),
     }
     DATABASES['default']['ATOMIC_REQUESTS'] = True
+
+# ─────────── Cloudinary Configuration ───────────
+try:
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.api
+
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default=''),
+        'API_KEY': env('CLOUDINARY_API_KEY', default=''),
+        'API_SECRET': env('CLOUDINARY_API_SECRET', default=''),
+    }
+
+    cloudinary.config(
+        cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+        api_key=CLOUDINARY_STORAGE['API_KEY'],
+        api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+        secure=True,
+    )
+
+    if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY']:
+        STORAGES = {
+            "default": {
+                "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            },
+        }
+except ImportError:
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default=''),
+        'API_KEY': env('CLOUDINARY_API_KEY', default=''),
+        'API_SECRET': env('CLOUDINARY_API_SECRET', default=''),
+    }
