@@ -10,19 +10,21 @@ from rest_framework.response import Response
 
 from apps.carts.models import Cart, CartItem
 from apps.users.api.admin_viewset import AdminPermission
+from apps.users.api.auth_backend import UsuarioJWTAuthentication
 
 from .serializers import CartAddSerializer, CartItemSerializer, CartSerializer, AdminCartListSerializer, AdminCartDetailSerializer
 
 
 class CartViewSet(viewsets.ViewSet):
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [UsuarioJWTAuthentication, SessionAuthentication]
     permission_classes = [AllowAny]
 
     def _get_cart(self, request):
         if request.user.is_authenticated:
-            if request.session.session_key:
-                session_cart = Cart.objects.filter(session_key=request.session.session_key).first()
-                if session_cart and session_cart.user_id != request.user.id:
+            skey = request.session.session_key if request.session.session_key else None
+            if skey:
+                session_cart = Cart.objects.filter(session_key=skey).first()
+                if session_cart and (not session_cart.user or session_cart.user_id != request.user.id):
                     self._merge_into_user_cart(session_cart, request.user)
             cart = Cart.objects.filter(user=request.user).first()
             if not cart:

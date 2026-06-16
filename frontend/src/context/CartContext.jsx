@@ -99,8 +99,12 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  const reloadCart = useCallback(async () => {
+    await loadCart();
+  }, [loadCart]);
+
   return (
-    <CartContext.Provider value={{ cart, loading, addItem, updateQuantity, removeItem, clearCartItems }}>
+    <CartContext.Provider value={{ cart, loading, addItem, updateQuantity, removeItem, clearCartItems, reloadCart }}>
       {children}
     </CartContext.Provider>
   );

@@ -15,6 +15,7 @@ from datetime import timedelta
 
 from apps.carts.models import Cart
 
+
 logger = logging.getLogger(__name__)
 
 from ..models import (
@@ -229,46 +230,38 @@ class LoginViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def login(self, request):
         """Endpoint de login con JWT (RF-008, RF-011)"""
-        try:
-            serializer = LoginSerializer(data=request.data)
-            if serializer.is_valid():
-                usuario = serializer.validated_data['usuario']
-                
-                # Migrar carrito anónimo al usuario y ciclar sesión
-                if request.session.session_key:
-                    session_cart = Cart.objects.filter(session_key=request.session.session_key).first()
-                    if session_cart:
-                        user_cart = Cart.objects.filter(user=usuario).first()
-                        if not user_cart:
-                            user_cart = Cart.objects.create(user=usuario)
-                        for item in session_cart.items.all():
-                            existing = user_cart.items.filter(product=item.product, variant=item.variant).first()
-                            if existing:
-                                existing.quantity += item.quantity
-                                existing.save()
-                            else:
-                                item.cart = user_cart
-                                item.save()
-                        if not session_cart.user or session_cart.user_id != usuario.id:
-                            session_cart.delete()
-                request.session.cycle_key()
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        usuario = serializer.validated_data['usuario']
 
-                # Generar tokens JWT
-                refresh = RefreshToken.for_user(usuario)
-                
-                return Response({
-                    'mensaje': 'Login exitoso',
-                    'usuario': UsuarioSerializer(usuario).data,
-                    'access': str(refresh.access_token),
-                    'refresh': str(refresh),
-                }, status=status.HTTP_200_OK)
-            
-            return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception as e:
-            logger.exception('Error en login: %s', e)
-            return Response({
-                'error': f'Error interno: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Migrar carrito anónimo al usuario y ciclar sesión
+        if request.session.session_key:
+            session_cart = Cart.objects.filter(session_key=request.session.session_key).first()
+            if session_cart:
+                user_cart = Cart.objects.filter(user=usuario).first()
+                if not user_cart:
+                    user_cart = Cart.objects.create(user=usuario)
+                for item in session_cart.items.all():
+                    existing = user_cart.items.filter(product=item.product, variant=item.variant).first()
+                    if existing:
+                        existing.quantity += item.quantity
+                        existing.save()
+                    else:
+                        item.cart = user_cart
+                        item.save()
+                if not session_cart.user or session_cart.user_id != usuario.id:
+                    session_cart.delete()
+        request.session.cycle_key()
+
+        # Generar tokens JWT
+        refresh = RefreshToken.for_user(usuario)
+
+        return Response({
+            'mensaje': 'Login exitoso',
+            'usuario': UsuarioSerializer(usuario).data,
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+        }, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def logout(self, request):

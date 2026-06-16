@@ -69,6 +69,8 @@ CKEDITOR_CONFIGS = {
 CKEDITOR_UPLOAD_PATH = "/media/" # indican donde se van a guardar los archivos
 
 MIDDLEWARE = [
+    # Request ID (debe ir al inicio)
+    'apps.users.middleware.RequestIDMiddleware',
     # Configurar los middleware con cors-headers para hacer los llamados de la api se configura
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -78,6 +80,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Logging de excepciones no manejadas
+    'apps.users.middleware.ExceptionLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -169,6 +173,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Django REST Framework
 REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'apps.users.error_handler.custom_exception_handler',
+
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
@@ -190,7 +196,11 @@ REST_FRAMEWORK = {
         'anon': '1000/hour', 
         'user': '10000/hour',
         'contact_form': '3/hour',
-    }
+    },
+
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
 }
 
 # JWT Configuration (RN-013)
