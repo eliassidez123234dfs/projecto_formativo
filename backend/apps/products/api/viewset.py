@@ -115,8 +115,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
-    @action(detail=True, methods=['patch'], url_path=r'images/(?P<image_id>[^/.]+)')
-    def update_image(self, request, pk=None, image_id=None):
+    @action(detail=True, methods=['patch', 'delete'], url_path=r'images/(?P<image_id>\d+)')
+    def manage_image(self, request, pk=None, image_id=None):
+        if request.method == 'PATCH':
+            return self._update_image(request, pk, image_id)
+        return self._delete_image(request, pk, image_id)
+
+    def _update_image(self, request, pk=None, image_id=None):
         product = self.get_object()
         image = get_object_or_404(ProductImage, pk=image_id, product=product)
 
@@ -131,8 +136,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         image.save()
         return Response(ProductImageSerializer(image, context={'request': request}).data)
 
-    @action(detail=True, methods=['delete'], url_path=r'images/(?P<image_id>[^/.]+)')
-    def delete_image(self, request, pk=None, image_id=None):
+    def _delete_image(self, request, pk=None, image_id=None):
         product = self.get_object()
         image = get_object_or_404(ProductImage, pk=image_id, product=product)
 
