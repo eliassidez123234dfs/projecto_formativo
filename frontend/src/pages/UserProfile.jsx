@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
+import '../styles/UserProfile.scss'
 
 export default function UserProfile() {
   const navigate = useNavigate()
@@ -25,17 +26,17 @@ export default function UserProfile() {
     setMsg(null)
     try {
       const token = localStorage.getItem('access_token')
-      const res = await fetch(`/api/admin/usuarios/${usuario.id}/`, {
+      const res = await fetch('/api/usuarios/actualizar_perfil/', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(editData),
       })
       const data = await (async () => { try { return await res.json() } catch { return {} } })()
       if (!res.ok) {
-        setMsg({ type: 'error', text: data.error || data.detail || 'Error al actualizar' })
+        setMsg({ type: 'error', text: data.error || data.detail || data.mensaje || 'Error al actualizar' })
         return
       }
-      const updated = { ...usuario, ...(data.usuario || editData) }
+      const updated = data.usuario || { ...usuario, ...editData }
       localStorage.setItem('usuario', JSON.stringify(updated))
       setUsuario(updated)
       setEditing(false)
@@ -58,10 +59,14 @@ export default function UserProfile() {
     setMsg(null)
     try {
       const token = localStorage.getItem('access_token')
-      const res = await fetch(`/api/admin/usuarios/${usuario.id}/resetear_password/`, {
+      const res = await fetch('/api/usuarios/cambiar_password/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ nueva_contrasena: passData.nueva }),
+        body: JSON.stringify({
+          contrasena_actual: passData.actual,
+          contrasena_nueva: passData.nueva,
+          confirmar_contrasena: passData.confirmar,
+        }),
       })
       const data = await (async () => { try { return await res.json() } catch { return {} } })()
       if (!res.ok) {
@@ -103,30 +108,30 @@ export default function UserProfile() {
         <h1 className="profile-title">Mi Cuenta</h1>
 
         <div className="profile-grid">
-          <aside className="profile-card-left">
-            <div className="profile-card-header">
-              <div className="profile-avatar">{initials}</div>
-              <h2>{usuario.usuario}</h2>
-              <p>{usuario.correo}</p>
+          <aside className="profile-card">
+            <div className="profile-card__header">
+              <div className="profile-card__avatar">{initials}</div>
+              <h2 className="profile-card__name">{usuario.usuario}</h2>
+              <p className="profile-card__email">{usuario.correo}</p>
             </div>
-            <div className="profile-card-body">
+            <div className="profile-card__body">
               <div className="profile-stat">
-                <span className="profile-stat-label">Estado</span>
-                <span className={`profile-stat-value ${usuario.estado === 'Activo' ? 'badge-active' : ''}`}>
+                <span className="profile-stat__label">Estado</span>
+                <span className={`profile-stat__value ${usuario.estado === 'Activo' ? 'profile-stat__value--active' : ''}`}>
                   {usuario.estado}
                 </span>
               </div>
               <div className="profile-stat">
-                <span className="profile-stat-label">Miembro desde</span>
-                <span className="profile-stat-value">
+                <span className="profile-stat__label">Miembro desde</span>
+                <span className="profile-stat__value">
                   {usuario.fecha_registro
                     ? new Date(usuario.fecha_registro).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
                     : '—'}
                 </span>
               </div>
               <div className="profile-stat">
-                <span className="profile-stat-label">Email verificado</span>
-                <span className="profile-stat-value" style={{ color: usuario.email_verificado ? '#16A34A' : '#D97706' }}>
+                <span className="profile-stat__label">Email verificado</span>
+                <span className={`profile-stat__value ${usuario.email_verificado ? 'profile-stat__value--verified' : 'profile-stat__value--unverified'}`}>
                   {usuario.email_verificado ? 'Sí' : 'No'}
                 </span>
               </div>
@@ -135,10 +140,10 @@ export default function UserProfile() {
 
           <div className="profile-sections">
             <section className="profile-section">
-              <div className="profile-section-header">
-                <h3 className="profile-section-title">Información personal</h3>
+              <div className="profile-section__header">
+                <h3 className="profile-section__title">Información personal</h3>
                 {!editing && (
-                  <button className="btn-secondary-sm" onClick={startEdit}>Editar perfil</button>
+                  <button className="profile-btn--outline" onClick={startEdit}>Editar perfil</button>
                 )}
               </div>
 
@@ -177,10 +182,10 @@ export default function UserProfile() {
                     </div>
                   </div>
                   <div className="profile-actions">
-                    <button className="btn btn-primary" disabled={saving}>
+                    <button className="profile-btn profile-btn--primary" disabled={saving}>
                       {saving ? 'Guardando...' : 'Guardar cambios'}
                     </button>
-                    <button type="button" className="btn-secondary-sm" onClick={() => { setEditing(false); setMsg(null) }}>
+                    <button type="button" className="profile-btn--outline" onClick={() => { setEditing(false); setMsg(null) }}>
                       Cancelar
                     </button>
                   </div>
@@ -189,10 +194,10 @@ export default function UserProfile() {
             </section>
 
             <section className="profile-section">
-              <div className="profile-section-header">
-                <h3 className="profile-section-title">Seguridad</h3>
+              <div className="profile-section__header">
+                <h3 className="profile-section__title">Seguridad</h3>
                 {!showPassForm && (
-                  <button className="btn-secondary-sm" onClick={() => setShowPassForm(true)}>
+                  <button className="profile-btn--outline" onClick={() => setShowPassForm(true)}>
                     Cambiar contraseña
                   </button>
                 )}
@@ -200,7 +205,18 @@ export default function UserProfile() {
 
               {showPassForm && (
                 <form onSubmit={handleChangePassword}>
-                  <div style={{ display: 'grid', gap: 16, maxWidth: 400 }}>
+                  <div className="profile-pass-grid">
+                    <div className="profile-field">
+                      <label>Contraseña actual</label>
+                      <input
+                        className="profile-input"
+                        type="password"
+                        value={passData.actual || ''}
+                        onChange={e => setPassData(p => ({ ...p, actual: e.target.value }))}
+                        required
+                        placeholder="Ingresa tu contraseña actual"
+                      />
+                    </div>
                     <div className="profile-field">
                       <label>Nueva contraseña</label>
                       <input
@@ -213,7 +229,7 @@ export default function UserProfile() {
                       />
                     </div>
                     <div className="profile-field">
-                      <label>Confirmar contraseña</label>
+                      <label>Confirmar nueva contraseña</label>
                       <input
                         className="profile-input"
                         type="password"
@@ -225,10 +241,10 @@ export default function UserProfile() {
                     </div>
                   </div>
                   <div className="profile-actions">
-                    <button className="btn btn-primary" disabled={savingPass}>
+                    <button className="profile-btn profile-btn--primary" disabled={savingPass}>
                       {savingPass ? 'Guardando...' : 'Cambiar contraseña'}
                     </button>
-                    <button type="button" className="btn-secondary-sm" onClick={() => { setShowPassForm(false); setPassData({}); setMsg(null) }}>
+                    <button type="button" className="profile-btn--outline" onClick={() => { setShowPassForm(false); setPassData({}); setMsg(null) }}>
                       Cancelar
                     </button>
                   </div>
@@ -238,190 +254,6 @@ export default function UserProfile() {
           </div>
         </div>
       </div>
-
-      <style>{`
-        .profile-page {
-          min-height: 100vh;
-          background: var(--color-bg-secondary);
-        }
-        .profile-content {
-          max-width: 1000px;
-          margin: 2rem auto;
-          padding: 0 1.5rem;
-        }
-        .profile-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #111827;
-          margin-bottom: 1.5rem;
-        }
-        .profile-grid {
-          display: grid;
-          grid-template-columns: 260px 1fr;
-          gap: 1.5rem;
-          align-items: start;
-        }
-
-        .profile-card-left {
-          background: white;
-          border-radius: 12px;
-          border: 1px solid #F3F4F6;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-          overflow: hidden;
-          position: sticky;
-          top: 80px;
-        }
-        .profile-card-header {
-          background: #DC2626;
-          padding: 1.5rem;
-          text-align: center;
-          color: white;
-        }
-        .profile-card-header h2 {
-          margin: 0;
-          font-size: 1.1rem;
-          font-weight: 700;
-        }
-        .profile-card-header p {
-          margin: 4px 0 0;
-          font-size: 0.8rem;
-          color: rgba(255,255,255,0.8);
-        }
-        .profile-avatar {
-          width: 64px;
-          height: 64px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.25);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin: 0 auto 0.75rem;
-          border: 2px solid rgba(255,255,255,0.4);
-        }
-        .profile-card-body {
-          padding: 1rem 1.25rem;
-        }
-        .profile-stat {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.6rem 0;
-          border-bottom: 1px solid #F9FAFB;
-          font-size: 0.85rem;
-        }
-        .profile-stat:last-child { border-bottom: none; }
-        .profile-stat-label { color: #9CA3AF; }
-        .profile-stat-value { font-weight: 500; color: #111827; }
-        .badge-active { color: #16A34A; font-weight: 600; }
-
-        .profile-sections {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .profile-section {
-          background: white;
-          border-radius: 12px;
-          border: 1px solid #F3F4F6;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-          padding: 1.25rem 1.5rem;
-        }
-        .profile-section-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
-        }
-        .profile-section-title {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #111827;
-          margin: 0;
-        }
-        .btn-secondary-sm {
-          padding: 6px 14px;
-          font-size: 0.8rem;
-          border: 1px solid #E5E7EB;
-          border-radius: 6px;
-          background: white;
-          color: #374151;
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-        .btn-secondary-sm:hover {
-          border-color: #DC2626;
-          color: #DC2626;
-        }
-        .profile-field-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-        }
-        .profile-field label {
-          display: block;
-          font-size: 0.7rem;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: #9CA3AF;
-          margin-bottom: 0.25rem;
-        }
-        .profile-field p {
-          font-size: 0.9rem;
-          color: #111827;
-          font-weight: 500;
-          margin: 0;
-        }
-        .profile-input {
-          width: 100%;
-          padding: 8px 10px;
-          font-size: 0.9rem;
-          border: 1px solid #E5E7EB;
-          border-radius: 6px;
-          background: white;
-          color: #111827;
-          outline: none;
-        }
-        .profile-input:focus {
-          border-color: #DC2626;
-          box-shadow: 0 0 0 2px rgba(220,38,38,0.1);
-        }
-        .profile-actions {
-          display: flex;
-          gap: 10px;
-          margin-top: 1rem;
-        }
-        .profile-msg {
-          padding: 12px 16px;
-          border-radius: 8px;
-          margin-bottom: 1.5rem;
-          font-size: 0.85rem;
-          line-height: 1.5;
-        }
-        .profile-msg--success {
-          background: #ECFDF5;
-          color: #065F46;
-          border: 1px solid #A7F3D0;
-        }
-        .profile-msg--error {
-          background: #FEF2F2;
-          color: #991B1B;
-          border: 1px solid #FECACA;
-        }
-
-        @media (max-width: 768px) {
-          .profile-grid {
-            grid-template-columns: 1fr;
-          }
-          .profile-card-left {
-            position: static;
-          }
-          .profile-field-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
     </div>
   )
 }

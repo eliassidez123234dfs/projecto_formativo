@@ -16,11 +16,9 @@ class ProductImageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'image_url', 'created_at']
 
     def get_image_url(self, obj):
-        request = self.context.get('request')
         if not obj.image:
             return None
-        url = obj.image.url
-        return request.build_absolute_uri(url) if request else url
+        return obj.image.url
 
 
 class VariantSerializer(serializers.ModelSerializer):
@@ -32,7 +30,7 @@ class VariantSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'display_label', 'created_at']
 
     def get_display_label(self, obj):
-        return f'{obj.size} / {obj.color}'
+        return f'Talla {obj.size} — {obj.color}'
 
 
 class ProductWriteSerializer(serializers.ModelSerializer):
@@ -78,9 +76,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         image = obj.main_image
         if not image:
             return None
-        request = self.context.get('request')
-        url = image.image.url
-        return request.build_absolute_uri(url) if request else url
+        return image.image.url
 
     def get_images_count(self, obj):
         return obj.images.count()
