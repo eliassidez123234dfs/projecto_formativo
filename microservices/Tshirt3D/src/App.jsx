@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Canvas from "./canvas/index.jsx";
 import Customizer from "./pages/Customizer.jsx";
+import Header from "./components/Header.jsx";
 import Preview from "./pages/Preview.jsx";
 
 function App() {
@@ -10,6 +11,7 @@ function App() {
     <main className="app transition-all ease-in">
       {!previewOrder ? (
         <>
+          <Header overlay={true} />
           <Canvas />
           <Customizer onOrderCreated={setPreviewOrder} />
         </>
