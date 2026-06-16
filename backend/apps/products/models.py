@@ -147,7 +147,7 @@ class Variant(models.Model):
 		]
 
 	def __str__(self) -> str:
-		return f'{self.product.name} - {self.size} / {self.color}'
+		return f'{self.product.name} — Talla {self.size} — {self.color}'
 
 	def clean(self):
 		super().clean()

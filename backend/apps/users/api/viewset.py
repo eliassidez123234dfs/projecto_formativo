@@ -13,6 +13,8 @@ from django.db.models import Q
 import secrets
 from datetime import timedelta
 
+from apps.carts.models import Cart
+
 logger = logging.getLogger(__name__)
 
 from ..models import (
@@ -233,6 +235,25 @@ class LoginViewSet(viewsets.ViewSet):
             if serializer.is_valid():
                 usuario = serializer.validated_data['usuario']
                 
+                # Migrar carrito anónimo al usuario y ciclar sesión
+                if request.session.session_key:
+                    session_cart = Cart.objects.filter(session_key=request.session.session_key).first()
+                    if session_cart:
+                        user_cart = Cart.objects.filter(user=usuario).first()
+                        if not user_cart:
+                            user_cart = Cart.objects.create(user=usuario)
+                        for item in session_cart.items.all():
+                            existing = user_cart.items.filter(product=item.product, variant=item.variant).first()
+                            if existing:
+                                existing.quantity += item.quantity
+                                existing.save()
+                            else:
+                                item.cart = user_cart
+                                item.save()
+                        if not session_cart.user or session_cart.user_id != usuario.id:
+                            session_cart.delete()
+                request.session.cycle_key()
+
                 # Generar tokens JWT
                 refresh = RefreshToken.for_user(usuario)
                 
@@ -253,6 +274,7 @@ class LoginViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def logout(self, request):
         """Endpoint de logout (RF-012, RN-013)"""
+        request.session.cycle_key()
         return Response({
             'mensaje': 'Sesión cerrada exitosamente'
         }, status=status.HTTP_200_OK)

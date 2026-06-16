@@ -27,12 +27,10 @@ class CartItemSerializer(serializers.ModelSerializer):
         image = obj.product.main_image
         if not image:
             return None
-        request = self.context.get('request')
-        url = image.image.url
-        return request.build_absolute_uri(url) if request else url
+        return image.image.url
 
     def get_variant_label(self, obj):
-        return f'{obj.variant.size} / {obj.variant.color}'
+        return f'Talla {obj.variant.size} — {obj.variant.color}'
 
     def get_subtotal(self, obj):
         return str(obj.subtotal)

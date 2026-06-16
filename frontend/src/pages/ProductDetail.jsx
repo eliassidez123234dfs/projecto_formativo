@@ -11,7 +11,8 @@ export const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedVariantId, setSelectedVariantId] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const { cart, addItem } = useCart();
   const [adding, setAdding] = useState(false);
@@ -25,7 +26,8 @@ export const ProductDetail = () => {
         setProduct(data);
         const firstAvailable = data.variants?.find((v) => v.stock > 0);
         if (firstAvailable) {
-          setSelectedVariantId(firstAvailable.id);
+          setSelectedSize(firstAvailable.size);
+          setSelectedColor(firstAvailable.color);
           setQuantity(1);
         }
         const img = data.images?.[0]?.image_url || data.main_image || null;
@@ -39,7 +41,28 @@ export const ProductDetail = () => {
     loadProduct();
   }, [id]);
 
-  const selectedVariant = product?.variants?.find((v) => v.id === Number(selectedVariantId));
+  const sizes = [...new Set(product?.variants?.map(v => v.size) || [])];
+
+  const colorsInSize = product?.variants?.filter(v => v.size === selectedSize) || [];
+  const colors = [...new Set(colorsInSize.map(v => v.color))];
+
+  const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor);
+
+  function selectSize(size) {
+    setSelectedSize(size);
+    const firstColor = product?.variants?.find(v => v.size === size)?.color;
+    setSelectedColor(firstColor || '');
+    setQuantity(1);
+  }
+
+  function selectColor(color) {
+    setSelectedColor(color);
+    setQuantity(1);
+  }
+
+  function variantStock(size, color) {
+    return product?.variants?.find(v => v.size === size && v.color === color)?.stock || 0;
+  }
 
   const handleAddToCart = async () => {
     if (!selectedVariant) return;
@@ -59,6 +82,20 @@ export const ProductDetail = () => {
     const stock = selectedVariant?.stock || 1;
     if (newQty >= 1 && newQty <= stock) setQuantity(newQty);
   };
+
+  function colorToHex(color) {
+    const map = {
+      rojo: '#DC2626', rojo_oscuro: '#991B1B', rojo_claro: '#FCA5A5',
+      azul: '#2563EB', azul_oscuro: '#1E3A5F', azul_claro: '#93C5FD',
+      verde: '#16A34A', verde_oscuro: '#166534', verde_claro: '#86EFAC',
+      negro: '#111827', gris: '#6B7280', gris_claro: '#D1D5DB',
+      blanco: '#FFFFFF', crema: '#FEF3C7', beige: '#F5F5DC',
+      amarillo: '#EAB308', naranja: '#EA580C', morado: '#9333EA',
+      rosa: '#EC4899', cafe: '#78350F', dorado: '#D97706',
+      plateado: '#9CA3AF', marino: '#1E3A5F', vino: '#7F1D1D',
+    };
+    return map[color.toLowerCase().replace(/\s+/g, '_')] || '#6B7280';
+  }
 
   const r = 'var(--color-primary)';
 
@@ -146,27 +183,50 @@ export const ProductDetail = () => {
             <h1 className="pd-name">{product.name}</h1>
             <p className="pd-price">${Number(product.base_price).toFixed(2)}</p>
 
-            {!product.ready_to_publish && product.checklist && (
-              <div className="pd-checklist">
-                <p>Producto no publicable</p>
-                <ul>
-                  {(Array.isArray(product.checklist) ? product.checklist : []).map((item, idx) => (
-                    <li key={idx}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
             {product.variants?.length > 0 ? (
               <div className="pd-variant-selector">
-                <label>Selecciona talla y color:</label>
-                <select value={selectedVariantId} onChange={(e) => { setSelectedVariantId(e.target.value); setQuantity(1); }}>
-                  {product.variants.map((variant) => (
-                    <option key={variant.id} value={variant.id} disabled={variant.stock === 0}>
-                      {variant.display_label} {variant.stock === 0 ? '(agotado)' : `(${variant.stock} disponible/s)`}
-                    </option>
-                  ))}
-                </select>
+                <div className="pd-variant-group">
+                  <label>Talla:</label>
+                  <div className="pd-variant-chips">
+                    {sizes.map(size => {
+                      const hasStock = product.variants.some(v => v.size === size && v.stock > 0);
+                      return (
+                        <button key={size}
+                          className={`pd-chip ${selectedSize === size ? 'pd-chip--active' : ''} ${!hasStock ? 'pd-chip--disabled' : ''}`}
+                          onClick={() => hasStock && selectSize(size)}
+                          disabled={!hasStock}>
+                          {size}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="pd-variant-group">
+                  <label>Color:</label>
+                  <div className="pd-variant-chips">
+                    {colors.map(color => {
+                      const stock = variantStock(selectedSize, color);
+                      return (
+                        <button key={color}
+                          className={`pd-chip ${selectedColor === color ? 'pd-chip--active' : ''} ${stock === 0 ? 'pd-chip--disabled' : ''}`}
+                          onClick={() => stock > 0 && selectColor(color)}
+                          disabled={stock === 0}>
+                          <span className="pd-chip-color" style={{ background: colorToHex(color) }} />
+                          {color}
+                          {stock === 0 && <span className="pd-chip-agotado">Agotado</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {selectedVariant && (
+                  <div className="pd-selected-info">
+                    {selectedVariant.stock > 0
+                      ? <span className="pd-stock-ok">Stock disponible: {selectedVariant.stock} unidades</span>
+                      : <span className="pd-stock-no">Producto agotado</span>
+                    }
+                  </div>
+                )}
               </div>
             ) : (
               <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No hay variantes disponibles para este producto.</p>
@@ -199,10 +259,6 @@ export const ProductDetail = () => {
                 3D
               </Button>
             </div>
-
-            {product.publication_message && (
-              <p className="pd-pub-msg">{product.publication_message}</p>
-            )}
 
             {product.description && (
               <div className="pd-description">
@@ -268,26 +324,39 @@ export const ProductDetail = () => {
         }
         .pd-name { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; line-height: 1.2; }
         .pd-price { font-size: 1.5rem; font-weight: 700; color: #DC2626; margin-bottom: 1.5rem; }
-        .pd-checklist {
-          background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px;
-          padding: 12px 16px; margin-bottom: 1.5rem;
+        .pd-variant-selector { margin-bottom: 1.5rem; }
+        .pd-variant-group { margin-bottom: 1rem; }
+        .pd-variant-group label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 8px; color: var(--color-text-secondary); }
+        .pd-variant-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pd-chip {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 8px 18px; border: 2px solid var(--color-border);
+          border-radius: 8px; background: var(--color-bg); color: var(--color-text);
+          font-size: 0.85rem; font-weight: 500; cursor: pointer;
+          transition: all 0.15s ease; user-select: none;
         }
-        .pd-checklist p { color: #991B1B; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem; }
-        .pd-checklist ul { margin: 0; padding-left: 1.2rem; }
-        .pd-checklist li { color: #991B1B; font-size: 0.8rem; }
-        .pd-variant-selector { margin-bottom: 1.25rem; }
-        .pd-variant-selector label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; }
-        .pd-variant-selector select {
-          width: 100%; padding: 10px 12px; border: 1px solid var(--color-border);
-          border-radius: 8px; font-size: 0.9rem; background: var(--color-bg); color: var(--color-text);
-          outline: none;
+        .pd-chip:hover:not(.pd-chip--disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+        .pd-chip--active { border-color: var(--color-primary); background: var(--color-primary); color: white; }
+        .pd-chip--active:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); color: white; }
+        .pd-chip--disabled { opacity: 0.4; cursor: not-allowed; text-decoration: line-through; }
+        .pd-chip-color {
+          display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+          border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0;
         }
+        .pd-chip--active .pd-chip-color { border-color: rgba(255,255,255,0.3); }
+        .pd-chip-agotado { font-size: 0.65rem; color: var(--color-error); font-weight: 600; margin-left: 2px; }
+        .pd-selected-info {
+          margin-top: 10px; padding: 10px 14px;
+          background: var(--color-bg-tertiary); border-radius: 8px;
+          font-size: 0.85rem;
+        }
+        .pd-stock-ok { color: var(--color-success); font-weight: 500; }
+        .pd-stock-no { color: var(--color-error); font-weight: 500; }
         .pd-qty { margin-bottom: 1.5rem; }
         .pd-qty label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; }
         .pd-qty-controls { display: flex; align-items: center; gap: 12px; }
         .pd-qty-controls span { font-weight: 600; min-width: 24px; text-align: center; }
         .pd-actions { display: flex; gap: 8px; margin-bottom: 1.5rem; }
-        .pd-pub-msg { font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1.5rem; }
         .pd-description { border-top: 1px solid var(--color-border); padding-top: 1.25rem; }
         .pd-description h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
         .pd-description p { font-size: 0.9rem; color: var(--color-text-secondary); line-height: 1.7; }

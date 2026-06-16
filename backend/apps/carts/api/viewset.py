@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.carts.models import Cart, CartItem
@@ -13,14 +15,37 @@ from .serializers import CartAddSerializer, CartItemSerializer, CartSerializer, 
 
 
 class CartViewSet(viewsets.ViewSet):
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [AllowAny]
+
     def _get_cart(self, request):
+        if request.user.is_authenticated:
+            if request.session.session_key:
+                session_cart = Cart.objects.filter(session_key=request.session.session_key).first()
+                if session_cart and session_cart.user_id != request.user.id:
+                    self._merge_into_user_cart(session_cart, request.user)
+            cart = Cart.objects.filter(user=request.user).first()
+            if not cart:
+                cart = Cart.objects.create(user=request.user)
+            return cart
         if not request.session.session_key:
             request.session.save()
         cart, _ = Cart.objects.get_or_create(session_key=request.session.session_key)
-        if request.user.is_authenticated and cart.user_id != request.user.id:
-            cart.user = request.user
-            cart.save()
         return cart
+
+    def _merge_into_user_cart(self, session_cart, user):
+        user_cart = Cart.objects.filter(user=user).first()
+        if not user_cart:
+            user_cart = Cart.objects.create(user=user)
+        for item in session_cart.items.all():
+            existing = user_cart.items.filter(product=item.product, variant=item.variant).first()
+            if existing:
+                existing.quantity += item.quantity
+                existing.save()
+            else:
+                item.cart = user_cart
+                item.save()
+        session_cart.delete()
 
     def list(self, request):
         cart = self._get_cart(request)
