@@ -13,6 +13,7 @@ import uuid
 from datetime import timedelta
 import secrets
 import string
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -184,14 +185,54 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
                     'error': f'El campo {campo} es requerido'
                 }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Generar contraseña temporal (RN-001)
-        contrasena_temporal = self._generar_contrasena_temporal()
+        # Validar email con expresión regular
+        correo = datos['correo']
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', correo):
+            return Response({
+                'error': 'El formato del correo no es válido.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar que el usuario no exista
+        if Usuario.objects.filter(usuario=datos['usuario']).exists():
+            return Response({
+                'error': 'Ya existe un usuario con ese nombre.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if Usuario.objects.filter(correo=correo).exists():
+            return Response({
+                'error': 'Ya existe un usuario con ese correo.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar contraseña si se envía, o generar temporal
+        contrasena = datos.get('password')
+        if contrasena:
+            if len(contrasena) < 8:
+                return Response({
+                    'error': 'La contraseña debe tener al menos 8 caracteres.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if not re.search(r'[A-Z]', contrasena):
+                return Response({
+                    'error': 'La contraseña debe incluir al menos una letra mayúscula.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if not re.search(r'\d', contrasena):
+                return Response({
+                    'error': 'La contraseña debe incluir al menos un número.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if not re.search(r'[!@#$%^&*(),.?":{}|<>]', contrasena):
+                return Response({
+                    'error': 'La contraseña debe incluir al menos un carácter especial.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            contrasena_final = contrasena
+            contrasena_temporal = None
+        else:
+            contrasena_temporal = self._generar_contrasena_temporal()
+            contrasena_final = contrasena_temporal
         
         try:
             usuario = Usuario.objects.create(
                 usuario=datos['usuario'],
-                correo=datos['correo'],
-                contrasena=make_password(contrasena_temporal),
+                correo=correo,
+                contrasena=make_password(contrasena_final),
                 rol=datos['rol'],
                 estado=datos['estado']
             )
@@ -206,7 +247,10 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             )
             
             # Enviar email con credenciales (RF-018)
-            self._enviar_email_bienvenida(usuario, contrasena_temporal, token.token)
+            if contrasena_temporal:
+                self._enviar_email_bienvenida(usuario, contrasena_temporal, token.token)
+            else:
+                self._enviar_email_verificacion(usuario, token.token)
             
             # Registrar en auditoría
             self._registrar_auditoria(
@@ -444,7 +488,8 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         )
         
         return Response({
-            'mensaje': 'Usuario eliminado exitosamente'
+            'mensaje': 'Usuario eliminado exitosamente',
+            'usuario': UsuarioDetailSerializer(usuario).data
         }, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get'])
@@ -541,6 +586,32 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             )
         except Exception as exc:
             logger.exception('Error al enviar email de bienvenida a %s: %s', usuario.correo, exc)
+    
+    def _enviar_email_verificacion(self, usuario, token):
+        """Enviar email de verificación cuando el admin crea usuario con password propia"""
+        enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
+        asunto = "Verifica tu correo electrónico"
+        mensaje = f"""
+        Hola {usuario.usuario},
+        
+        Tu cuenta ha sido creada por un administrador.
+        
+        Por favor, verifica tu correo haciendo clic en el siguiente enlace:
+        {enlace}
+        
+        Este enlace expira en 24 horas.
+        """
+        
+        try:
+            send_mail(
+                asunto,
+                mensaje,
+                settings.DEFAULT_FROM_EMAIL,
+                [usuario.correo],
+                fail_silently=False
+            )
+        except Exception as exc:
+            logger.exception('Error al enviar email de verificación a %s: %s', usuario.correo, exc)
     
     def _enviar_email_reset_password(self, usuario, contrasena_temporal, token):
         """Enviar email de reseteo de contraseña"""
