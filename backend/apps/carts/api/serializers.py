@@ -27,7 +27,7 @@ class CartItemSerializer(serializers.ModelSerializer):
         image = obj.product.main_image
         if not image:
             return None
-        return image.image.url
+        return image.image_url
 
     def get_variant_label(self, obj):
         return f'Talla {obj.variant.size} — {obj.variant.color}'

@@ -12,3 +12,5 @@ celery==5.4.0 ## para tareas asincrónicas (email)
 setuptools==78.1.0 ## necesario para pkg_resources en Python 3.12
 gunicorn==23.0.0 ## servidor WSGI para producción
 django-ratelimit==4.1.0 ## para limitar el número de requests por IP
+cloudinary==1.41.0 ## SDK de Cloudinary para Python
+django-cloudinary-storage==0.3.0 ## Storage backend de Cloudinary para Django
