@@ -36,7 +36,9 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         image = obj.main_image
         if not image:
             return None
-        return image.image.url
+        request = self.context.get('request')
+        url = image.image.url
+        return request.build_absolute_uri(url) if request else url
 
     def get_available_sizes(self, obj):
         return list(obj.variants.filter(stock__gt=0).values_list('size', flat=True).distinct())
@@ -57,7 +59,7 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         return max(variant.stock * obj.base_price for variant in variants)
 
     def get_categories(self, obj):
-        return [cat.name for cat in obj.categories.all()]
+        return [cat.category.name for cat in obj.categories.all()]
 
 
 class SearchHistorySerializer(serializers.ModelSerializer):

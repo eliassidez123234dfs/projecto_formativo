@@ -21,6 +21,7 @@ import { RecuperarPassword, NuevaPassword } from './pages/Password';
 // Nuevos imports desde la rama jose
 import AdminProducts from './pages/AdminProducts';
 import AdminProductDetail from './pages/AdminProductDetail';
+import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminContact from './pages/AdminContact';
 import AdminAudit from './pages/AdminAudit';
@@ -54,7 +55,8 @@ function App() {
             <Route path="/password" element={<RecuperarPassword />} />
             <Route path="/nueva-password" element={<NuevaPassword />} />
 
-            {/* Nuevas rutas desde jose */}
+            {/* Panel administrativo */}
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin-products" element={<AdminProducts />} />
             <Route path="/admin-products/detail/:id" element={<AdminProductDetail />} />
             <Route path="/admin-users" element={<AdminUsers />} />

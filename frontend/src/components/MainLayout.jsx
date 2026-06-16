@@ -132,6 +132,7 @@ export default function MainLayout({ children, title, subtitle }) {
   }, [usuario, isAdmin, navigate, location.pathname])
 
   const menuItems = [
+    { label: 'Resumen', href: '/admin', icon: Icons.Dashboard, admin: true },
     { label: 'Dashboard', href: '/dashboard', icon: Icons.Dashboard },
     { label: 'Usuarios', href: '/admin-users', icon: Icons.Users, admin: true },
     { label: 'Productos', href: '/admin-products', icon: Icons.Products, admin: true },
@@ -151,6 +152,7 @@ export default function MainLayout({ children, title, subtitle }) {
 
   const isActive = (href) => {
     if (href === '/dashboard') return location.pathname === '/dashboard'
+    if (href === '/admin') return location.pathname === '/admin'
     return location.pathname.startsWith(href)
   }
 

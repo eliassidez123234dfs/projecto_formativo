@@ -134,6 +134,7 @@ export function Dashboard() {
   const quickActions = [
     { label: 'Ver Catálogo', action: () => navigate('/catalog'), variant: 'btn-secondary' },
     ...(isAdmin ? [
+      { label: 'Panel Admin', action: () => navigate('/admin'), variant: 'btn-primary' },
       { label: 'Productos', action: () => navigate('/admin-products'), variant: 'btn-secondary' },
       { label: 'Usuarios', action: () => navigate('/admin-users'), variant: 'btn-secondary' },
       { label: 'Carritos', action: () => navigate('/admin-cart'), variant: 'btn-secondary' },
