@@ -42,16 +42,15 @@ class RegistroViewSet(viewsets.ViewSet):
             with transaction.atomic():
                 usuario = serializer.save()
                 
-                # Enviar email de verificación
-                if not self._enviar_email_verificacion(usuario):
-                    transaction.set_rollback(True)
-                    return Response({
-                        'mensaje': 'Registro no completado. No se pudo enviar el correo de verificación. Contacta al administrador.',
-                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                # Enviar email de verificación (no bloquea el registro si falla)
+                email_enviado = self._enviar_email_verificacion(usuario)
+                if not email_enviado:
+                    logger.warning('No se pudo enviar email de verificación a %s', usuario.correo)
             
             return Response({
                 'mensaje': 'Registro exitoso. Verifica tu correo para activar la cuenta.',
-                'usuario': UsuarioSerializer(usuario).data
+                'usuario': UsuarioSerializer(usuario).data,
+                'email_enviado': email_enviado,
             }, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
