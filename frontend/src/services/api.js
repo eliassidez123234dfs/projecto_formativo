@@ -113,10 +113,14 @@ export const fetchProductDetail = async (productId) => {
   return response.data;
 };
 
-// ─────────── CART (usa sesión, NO JWT) ───────────
+// ─────────── CART (JWT si autenticado, sesión si anónimo) ───────────
+function cartClient() {
+  return localStorage.getItem('access_token') ? api : sessionApi;
+}
+
 export const fetchCart = async () => {
   try {
-    const response = await sessionApi.get('cart/');
+    const response = await cartClient().get('cart/');
     return response.data;
   } catch (err) {
     if (err.response && err.response.status === 401) {
@@ -127,7 +131,7 @@ export const fetchCart = async () => {
 };
 
 export const addToCart = async (productId, variantId, quantity = 1) => {
-  const response = await sessionApi.post('cart/add/', {
+  const response = await cartClient().post('cart/add/', {
     product_id: productId,
     variant_id: variantId,
     quantity,
@@ -136,16 +140,16 @@ export const addToCart = async (productId, variantId, quantity = 1) => {
 };
 
 export const updateCartItemQuantity = async (itemId, quantity) => {
-  const response = await sessionApi.patch(`cart/items/${itemId}/quantity/`, { quantity });
+  const response = await cartClient().patch(`cart/items/${itemId}/quantity/`, { quantity });
   return response.data;
 };
 
 export const removeCartItem = async (itemId) => {
-  await sessionApi.delete(`cart/items/${itemId}/remove/`);
+  await cartClient().delete(`cart/items/${itemId}/remove/`);
 };
 
 export const clearCart = async () => {
-  await sessionApi.delete('cart/clear/');
+  await cartClient().delete('cart/clear/');
 };
 
 // ─────────── ADMIN ───────────

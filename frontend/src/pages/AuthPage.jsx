@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { buildApiUrl } from '../services/api'
+import { useCart } from '../context/CartContext'
 
 function passwordStrength(pw) {
   let score = 0
@@ -18,6 +19,7 @@ function passwordStrength(pw) {
 export default function AuthPage({ defaultMode = 'login' }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { reloadCart } = useCart()
   const [mode, setMode] = useState(defaultMode)
   const [animKey, setAnimKey] = useState(0)
   const [loginData, setLoginData] = useState({ correo: '', contrasena: '' })
@@ -121,6 +123,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
         localStorage.setItem('access_token', data.access)
         localStorage.setItem('refresh_token', data.refresh)
         localStorage.setItem('usuario', JSON.stringify(data.usuario))
+        await reloadCart()
         const usr = data.usuario || {}
         navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
       }
