@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { Environment, Center } from "@react-three/drei";
+import { Center } from "@react-three/drei";
 import { useSnapshot } from "valtio";
 
 import Shirt from "./Shirt";
@@ -18,11 +18,21 @@ const CanvasModel = () => {
       className="w-full max-w-full h-full transition-all ease-in"
     >
       <ambientLight intensity={0.5} />
-      <Environment preset="city" background={!snap.captureTransparent} />
+      {!snap.captureTransparent && <color attach="background" args={["#ffffff"]} />}
+
+      <directionalLight
+        castShadow
+        intensity={0.8}
+        position={[5, 10, 5]}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-near={0.5}
+        shadow-camera-far={50}
+      />
 
       <CameraRig>
         <Backdrop />
-        <Center>
+        <Center position={[0, 0.05, 0]}>
           <Shirt />
         </Center>
       </CameraRig>
