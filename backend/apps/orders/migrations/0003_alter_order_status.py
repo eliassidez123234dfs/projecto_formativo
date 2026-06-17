@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('orders', '0002_order_cloudinary_public_id_order_design_color_and_more'),
+        ('orders', '0001_initial'),
     ]
 
     operations = [
