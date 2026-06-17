@@ -3,6 +3,14 @@ import { useNavigate, Link } from 'react-router-dom'
 import { fetchAdminCarts } from '../services/api'
 import MainLayout from '../components/MainLayout'
 
+const STATUS_STYLES = {
+  pendiente: { bg: '#fef3c7', color: '#92400e' },
+  pagado: { bg: '#dbeafe', color: '#1e40af' },
+  enviado: { bg: '#e0e7ff', color: '#3730a3' },
+  entregado: { bg: '#d1fae5', color: '#065f46' },
+  cancelado: { bg: '#fee2e2', color: '#991b1b' },
+}
+
 export default function AdminCart() {
   const navigate = useNavigate()
   const [carts, setCarts] = useState({ results: [], count: 0 })
@@ -45,6 +53,7 @@ export default function AdminCart() {
                   <th>Items</th>
                   <th>Total</th>
                   <th>Creado</th>
+                  <th>Estado</th>
                   <th>Acción</th>
                 </tr>
               </thead>
@@ -56,6 +65,15 @@ export default function AdminCart() {
                     <td>{cart.items_count}</td>
                     <td>${Number(cart.total_amount).toFixed(2)}</td>
                     <td>{new Date(cart.created_at).toLocaleDateString()}</td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12,
+                        fontWeight: 600, background: (STATUS_STYLES[cart.order_status] || { bg: '#fef3c7' }).bg,
+                        color: (STATUS_STYLES[cart.order_status] || { color: '#92400e' }).color,
+                      }}>
+                        {cart.order_status_display}
+                      </span>
+                    </td>
                     <td>
                       <Link to={`/admin-cart/${cart.id}`} className="btn btn-sm btn-secondary">
                         Ver detalle

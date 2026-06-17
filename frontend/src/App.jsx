@@ -23,10 +23,13 @@ import AdminProducts from './pages/AdminProducts';
 import AdminProductDetail from './pages/AdminProductDetail';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
+import AdminOrders from './pages/AdminOrders';
+import AdminOrderDetail from './pages/AdminOrderDetail';
 import AdminContact from './pages/AdminContact';
 import AdminAudit from './pages/AdminAudit';
 import UserProfile from './pages/UserProfile';
 import CheckoutPage from './pages/CheckoutPage';
+import OrderConfirmation from './pages/OrderConfirmation';
 // Si CatalogPage es diferente a Catalog, renómbralo o unifica
 // import CatalogPage from './pages/CatalogPage';
 
@@ -60,11 +63,14 @@ function App() {
             <Route path="/admin-products" element={<AdminProducts />} />
             <Route path="/admin-products/detail/:id" element={<AdminProductDetail />} />
             <Route path="/admin-users" element={<AdminUsers />} />
+            <Route path="/admin-orders" element={<AdminOrders />} />
+            <Route path="/admin-orders/:id" element={<AdminOrderDetail />} />
             <Route path="/admin-cart" element={<AdminCart />} />
             <Route path="/admin-cart/:id" element={<AdminCartDetail />} />
             <Route path="/admin-contact" element={<AdminContact />} />
             <Route path="/admin-audit" element={<AdminAudit />} />
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/resultado" element={<OrderConfirmation />} />
 
             {/* Opcional: si quieres mantener también /catalogo como alias de /catalog */}
             <Route path="/catalogo" element={<Catalog />} />

@@ -1,13 +1,29 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { fetchCart, addToCart, updateCartItemQuantity, removeCartItem, clearCart as clearCartApi } from '../services/api';
 
-const CartContext = createContext();
+export const CartContext = createContext();
 
 export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState({ items: [], total_items: 0, total_amount: '0.00' });
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
+
+  const showToast = useCallback((message, type = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ message, type });
+    toastTimer.current = setTimeout(() => {
+      setToast(null);
+      toastTimer.current = null;
+    }, 3000);
+  }, []);
+
+  const dismissToast = useCallback(() => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(null);
+  }, []);
 
   // Cargar el carrito al iniciar (si hay sesión)
   const loadCart = useCallback(async () => {
@@ -78,6 +94,7 @@ export const CartProvider = ({ children }) => {
 
   const removeItem = async (itemId) => {
     try {
+      const wasLastItem = cart.items.length === 1;
       await removeCartItem(itemId);
       setCart(prev => {
         const newItems = prev.items.filter(item => item.id !== itemId);
@@ -85,6 +102,7 @@ export const CartProvider = ({ children }) => {
         const totalAmount = newItems.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2);
         return { ...prev, items: newItems, total_items: totalItems, total_amount: totalAmount };
       });
+      if (wasLastItem) showToast('Carrito vaciado exitosamente');
     } catch (error) {
       throw error;
     }
@@ -94,6 +112,7 @@ export const CartProvider = ({ children }) => {
     try {
       await clearCartApi();
       setCart({ items: [], total_items: 0, total_amount: '0.00' });
+      showToast('Carrito vaciado exitosamente');
     } catch (error) {
       console.error('Error al vaciar el carrito:', error);
     }
@@ -104,7 +123,7 @@ export const CartProvider = ({ children }) => {
   }, [loadCart]);
 
   return (
-    <CartContext.Provider value={{ cart, loading, addItem, updateQuantity, removeItem, clearCartItems, reloadCart }}>
+    <CartContext.Provider value={{ cart, loading, toast, addItem, updateQuantity, removeItem, clearCartItems, reloadCart, dismissToast }}>
       {children}
     </CartContext.Provider>
   );

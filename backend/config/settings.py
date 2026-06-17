@@ -297,6 +297,14 @@ if not DEBUG and env('DATABASE_URL', default=''):
     }
     DATABASES['default']['ATOMIC_REQUESTS'] = True
 
+# ─────────── Wompi Payment Gateway ───────────
+WOMPI_PUBLIC_KEY = env('WOMPI_PUBLIC_KEY', default='')
+WOMPRI_PRIVATE_KEY = env('WOMPRI_PRIVATE_KEY', default='')
+WOMPI_INTEGRITY_KEY = env('WOMPI_INTEGRITY_KEY', default='')
+WOMPI_API_URL = env('WOMPI_API_URL', default='https://sandbox.wompi.co')
+WOMPI_WEBHOOK_SECRET = env('WOMPI_WEBHOOK_SECRET', default='')
+WOMPI_REDIRECT_URL = env('WOMPI_REDIRECT_URL', default=f'{FRONTEND_URL}/checkout/resultado')
+
 # ─────────── Cloudinary Configuration ───────────
 try:
     import cloudinary

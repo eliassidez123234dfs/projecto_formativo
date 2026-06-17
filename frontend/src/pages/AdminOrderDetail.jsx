@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { fetchAdminCartDetail, updateCartStatus, reprocessOrder } from '../services/api'
+import { fetchAdminOrderDetail, updateOrderStatus, reprocessOrder } from '../services/api'
 import MainLayout from '../components/MainLayout'
 
 const STATUS_OPTIONS = [
@@ -20,10 +20,10 @@ const STATUS_STYLES = {
   cancelado: { bg: '#fee2e2', color: '#991b1b' },
 }
 
-export default function AdminCartDetail() {
+export default function AdminOrderDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [cart, setCart] = useState(null)
+  const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -36,27 +36,22 @@ export default function AdminCartDetail() {
     let mounted = true
     async function load() {
       try {
-        const data = await fetchAdminCartDetail(id)
-        if (mounted) setCart(data)
-      } catch { if (mounted) setCart(null) }
+        const data = await fetchAdminOrderDetail(id)
+        if (mounted) setOrder(data)
+      } catch { if (mounted) setOrder(null) }
       finally { if (mounted) setLoading(false) }
     }
     load()
     return () => { mounted = false }
   }, [id])
 
-  const canEditStatus = cart?.order_status && cart.order_status !== 'pagado' && cart.order_status !== 'cancelado'
+  const canEditStatus = order && order.status !== 'pagado' && order.status !== 'cancelado'
 
   const handleStatusChange = async (newStatus) => {
     setSaving(true)
     try {
-      const updated = await updateCartStatus(id, newStatus)
-      setCart(prev => ({
-        ...prev,
-        order_id: updated.order_id,
-        order_status: updated.order_status,
-        order_status_display: updated.order_status_display,
-      }))
+      const updated = await updateOrderStatus(id, newStatus)
+      setOrder(prev => ({ ...prev, ...updated }))
       toast.success(`Estado cambiado a "${STATUS_OPTIONS.find(s => s.value === newStatus)?.label}"`)
     } catch (err) {
       const msg = err.response?.data?.error || 'Error al actualizar estado'
@@ -69,12 +64,8 @@ export default function AdminCartDetail() {
   const handleReprocess = async () => {
     setSaving(true)
     try {
-      const updated = await reprocessOrder(cart.order_id)
-      setCart(prev => ({
-        ...prev,
-        order_status: updated.status,
-        order_status_display: STATUS_OPTIONS.find(s => s.value === updated.status)?.label || updated.status,
-      }))
+      const updated = await reprocessOrder(id)
+      setOrder(prev => ({ ...prev, ...updated }))
       toast.success('Pedido reprocesado. Ahora está Pendiente.')
     } catch (err) {
       const msg = err.response?.data?.error || 'Error al reprocesar pedido'
@@ -85,35 +76,47 @@ export default function AdminCartDetail() {
   }
 
   if (loading) return <MainLayout><div className="card"><div className="empty-state"><p>Cargando...</p></div></div></MainLayout>
-  if (!cart) return <MainLayout><div className="card"><div className="empty-state"><p>Carrito no encontrado.</p></div></div></MainLayout>
+  if (!order) return <MainLayout><div className="card"><div className="empty-state"><p>Pedido no encontrado.</p></div></div></MainLayout>
 
-  const statusStyle = STATUS_STYLES[cart.order_status] || { bg: '#f3f4f6', color: '#6b7280' }
+  const statusStyle = STATUS_STYLES[order.status] || { bg: '#f3f4f6', color: '#6b7280' }
 
   return (
     <MainLayout
-      title={`Carrito #${cart.id}`}
-      subtitle={cart.user_name}
+      title={`Pedido #${order.id}`}
+      subtitle={order.customer_name || 'Sin nombre'}
     >
       <div style={{ marginBottom: 16 }}>
-        <Link to="/admin-cart" className="btn btn-sm btn-ghost">← Volver a carritos</Link>
+        <Link to="/admin-orders" className="btn btn-sm btn-ghost">← Volver a pedidos</Link>
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 24, fontSize: 14 }}>
-          <div><strong>Usuario:</strong> {cart.user_name}</div>
-          <div><strong>Items:</strong> {cart.total_items}</div>
-          <div><strong>Total:</strong> ${Number(cart.total_amount).toFixed(2)}</div>
-          <div><strong>Creado:</strong> {new Date(cart.created_at).toLocaleDateString()}</div>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 32, fontSize: 14, flexWrap: 'wrap' }}>
+          <div>
+            <strong>Cliente:</strong>{' '}
+            {order.customer_name || '—'}
+          </div>
+          <div>
+            <strong>Email:</strong>{' '}
+            {order.customer_email || '—'}
+          </div>
+          <div>
+            <strong>Total:</strong>{' '}
+            ${Number(order.total).toFixed(2)}
+          </div>
+          <div>
+            <strong>Fecha:</strong>{' '}
+            {new Date(order.created_at).toLocaleDateString()}
+          </div>
         </div>
 
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', fontSize: 14 }}>
+        <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <strong>Estado del pedido:</strong>
+            <strong>Estado actual:</strong>
             <span style={{
               display: 'inline-block', padding: '4px 14px', borderRadius: 999, fontSize: 13,
               fontWeight: 600, background: statusStyle.bg, color: statusStyle.color,
             }}>
-              {cart.order_status_display || 'Pendiente'}
+              {STATUS_OPTIONS.find(s => s.value === order.status)?.label || order.status}
             </span>
           </div>
 
@@ -139,7 +142,7 @@ export default function AdminCartDetail() {
               </>
             )}
 
-            {cart.order_status === 'cancelado' && cart.order_id && (
+            {order.status === 'cancelado' && (
               <button
                 onClick={handleReprocess}
                 disabled={saving}
@@ -152,19 +155,22 @@ export default function AdminCartDetail() {
           </div>
         </div>
 
-        {cart.order_status === 'pagado' && (
-          <div style={{ padding: '0 20px 16px', fontSize: 13, color: '#dc2626' }}>
+        {order.status === 'pagado' && (
+          <div style={{ padding: '0 24px 16px', fontSize: 13, color: '#dc2626' }}>
             Los pedidos pagados no pueden modificar su estado.
           </div>
         )}
-        {cart.order_status === 'cancelado' && (
-          <div style={{ padding: '0 20px 16px', fontSize: 13, color: '#dc2626' }}>
+        {order.status === 'cancelado' && (
+          <div style={{ padding: '0 24px 16px', fontSize: 13, color: '#dc2626' }}>
             Pedido cancelado. Use "Procesar nuevamente" para reactivarlo.
           </div>
         )}
       </div>
 
       <div className="card">
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 14 }}>
+          Productos
+        </div>
         <table className="admin-table">
           <thead>
             <tr>
@@ -176,23 +182,14 @@ export default function AdminCartDetail() {
             </tr>
           </thead>
           <tbody>
-            {cart.items?.length === 0 ? (
-              <tr><td colSpan="5" style={{ textAlign: 'center', padding: 24, color: '#999' }}>Carrito vacío</td></tr>
-            ) : cart.items.map(item => (
+            {order.items?.length === 0 ? (
+              <tr><td colSpan="5" style={{ textAlign: 'center', padding: 24, color: '#999' }}>Sin productos</td></tr>
+            ) : order.items?.map(item => (
               <tr key={item.id}>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {item.product_image ? (
-                      <img src={item.product_image} alt={item.product_name} style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: 48, height: 48, borderRadius: 6, background: '#eee' }} />
-                    )}
-                    <strong>{item.product_name}</strong>
-                  </div>
-                </td>
+                <td><strong>{item.product_name}</strong></td>
                 <td>
                   <span style={{ background: '#f3f4f6', padding: '3px 8px', borderRadius: 4, fontSize: 13, color: '#374151' }}>
-                    Talla: {item.variant_size} · Color: {item.variant_color}
+                    {item.variant_label}
                   </span>
                 </td>
                 <td>{item.quantity}</td>
@@ -201,12 +198,6 @@ export default function AdminCartDetail() {
               </tr>
             ))}
           </tbody>
-          <tfoot>
-            <tr style={{ borderTop: '2px solid var(--color-border)' }}>
-              <td colSpan="4" style={{ textAlign: 'right', fontWeight: 700, padding: '12px 16px' }}>Total</td>
-              <td style={{ fontWeight: 700, padding: '12px 16px' }}>${Number(cart.total_amount).toFixed(2)}</td>
-            </tr>
-          </tfoot>
         </table>
       </div>
     </MainLayout>
