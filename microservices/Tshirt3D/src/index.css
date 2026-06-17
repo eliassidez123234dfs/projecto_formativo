@@ -17,6 +17,8 @@ html {
 
 .app {
   @apply relative w-full h-screen overflow-hidden;
+  padding-top: 64px; /* espacio para el header */
+  box-sizing: border-box;
 }
 
 .home {
@@ -56,11 +58,11 @@ html {
 }
 
 .glassmorphism {
-  background: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 2px 30px 0 rgba(31, 38, 135, 0.07);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 2px 30px 0 rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(0, 0, 0, 0.25);
 }
 
 input[type="file"] {
@@ -71,11 +73,11 @@ input[type="file"] {
 
 .sketch-picker {
   width: 170px !important;
-  background: rgba(255, 255, 255, 0.25) !important;
-  box-shadow: 0 2px 30px 0 rgba(31, 38, 135, 0.07) !important;
-  backdrop-filter: blur(4px) !important;
-  -webkit-backdrop-filter: blur(4px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+  box-shadow: 0 2px 30px 0 rgba(0, 0, 0, 0.15) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.25) !important;
   border-radius: 6px !important;
 }
 

@@ -32,26 +32,27 @@ const Backdrop = () => {
   return (
     <AccumulativeShadows
       ref={shadows}
-      temporal={true} // smooth out the edges of the shadows over time
-      frames={60}
-      alphaTest={0.85} // Transparency of the shadows
-      scale={10}
+      temporal={true}
+      frames={30}
+      alphaTest={0.25} // reduce the darkness/coverage of the accumulated shadow
+      opacity={0.5}
+      scale={6}
       rotation={[Math.PI / 2, 0, 0]}
-      position={[0, 0, -0.14]}
+      position={[0, -0.3, -0.14]}
     >
       <RandomizedLight
-        amount={4}
-        radius={9}
-        intensity={0.55}
-        ambient={0.25}
-        position={[5, 5, -10]}
+        amount={2}
+        radius={5}
+        intensity={0.28}
+        ambient={0.1}
+        position={[5, 6, -6]}
       />
       <RandomizedLight
-        amount={4}
-        radius={5}
-        intensity={0.25}
-        ambient={0.55}
-        position={[-5, 5, -9]}
+        amount={2}
+        radius={4}
+        intensity={0.18}
+        ambient={0.08}
+        position={[-5, 5, -6]}
       />
     </AccumulativeShadows>
   );

@@ -1,20 +1,47 @@
 from django.db import models
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import BaseUserManager
 from django.core.validators import EmailValidator
 from django.utils import timezone
-import uuid
+import secrets
 
-# Clse de usuarios para el modelo de la base de datos del usuario bien estructurado
+
+class UsuarioManager(BaseUserManager):
+    def get_by_natural_key(self, username):
+        return self.get(usuario=username)
+
+    def create_user(self, usuario, correo, contrasena=None, **extra_fields):
+        if not usuario:
+            raise ValueError('El nombre de usuario es obligatorio')
+        if not correo:
+            raise ValueError('El correo es obligatorio')
+        correo = self.normalize_email(correo)
+        user = self.model(usuario=usuario, correo=correo, **extra_fields)
+        if contrasena:
+            user.contrasena = make_password(contrasena)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, usuario, correo, contrasena=None, **extra_fields):
+        extra_fields.setdefault('estado', 'Activo')
+        extra_fields.setdefault('rol', 'Administrador')
+        return self.create_user(usuario, correo, contrasena, **extra_fields)
+
+# Clase de usuarios para el modelo de la base de datos del usuario bien estructurado
+# Patron Active Record
 class Usuario(models.Model):
     """Modelo unificado de Usuario (RI-001)"""
     # Los diferentes estados que usare en el apartado de usuarios
     ESTADO_CHOICES = (('Activo', 'Activo'), ('Inactivo', 'Inactivo'), ('Bloqueado', 'Bloqueado'),)
+    
+    objects = UsuarioManager()
     
     # Roles a usar en el usuario 
     ROL_CHOICES = (('Administrador', 'Administrador'), ('Usuario', 'Usuario'),)
     
     # Campos principales
     id = models.AutoField(primary_key=True)
-    usuario = models.CharField(max_length=100, unique=True, null=False)
+    usuario = models.CharField(max_length=100, unique=True, null=False, verbose_name='username')
     correo = models.EmailField(unique=True, null=False, validators=[EmailValidator()])
     contrasena = models.CharField(max_length=255, null=False)
     
@@ -38,7 +65,14 @@ class Usuario(models.Model):
     # Soft delete
     eliminado = models.BooleanField(default=False)
     fecha_eliminacion = models.DateTimeField(null=True, blank=True)
+
+    # foreignkey a si mismo, PERMITE al administrador eliminar a un usuario sin crear tablas extras
     admin_eliminador = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='usuarios_eliminados')
+
+    # Django auth required attributes
+    USERNAME_FIELD = 'usuario'
+    REQUIRED_FIELDS = ['correo']
+    is_active = True
 
     # clase meta para poder poner indexes y mejorar la busquedad de lo siguiente de acuerdo a la matrix
     class Meta:
@@ -50,6 +84,14 @@ class Usuario(models.Model):
             models.Index(fields=['fecha_registro']),
         ]
     
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     # funcion para mostrar en el backend los nombres de usuario y los de correo
     def __str__(self):
         return f"{self.usuario} ({self.correo})"
@@ -65,7 +107,7 @@ class Token_Verificacion(models.Model):
     
     id = models.AutoField(primary_key=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='tokens_verificacion') # nombre para identificar
-    token = models.CharField(max_length=255, unique=True, default=uuid.uuid4)
+    token = models.CharField(max_length=255, unique=True, default=secrets.token_urlsafe)
     tipo = models.CharField(max_length=30, choices=TIPO_CHOICES)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_expiracion = models.DateTimeField()

@@ -2,7 +2,7 @@ django==5.2.13
 django-environ==0.13.0 ## permite poner en secreto las contraseñas en variables de ambientes para que no aparescan en git
 django-cors-headers==4.9.0 ## Permite la comunicacion del front-end con el back-end, esto decide quien puede acceder a la API 
 djangorestframework==3.16.1 # nos permite crea apis con django
-djangorestframework-simplejwt==5.5.1 ## autenticación JWT
+djangorestframework-simplejwt==5.4.0 ## autenticación JWT
 pillow==12.1.1 # nos permite trabajar con imagenes
 django-storages==1.14.6 ## poder guardar las imagenes en AWS o videos, cosas que pesen o se guardan en gran cantidad se guardan en un sdn 
 django-ckeditor==6.7.3 ## crear cosas de manera mas rica para que se vea mejor
@@ -12,5 +12,8 @@ psycopg2-binary==2.9.12 ## esto es para poder trabajar con postgresql
 mysql-connector-python==8.4.0 ## esto es para poder trabajar con mysql, esta es la version que se recomienda usar, pero a veces da problemas en windows, por eso se uso mysqlclient
 python-decouple==3.8 ## para manejar variables de entorno
 celery==5.4.0 ## para tareas asincrónicas (email)
+setuptools==78.1.0 ## necesario para pkg_resources en Python 3.12
+gunicorn==23.0.0 ## servidor WSGI para producción
 django-ratelimit==4.1.0 ## para limitar el número de requests por IP
-setuptools==79.0.1 ## para manejar dependencias y empaquetado de la aplicación
+cloudinary==1.41.0 ## SDK de Cloudinary para Python
+django-cloudinary-storage==0.3.0 ## Storage backend de Cloudinary para Django

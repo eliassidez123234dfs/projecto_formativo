@@ -12,9 +12,9 @@
    ========================================= */
 :root {
   /* Colores de tienda */
-  --red:        #D72638;
-  --red-dark:   #A81C2A;
-  --red-light:  #FF3D50;
+  --red:        #dc2626;
+  --red-dark:   #b91c1c;
+  --red-light:  #fef2f2;
   --black:      #0A0A0A;
   --gray-dark:  #1A1A1A;
   --gray-mid:   #2E2E2E;
@@ -91,30 +91,6 @@
 
   /* z-index */
   --z-sticky: 100;  /* ← Agregado para .header */
-  
-  /* Corp colors */
-  --pf-red: #c1121f;
-  --pf-red-dark: #8a0b14;
-  --pf-black: #111111;
-  --pf-gray-900: #1f2933;
-  --pf-gray-700: #4b5563;
-  --pf-gray-300: #d1d5db;
-  --pf-gray-100: #f4f5f7;
-  --pf-white: #ffffff;
-  --pf-shadow: 0 14px 34px rgba(17, 17, 17, 0.09);
-  --pf-radius: 16px;
-
-  --bs-primary: var(--pf-red);
-  --bs-primary-rgb: 193, 18, 31;
-  --bs-dark: var(--pf-black);
-  --bs-font-sans-serif: 'Source Sans 3', 'Segoe UI', sans-serif;
-  --bs-body-font-size: 1.02rem;
-  --bs-body-line-height: 1.55;
-  --bs-body-color: var(--pf-gray-900);
-  --bs-body-bg: var(--pf-gray-100);
-  
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 /* =========================================

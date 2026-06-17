@@ -77,7 +77,8 @@ class Product(models.Model):
 
 class ProductImage(models.Model):
 	product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
-	image = models.ImageField(upload_to='products/%Y/%m')
+	image = models.ImageField(upload_to='products/%Y/%m', blank=True, null=True)
+	cloudinary_url = models.URLField(max_length=500, blank=True, null=True, help_text='URL directa de Cloudinary')
 	is_main = models.BooleanField(default=False)
 	order = models.PositiveSmallIntegerField(default=1)
 	created_at = models.DateTimeField(auto_now_add=True)
@@ -91,35 +92,46 @@ class ProductImage(models.Model):
 	def __str__(self) -> str:
 		return f'{self.product.name} - imagen {self.order}'
 
+	@property
+	def image_url(self):
+		if self.cloudinary_url:
+			return self.cloudinary_url
+		if self.image:
+			try:
+				return self.image.url
+			except Exception:
+				pass
+		return None
+
 	def clean(self):
 		super().clean()
 		if self.product_id and self.product.images.exclude(pk=self.pk).count() >= 5:
 			raise ValidationError({'image': 'Máximo 5 imágenes por producto.'})
-		if not self.image:
-			raise ValidationError({'image': 'La imagen es obligatoria.'})
+		if not self.image and not self.cloudinary_url:
+			raise ValidationError({'image': 'Debe proporcionar una imagen o una URL de Cloudinary.'})
 
-		extension = Path(self.image.name).suffix.lower()
-		if extension not in {'.jpg', '.jpeg', '.png'}:
-			raise ValidationError({'image': 'Solo se permiten imágenes JPG o PNG.'})
+		if self.image:
+			extension = Path(self.image.name).suffix.lower()
+			if extension not in {'.jpg', '.jpeg', '.png'}:
+				raise ValidationError({'image': 'Solo se permiten imágenes JPG o PNG.'})
 
-		if getattr(self.image, 'size', 0) > 2 * 1024 * 1024:
-			raise ValidationError({'image': 'La imagen no puede superar 2MB.'})
+			if getattr(self.image, 'size', 0) > 2 * 1024 * 1024:
+				raise ValidationError({'image': 'La imagen no puede superar 2MB.'})
 
-		try:
-			from PIL import Image
-
-			self.image.seek(0)
-			img = Image.open(self.image)
-			width, height = img.size
-			if width < 400 or height < 400:
-				raise ValidationError({'image': 'La resolución mínima es 400x400 píxeles.'})
-		except ValidationError:
-			raise
-		except Exception as exc:
-			raise ValidationError({'image': f'No se pudo validar la imagen: {exc}'}) from exc
+			try:
+				from PIL import Image
+				self.image.seek(0)
+				with Image.open(self.image) as image_file:
+					width, height = image_file.size
+					if width < 400 or height < 400:
+						raise ValidationError({'image': 'La resolución mínima es 400x400 píxeles.'})
+			except ValidationError:
+				raise
+			except Exception as exc:
+				raise ValidationError({'image': f'No se pudo validar la imagen: {exc}'})
 
 	def save(self, *args, **kwargs):
-		if self.product_id and not self.order:
+		if self.product_id and (not self.order or ProductImage.objects.filter(product=self.product, order=self.order).exclude(pk=self.pk).exists()):
 			last_order = self.product.images.exclude(pk=self.pk).aggregate(models.Max('order'))['order__max'] or 0
 			self.order = last_order + 1
 
@@ -147,7 +159,7 @@ class Variant(models.Model):
 		]
 
 	def __str__(self) -> str:
-		return f'{self.product.name} - {self.size} / {self.color}'
+		return f'{self.product.name} — Talla {self.size} — {self.color}'
 
 	def clean(self):
 		super().clean()
