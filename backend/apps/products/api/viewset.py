@@ -73,10 +73,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return ProductDetailSerializer
 
     def get_serializer_context(self):
-        context = super().get_serializer_context()
-        if self.kwargs.get('pk'):
-            context['product'] = self.get_object()
-        return context
+        return super().get_serializer_context()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -238,6 +235,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='add-to-cart')
     def add_to_cart(self, request):
         """Agregar producto al carrito desde catálogo o editor 3D"""
+        from apps.carts.models import Cart, CartItem
+
         serializer = CartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -245,15 +244,16 @@ class ProductViewSet(viewsets.ModelViewSet):
         variant = serializer.validated_data['variant']
         quantity = serializer.validated_data['quantity']
         
-        # Obtener o crear carrito (sesión o usuario)
-        from apps.carts.models import Cart, CartItem
-        
-        session_key = request.session.session_key
-        if not session_key:
-            request.session.create()
+        # Priorizar carrito del usuario autenticado sobre el de sesión
+        user = request.user
+        if user.is_authenticated:
+            cart, _ = Cart.objects.get_or_create(usuario=user)
+        else:
             session_key = request.session.session_key
-        
-        cart, created = Cart.objects.get_or_create(session_key=session_key)
+            if not session_key:
+                request.session.create()
+                session_key = request.session.session_key
+            cart, _ = Cart.objects.get_or_create(session_key=session_key)
         
         # Verificar si ya existe el item en el carrito
         cart_item, created = CartItem.objects.get_or_create(
@@ -264,7 +264,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         
         if not created:
-            # Actualizar cantidad si ya existe
             new_quantity = cart_item.quantity + quantity
             if new_quantity > variant.stock:
                 return Response(

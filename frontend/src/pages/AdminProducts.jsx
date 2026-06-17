@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { fetchAdminStats } from '../services/api'
+import toast from 'react-hot-toast'
+import { fetchAdminStats, api } from '../services/api'
 import MainLayout from '../components/MainLayout'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
@@ -37,15 +38,22 @@ export default function AdminProducts() {
   const { stats } = useAdminStats()
 
   async function openEdit(productId) {
-    const response = await fetch(`/api/products/${productId}/`)
-    const data = await response.json()
-    setEditingProduct(data)
-    setShowForm(true)
+    try {
+      const response = await api.get(`/api/products/${productId}/`)
+      setEditingProduct(response.data)
+      setShowForm(true)
+    } catch {
+      toast.error('Error al cargar el producto')
+    }
   }
 
   async function toggleActive(productId) {
-    await fetch(`/api/products/${productId}/toggle-active/`, { method: 'PATCH' })
-    setRefreshKey(k => k + 1)
+    try {
+      await api.patch(`/api/products/${productId}/toggle-active/`)
+      setRefreshKey(k => k + 1)
+    } catch {
+      toast.error('Error al cambiar estado del producto')
+    }
   }
 
   const statCards = [

@@ -58,20 +58,7 @@ CLOUDINARY_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
 
-CKEDITOR_CONFIGS = {
-    'default': {
-        'toolbar': 'Custom',
-        'toolbar_Custom': [
-            ['Bold', 'Italic', 'Underline'],
-            ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
-            ['Link', 'Unlink'],
-            ['RemoveFormat', 'Source']
-        ],
-        'autoParagraph': False
-    }
-}   
 
-CKEDITOR_UPLOAD_PATH = "/media/" # indican donde se van a guardar los archivos
 
 MIDDLEWARE = [
     # Request ID (debe ir al inicio)
@@ -113,7 +100,6 @@ AUTH_USER_MODEL = 'users.Usuario'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Usar SQLite para desarrollo (más fácil para el equipo)
 # Usar SQLite para desarrollo (más fácil para el equipo)
 DATABASES = {
     'default': {
@@ -292,7 +278,6 @@ CORS_ORIGIN_WHITELIST = env.list(
         'http://192.168.137.7:5173',
     ]
 )
-
 # Definir que dominios pueden hacer los request
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
