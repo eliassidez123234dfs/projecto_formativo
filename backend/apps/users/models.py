@@ -1,7 +1,31 @@
 from django.db import models
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import BaseUserManager
 from django.core.validators import EmailValidator
 from django.utils import timezone
 import secrets
+
+
+class UsuarioManager(BaseUserManager):
+    def get_by_natural_key(self, username):
+        return self.get(usuario=username)
+
+    def create_user(self, usuario, correo, contrasena=None, **extra_fields):
+        if not usuario:
+            raise ValueError('El nombre de usuario es obligatorio')
+        if not correo:
+            raise ValueError('El correo es obligatorio')
+        correo = self.normalize_email(correo)
+        user = self.model(usuario=usuario, correo=correo, **extra_fields)
+        if contrasena:
+            user.contrasena = make_password(contrasena)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, usuario, correo, contrasena=None, **extra_fields):
+        extra_fields.setdefault('estado', 'Activo')
+        extra_fields.setdefault('rol', 'Administrador')
+        return self.create_user(usuario, correo, contrasena, **extra_fields)
 
 # Clase de usuarios para el modelo de la base de datos del usuario bien estructurado
 # Patron Active Record
@@ -9,6 +33,8 @@ class Usuario(models.Model):
     """Modelo unificado de Usuario (RI-001)"""
     # Los diferentes estados que usare en el apartado de usuarios
     ESTADO_CHOICES = (('Activo', 'Activo'), ('Inactivo', 'Inactivo'), ('Bloqueado', 'Bloqueado'),)
+    
+    objects = UsuarioManager()
     
     # Roles a usar en el usuario 
     ROL_CHOICES = (('Administrador', 'Administrador'), ('Usuario', 'Usuario'),)
