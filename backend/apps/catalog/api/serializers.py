@@ -47,16 +47,10 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         return list(obj.variants.filter(stock__gt=0).values_list('color', flat=True).distinct())
 
     def get_min_price(self, obj):
-        variants = obj.variants.filter(stock__gt=0)
-        if not variants.exists():
-            return obj.base_price
-        return min(variant.stock * obj.base_price for variant in variants)
+        return obj.base_price
 
     def get_max_price(self, obj):
-        variants = obj.variants.filter(stock__gt=0)
-        if not variants.exists():
-            return obj.base_price
-        return max(variant.stock * obj.base_price for variant in variants)
+        return obj.base_price
 
     def get_categories(self, obj):
         return [cat.category.name for cat in obj.categories.all()]
