@@ -3,66 +3,37 @@ import { useNavigate } from 'react-router-dom';
 import { fetchCatalog, fetchProductDetail } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
-import { Button } from '../components/Button';
 import { Header } from '../components/Header';
 
 export const Catalog = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
-    q: '',
-    category: '',
-    min_price: '',
-    max_price: '',
-    ordering: '',
-    page: 1,
+    q: '', category: '', min_price: '', max_price: '', ordering: '', page: 1,
   });
-  const [filtersData, setFiltersData] = useState({
-    categories: [],
-    sizes: [],
-    colors: [],
-    price_range: { min: 0, max: 0 },
-  });
+  const [filtersData, setFiltersData] = useState({ categories: [], price_range: { min: 0, max: 0 } });
   const [pageInfo, setPageInfo] = useState(null);
   const navigate = useNavigate();
   const { cart, addItem } = useCart();
 
   const loadProducts = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await fetchCatalog(filters);
       setProducts(data.results || data);
       setPageInfo(data.next ? { next: data.next, previous: data.previous, count: data.count } : null);
-      if (data.filters) {
-        setFiltersData(data.filters);
-      }
-    } catch (error) {
-      console.error('Error al cargar catálogo:', error);
+      if (data.filters) setFiltersData(data.filters);
+    } catch (err) {
+      setError('Error al cargar productos');
       setProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadProducts();
-  }, [filters]);
-
-  const handleResetFilters = () => {
-    setFilters({
-      q: '',
-      category: '',
-      min_price: '',
-      max_price: '',
-      ordering: '',
-      page: 1,
-    });
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    loadProducts();
-  };
+  useEffect(() => { loadProducts() }, [filters]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -75,11 +46,8 @@ export const Catalog = () => {
 
   const handleAddToCart = async (product) => {
     try {
-      // Si el listado no incluye variantes, pedir el detalle antes de agregar
       let prod = product;
-      if (!prod.variants) {
-        prod = await fetchProductDetail(product.id);
-      }
+      if (!prod.variants) prod = await fetchProductDetail(product.id);
       const variantId = prod.variants?.find(v => v.stock > 0)?.id;
       if (!variantId) {
         alert('Este producto no tiene variantes disponibles');
@@ -95,80 +63,107 @@ export const Catalog = () => {
 
   return (
     <>
-      <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={cart?.total_items || 0} />
-      <div className="container" style={{ paddingTop: '2rem' }}>
-        <h1>Catálogo</h1>
+      <Header cartCount={cart?.total_items || 0} />
+      <div className="catalog-page">
+        <div className="catalog-bg-shapes">
+          <div className="shape shape-1" />
+          <div className="shape shape-2" />
+          <div className="shape shape-3" />
+          <div className="shape shape-4" />
+          <div className="shape shape-5" />
+          <div className="shape shape-6" />
+          <span className="sparkle sparkle-1">✦</span>
+          <span className="sparkle sparkle-2">✦</span>
+          <span className="sparkle sparkle-3">✦</span>
+          <span className="sparkle sparkle-4">✦</span>
+          <span className="dot dot-1" />
+          <span className="dot dot-2" />
+          <span className="dot dot-3" />
+        </div>
+
+        <div className="catalog-hero">
+          <h1 className="catalog-title">Catálogo</h1>
+          {pageInfo && (
+            <p className="catalog-subtitle">{pageInfo.count} producto{(pageInfo.count || products.length) !== 1 ? 's' : ''} encontrado{(pageInfo.count || products.length) !== 1 ? 's' : ''}</p>
+          )}
+        </div>
 
         {filtersData.categories.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            {filtersData.categories.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                className="btn btn-sm btn-outline"
-                onClick={() => navigate(`/category/${category.id}`)}
-              >
-                {category.name}
+          <div className="catalog-chips">
+            {filtersData.categories.map((cat) => (
+              <button key={cat.id} type="button"
+                className={`chip ${filters.category === cat.id ? 'chip--active' : ''}`}
+                onClick={() => setFilters(p => ({ ...p, category: p.category === cat.id ? '' : Number(cat.id), page: 1 }))}>
+                {cat.name}
               </button>
             ))}
-            {filters.category && (
-              <button type="button" className="btn btn-sm btn-secondary" onClick={handleResetFilters}>
-                Limpiar categoría
-              </button>
-            )}
           </div>
         )}
 
-        {/* Filtros */}
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-          <input
-            type="text"
-            name="q"
-            placeholder="Buscar..."
-            value={filters.q}
-            onChange={handleFilterChange}
-            className="form-input"
-          />
-          <select name="ordering" value={filters.ordering} onChange={handleFilterChange} className="form-input">
-            <option value="">Ordenar por</option>
-            <option value="name">Nombre (A-Z)</option>
-            <option value="-name">Nombre (Z-A)</option>
-            <option value="base_price">Precio (menor primero)</option>
-            <option value="-base_price">Precio (mayor primero)</option>
-            <option value="popularity">Popularidad</option>
-          </select>
-          <select name="category" value={filters.category} onChange={handleFilterChange} className="form-input">
-            <option value="">Todas las categorías</option>
-            {filtersData.categories.map((category) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </select>
-          <input
-            type="number"
-            name="min_price"
-            placeholder="Precio min"
-            value={filters.min_price}
-            onChange={handleFilterChange}
-            className="form-input"
-          />
-          <input
-            type="number"
-            name="max_price"
-            placeholder="Precio max"
-            value={filters.max_price}
-            onChange={handleFilterChange}
-            className="form-input"
-          />
-          <Button type="submit">Buscar</Button>
-        </form>
+        <div className="catalog-filters">
+          <div className="filter-item search-wrap">
+            <svg className="search-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input name="q" placeholder="Buscar productos..." value={filters.q} onChange={handleFilterChange} className="filter-input" />
+          </div>
+          <div className="filter-item">
+            <select name="ordering" value={filters.ordering} onChange={handleFilterChange} className="filter-select">
+              <option value="">Ordenar por</option>
+              <option value="name">Nombre A-Z</option>
+              <option value="-name">Nombre Z-A</option>
+              <option value="base_price">Precio: menor a mayor</option>
+              <option value="-base_price">Precio: mayor a menor</option>
+            </select>
+          </div>
+          <div className="filter-item">
+            <select name="category" value={filters.category} onChange={handleFilterChange} className="filter-select">
+              <option value="">Todas las categorías</option>
+              {filtersData.categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-item price-group">
+            <input name="min_price" type="number" placeholder="$ Mín" value={filters.min_price} onChange={handleFilterChange} className="filter-input price-input" />
+            <span className="price-sep">—</span>
+            <input name="max_price" type="number" placeholder="$ Máx" value={filters.max_price} onChange={handleFilterChange} className="filter-input price-input" />
+          </div>
+          <button type="button" className="filter-btn" onClick={loadProducts}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Buscar
+          </button>
+        </div>
 
         {loading ? (
-          <p>Cargando productos...</p>
+          <div className="product-grid">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="sk-card" style={{ animationDelay: `${i * 0.08}s` }}>
+                <div className="sk-img" />
+                <div className="sk-body">
+                  <div className="sk-line" style={{ width: '70%' }} />
+                  <div className="sk-line" style={{ width: '35%', height: 22 }} />
+                  <div className="sk-actions">
+                    <div className="sk-btn" /><div className="sk-btn" /><div className="sk-btn" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="catalog-state">
+            <p className="state-text">{error}</p>
+            <button className="btn btn-primary" onClick={loadProducts}>Reintentar</button>
+          </div>
         ) : products.length === 0 ? (
-          <p>No se encontraron productos con esos filtros.</p>
+          <div className="catalog-state">
+            <h3 className="state-title">No hay productos disponibles</h3>
+            <p className="state-text">Intenta con otros filtros o categorías.</p>
+            <button className="btn btn-primary" onClick={() => setFilters({ q: '', category: '', min_price: '', max_price: '', ordering: '', page: 1 })}>
+              Limpiar filtros
+            </button>
+          </div>
         ) : (
           <>
-            <div className="products-grid">
+            <div className="product-grid">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -177,7 +172,7 @@ export const Catalog = () => {
                     name: product.name,
                     price: Number(product.base_price) || 0,
                     badge: product.is_new ? 'Nuevo' : null,
-                    image: product.main_image || '👕',
+                    image: product.main_image || null,
                   }}
                   onView={(id) => navigate(`/product/${id}`)}
                   onAdd={() => handleAddToCart(product)}
@@ -186,27 +181,418 @@ export const Catalog = () => {
             </div>
 
             {pageInfo && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '2rem' }}>
-                <Button
-                  variant="outline"
-                  disabled={!pageInfo.previous}
-                  onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
-                >
+              <div className="catalog-pagination">
+                <button className="page-btn" disabled={!pageInfo.previous}
+                  onClick={() => setFilters(p => ({ ...p, page: p.page - 1 }))}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
                   Anterior
-                </Button>
-                <span>Página {filters.page}</span>
-                <Button
-                  variant="outline"
-                  disabled={!pageInfo.next}
-                  onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
-                >
+                </button>
+                <span className="page-info">Página {filters.page}</span>
+                <button className="page-btn" disabled={!pageInfo.next}
+                  onClick={() => setFilters(p => ({ ...p, page: p.page + 1 }))}>
                   Siguiente
-                </Button>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
               </div>
             )}
           </>
         )}
       </div>
+
+      <style>{`
+        .catalog-page {
+          position: relative;
+          max-width: 1600px;
+          margin: 0 auto;
+          padding: 1.5rem 1.5rem 4rem;
+          overflow: hidden;
+        }
+
+        .catalog-bg-shapes {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+          z-index: 0;
+        }
+
+        .shape {
+          position: absolute;
+          border-radius: 50%;
+          opacity: 0.5;
+        }
+
+        .shape-1 {
+          width: 300px; height: 300px;
+          background: radial-gradient(circle, rgba(236,72,153,0.12), transparent);
+          top: -80px; right: -60px;
+        }
+
+        .shape-2 {
+          width: 200px; height: 200px;
+          background: radial-gradient(circle, rgba(59,130,246,0.1), transparent);
+          bottom: 120px; left: -40px;
+        }
+
+        .shape-3 {
+          width: 180px; height: 180px;
+          background: radial-gradient(circle, rgba(251,191,36,0.1), transparent);
+          top: 40%; right: 10%;
+        }
+
+        .shape-4 {
+          width: 120px; height: 120px;
+          background: radial-gradient(circle, rgba(220,38,38,0.08), transparent);
+          bottom: 20%; left: 15%;
+        }
+
+        .shape-5 {
+          width: 80px; height: 80px;
+          border: 2px dashed rgba(236,72,153,0.2);
+          top: 25%; left: 5%;
+          animation: floatSlow 8s ease-in-out infinite;
+        }
+
+        .shape-6 {
+          width: 50px; height: 50px;
+          background: rgba(251,191,36,0.12);
+          bottom: 30%; right: 8%;
+          animation: floatSlow 6s ease-in-out infinite reverse;
+        }
+
+        .sparkle {
+          position: absolute;
+          font-size: 1rem;
+          color: #F59E0B;
+          animation: sparkleAnim 2s ease-in-out infinite;
+        }
+
+        .sparkle-1 { top: 15%; left: 8%; animation-delay: 0s; }
+        .sparkle-2 { top: 10%; right: 15%; animation-delay: 0.5s; }
+        .sparkle-3 { bottom: 25%; left: 20%; animation-delay: 1s; }
+        .sparkle-4 { bottom: 15%; right: 10%; animation-delay: 1.5s; }
+
+        .dot {
+          position: absolute;
+          width: 8px; height: 8px;
+          border-radius: 50%;
+          animation: floatSlow 5s ease-in-out infinite;
+        }
+
+        .dot-1 { background: #60A5FA; top: 30%; left: 3%; }
+        .dot-2 { background: #F472B6; top: 20%; right: 5%; animation-delay: 1s; }
+        .dot-3 { background: #34D399; bottom: 40%; right: 12%; animation-delay: 2s; }
+
+        @keyframes floatSlow {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-12px); }
+        }
+
+        @keyframes sparkleAnim {
+          0%, 100% { opacity: 0.4; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .catalog-hero {
+          position: relative;
+          z-index: 1;
+          margin-bottom: 1.5rem;
+        }
+
+        .catalog-title {
+          font-size: 2.5rem;
+          font-weight: 800;
+          letter-spacing: -1px;
+          color: #111827;
+          margin: 0 0 6px;
+          background: linear-gradient(135deg, #DC2626, #F59E0B);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .catalog-subtitle {
+          font-size: 0.95rem;
+          color: #6B7280;
+          margin: 0;
+          font-weight: 500;
+        }
+
+        .catalog-chips {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 1.25rem;
+        }
+
+        .chip {
+          padding: 8px 18px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          border: 2px solid #E5E7EB;
+          border-radius: 999px;
+          background: white;
+          color: #374151;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .chip:hover {
+          border-color: #DC2626;
+          color: #DC2626;
+          transform: translateY(-1px);
+        }
+
+        .chip--active {
+          background: #DC2626;
+          border-color: #DC2626;
+          color: white;
+          box-shadow: 0 4px 12px rgba(220,38,38,0.25);
+        }
+
+        .chip--active:hover {
+          background: #B91C1C;
+          color: white;
+        }
+
+        .catalog-filters {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          gap: 8px;
+          margin-bottom: 1.75rem;
+          flex-wrap: wrap;
+          align-items: center;
+          border-bottom: 1px solid #F3F4F6;
+          padding-bottom: 1rem;
+        }
+
+        .filter-item {
+          position: relative;
+        }
+
+        .search-wrap {
+          flex: 1;
+          min-width: 180px;
+        }
+
+        .search-ico {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #9CA3AF;
+          pointer-events: none;
+        }
+
+        .filter-input {
+          height: 38px;
+          padding: 0 12px;
+          border: 1px solid #E5E7EB;
+          border-radius: 8px;
+          background: white;
+          color: #111827;
+          font-size: 0.8rem;
+          outline: none;
+          transition: border-color 0.15s;
+          width: 100%;
+        }
+
+        .filter-input:focus {
+          border-color: #DC2626;
+        }
+
+        .search-wrap .filter-input {
+          padding-left: 38px;
+        }
+
+        .filter-select {
+          height: 38px;
+          padding: 0 30px 0 12px;
+          border: 1px solid #E5E7EB;
+          border-radius: 8px;
+          background: white;
+          color: #111827;
+          font-size: 0.8rem;
+          outline: none;
+          cursor: pointer;
+          transition: border-color 0.15s;
+          -webkit-appearance: none;
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 10px center;
+          min-width: 140px;
+        }
+
+        .filter-select:focus {
+          border-color: #DC2626;
+        }
+
+        .price-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .price-input {
+          width: 80px;
+          text-align: center;
+          min-width: 0;
+        }
+
+        .price-sep {
+          color: #D1D5DB;
+          font-weight: 600;
+        }
+
+        .filter-btn {
+          height: 38px;
+          padding: 0 18px;
+          border: none;
+          border-radius: 8px;
+          background: #DC2626;
+          color: white;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.15s;
+          white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .filter-btn:hover {
+          background: #B91C1C;
+        }
+
+        .product-grid {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1.5rem;
+        }
+
+        @media (max-width: 1100px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 768px) { .product-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; } }
+        @media (max-width: 500px) { .product-grid { grid-template-columns: 1fr; } }
+
+        .sk-card {
+          border-radius: 16px;
+          overflow: hidden;
+          border: 2px solid #F3F4F6;
+          background: white;
+          animation: skShine 1.8s ease-in-out infinite;
+        }
+
+        .sk-img {
+          aspect-ratio: 1;
+          background: linear-gradient(135deg, #F3F4F6, #E5E7EB);
+        }
+
+        .sk-body { padding: 16px; }
+
+        .sk-line {
+          height: 14px;
+          background: linear-gradient(90deg, #F3F4F6, #E5E7EB);
+          border-radius: 4px;
+          margin-bottom: 10px;
+        }
+
+        .sk-actions {
+          display: flex;
+          gap: 6px;
+          margin-top: 14px;
+        }
+
+        .sk-btn {
+          flex: 1;
+          height: 36px;
+          background: linear-gradient(90deg, #F3F4F6, #E5E7EB);
+          border-radius: 10px;
+        }
+
+        @keyframes skShine {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+
+        .catalog-state {
+          position: relative;
+          z-index: 1;
+          text-align: center;
+          padding: 5rem 1rem;
+        }
+
+        .state-title {
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #111827;
+          margin-bottom: 8px;
+        }
+
+        .state-text {
+          font-size: 0.9rem;
+          color: #6B7280;
+          margin-bottom: 1.25rem;
+        }
+
+        .catalog-pagination {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
+          margin-top: 3rem;
+        }
+
+        .page-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 10px 22px;
+          border: 2px solid #E5E7EB;
+          border-radius: 12px;
+          background: white;
+          color: #374151;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+          border-color: #DC2626;
+          color: #DC2626;
+          transform: translateY(-1px);
+        }
+
+        .page-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .page-info {
+          font-size: 0.85rem;
+          color: #9CA3AF;
+          font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+          .catalog-page { padding: 1.25rem 1rem 3rem; }
+          .catalog-title { font-size: 1.75rem; }
+          .catalog-filters { flex-direction: column; border-bottom: none; padding-bottom: 0; gap: 6px; }
+          .filter-item { width: 100%; }
+          .filter-select { width: 100%; }
+          .price-group { justify-content: center; }
+          .filter-btn { width: 100%; justify-content: center; }
+        }
+      `}</style>
     </>
   );
 };

@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
-import { Button } from '../components/Button';
 import { Header } from '../components/Header';
 
 export const Category = () => {
@@ -11,16 +10,9 @@ export const Category = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
-    q: '',
-    min_price: '',
-    max_price: '',
-    ordering: '',
-    page: 1,
-  });
+  const [filters, setFilters] = useState({ q: '', min_price: '', max_price: '', ordering: '', page: 1 });
   const [pageInfo, setPageInfo] = useState(null);
   const [categoryName, setCategoryName] = useState('Categoría');
-  const [filtersData, setFiltersData] = useState({ categories: [] });
   const { cart, addItem } = useCart();
 
   const loadProducts = async () => {
@@ -31,12 +23,10 @@ export const Category = () => {
       setProducts(data.results || data);
       setPageInfo(data.next ? { next: data.next, previous: data.previous, count: data.count } : null);
       if (data.filters) {
-        setFiltersData(data.filters);
-        const selected = data.filters.categories.find((category) => category.id === Number(id));
+        const selected = data.filters.categories.find((c) => c.id === Number(id));
         setCategoryName(selected?.name || 'Categoría');
       }
-    } catch (err) {
-      console.error('Error al cargar categoría:', err);
+    } catch {
       setError('No se pudo cargar la categoría.');
       setProducts([]);
     } finally {
@@ -44,9 +34,7 @@ export const Category = () => {
     }
   };
 
-  useEffect(() => {
-    loadProducts();
-  }, [filters, id]);
+  useEffect(() => { loadProducts() }, [filters, id]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -55,113 +43,91 @@ export const Category = () => {
 
   const handleAddToCart = async (product) => {
     const variantId = product.variants?.[0]?.id;
-    if (!variantId) {
-      alert('Este producto no tiene variantes disponibles');
-      return;
-    }
+    if (!variantId) { alert('Este producto no tiene variantes disponibles'); return }
     try {
       await addItem(product.id, variantId, 1);
       alert('Producto agregado al carrito');
     } catch (error) {
-      const msg = error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito';
-      alert(msg);
+      alert(error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito');
     }
   };
 
   return (
     <>
-      <Header isLoggedIn={Boolean(localStorage.getItem('access_token'))} cartCount={cart?.total_items || 0} />
-      <div className="container" style={{ paddingTop: '2rem' }}>
-        <Link to="/catalog" style={{ color: 'var(--color-red)', textDecoration: 'none', display: 'inline-block', marginBottom: '1rem' }}>
+      <Header cartCount={cart?.total_items || 0} />
+      <div className="container" style={{ paddingTop: '2rem', paddingBottom: '3rem' }}>
+        <Link to="/catalog" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: 14, marginBottom: 16, display: 'inline-block' }}>
           ← Volver al catálogo
         </Link>
-        <h1>{categoryName}</h1>
-        <p style={{ color: 'var(--color-gray-600)', marginBottom: '1.5rem' }}>
-          Explora los productos disponibles para esta categoría. Usa filtros para encontrar rápido lo que necesitas.
-        </p>
+        <h1 style={{ fontSize: 24, fontWeight: 800 }}>{categoryName}</h1>
 
-        <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-          <input
-            type="text"
-            name="q"
-            placeholder="Buscar dentro de la categoría..."
-            value={filters.q}
-            onChange={handleFilterChange}
-            className="form-input"
-          />
-          <select name="ordering" value={filters.ordering} onChange={handleFilterChange} className="form-input">
+        <form onSubmit={e => e.preventDefault()}
+          style={{ display: 'flex', gap: 10, margin: '20 0', flexWrap: 'wrap', padding: 16, background: 'var(--color-bg-tertiary)', borderRadius: 12, border: '1px solid var(--color-border-light)', alignItems: 'center' }}>
+          <input name="q" placeholder="Buscar..." value={filters.q} onChange={handleFilterChange}
+            style={{ height: 40, padding: '0 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, flex: 1, minWidth: 140 }} />
+          <select name="ordering" value={filters.ordering} onChange={handleFilterChange}
+            style={{ height: 40, padding: '0 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, maxWidth: 160 }}>
             <option value="">Ordenar por</option>
             <option value="name">Nombre (A-Z)</option>
             <option value="-name">Nombre (Z-A)</option>
-            <option value="base_price">Precio (menor primero)</option>
-            <option value="-base_price">Precio (mayor primero)</option>
-            <option value="popularity">Popularidad</option>
+            <option value="base_price">Precio ↑</option>
+            <option value="-base_price">Precio ↓</option>
           </select>
-          <input
-            type="number"
-            name="min_price"
-            placeholder="Precio min"
-            value={filters.min_price}
-            onChange={handleFilterChange}
-            className="form-input"
-          />
-          <input
-            type="number"
-            name="max_price"
-            placeholder="Precio max"
-            value={filters.max_price}
-            onChange={handleFilterChange}
-            className="form-input"
-          />
+          <input name="min_price" type="number" placeholder="$ Min" value={filters.min_price} onChange={handleFilterChange}
+            style={{ height: 40, padding: '0 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, maxWidth: 90 }} />
+          <input name="max_price" type="number" placeholder="$ Max" value={filters.max_price} onChange={handleFilterChange}
+            style={{ height: 40, padding: '0 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, maxWidth: 90 }} />
         </form>
 
         {loading ? (
-          <p>Cargando productos...</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
+            {[1,2,3,4].map(i => (
+              <div key={i} style={{ borderRadius: 12, border: '1px solid var(--color-border-light)', animation: 'catPulse 1.5s infinite' }}>
+                <div style={{ height: 200, background: 'var(--color-bg-tertiary)' }} />
+                <div style={{ padding: 16 }}><div style={{ height: 14, background: 'var(--color-bg-tertiary)', borderRadius: 4, width: '70%' }} /></div>
+              </div>
+            ))}
+          </div>
         ) : error ? (
-          <p style={{ color: 'var(--color-red)' }}>{error}</p>
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <p style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</p>
+            <button className="btn btn-primary" onClick={loadProducts}>Reintentar</button>
+          </div>
         ) : products.length === 0 ? (
-          <p>No hay productos que coincidan con esta categoría.</p>
+          <div style={{ textAlign: 'center', padding: 60 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>No hay productos en esta categoría</h3>
+            <p style={{ color: 'var(--color-text-muted)' }}>Intenta con otros filtros.</p>
+          </div>
         ) : (
           <>
-            <div className="products-grid">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
               {products.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={{
-                    id: product.id,
-                    name: product.name,
+                    id: product.id, name: product.name,
                     price: Number(product.base_price) || 0,
                     badge: product.is_new ? 'Nuevo' : null,
-                    image: product.main_image || '👕',
+                    image: product.main_image || null,
                   }}
                   onView={(id) => window.location.href = `/product/${id}`}
                   onAdd={() => handleAddToCart(product)}
                 />
               ))}
             </div>
-
             {pageInfo && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '2rem' }}>
-                <Button
-                  variant="outline"
-                  disabled={!pageInfo.previous}
-                  onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
-                >
-                  Anterior
-                </Button>
-                <span>Página {filters.page}</span>
-                <Button
-                  variant="outline"
-                  disabled={!pageInfo.next}
-                  onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
-                >
-                  Siguiente
-                </Button>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 32, alignItems: 'center' }}>
+                <button className="btn btn-outline" disabled={!pageInfo.previous}
+                  onClick={() => setFilters(p => ({ ...p, page: p.page - 1 }))}>← Anterior</button>
+                <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Página {filters.page}</span>
+                <button className="btn btn-outline" disabled={!pageInfo.next}
+                  onClick={() => setFilters(p => ({ ...p, page: p.page + 1 }))}>Siguiente →</button>
               </div>
             )}
           </>
         )}
       </div>
+      <style>{`@keyframes catPulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }`}</style>
     </>
   );
 };

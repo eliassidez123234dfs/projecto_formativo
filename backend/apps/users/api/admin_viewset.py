@@ -1,15 +1,21 @@
+import logging
+
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value, IntegerField
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.hashers import make_password
 import uuid
 from datetime import timedelta
 import secrets
 import string
+import re
+
+logger = logging.getLogger(__name__)
 
 from ..models import (
     Usuario, Token_Verificacion, Log_Auditoria, Historial_Estado_Usuario
@@ -31,6 +37,12 @@ class AdminPermission(permissions.BasePermission):
         )
 
 
+class AdminPagination(PageNumberPagination):
+    page_size = settings.REST_FRAMEWORK.get('PAGE_SIZE', 20)
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class AdminUsuarioViewSet(viewsets.ModelViewSet):
     """ViewSet para administración de usuarios (RF-016 a RF-024)"""
     queryset = Usuario.objects.all()
@@ -40,17 +52,23 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     search_fields = ['usuario', 'correo', 'id']
     ordering_fields = ['fecha_registro', 'fecha_ultima_sesion']
     ordering = ['-fecha_registro']
-    pagination_class = None  # Usará la paginación por defecto de REST_FRAMEWORK
+    pagination_class = AdminPagination
     
     def get_queryset(self):
         """Filtrar usuarios según parámetros (RF-016, RN-025)"""
-        queryset = Usuario.objects.all()
+        queryset = Usuario.objects.all().order_by('-fecha_registro')
         
         # Filtros
         estado = self.request.query_params.get('estado')
         rol = self.request.query_params.get('rol')
         email_verificado = self.request.query_params.get('email_verificado')
-        eliminado = self.request.query_params.get('eliminado')
+        eliminado_param = self.request.query_params.get('eliminado')
+        
+        # Por defecto ocultar eliminados, a menos que se pida explicitamente
+        if eliminado_param:
+            queryset = queryset.filter(eliminado=eliminado_param.lower() == 'true')
+        else:
+            queryset = queryset.filter(eliminado=False)
         
         if estado:
             queryset = queryset.filter(estado=estado)
@@ -58,23 +76,106 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(rol=rol)
         if email_verificado:
             queryset = queryset.filter(email_verificado=email_verificado.lower() == 'true')
-        if eliminado:
-            queryset = queryset.filter(eliminado=eliminado.lower() == 'true')
         
         # Búsqueda por texto
         search = self.request.query_params.get('search')
         if search:
-            queryset = queryset.filter(
-                Q(usuario__icontains=search) |
-                Q(correo__icontains=search) |
-                Q(id__icontains=search)
-            )
+            # Priorizar coincidencia exacta por ID si se pasa un número
+            is_numeric = False
+            try:
+                int_search = int(search)
+                is_numeric = True
+            except Exception:
+                int_search = None
+
+            if is_numeric:
+                # Anotar coincidencia exacta por id para ordenar al inicio
+                queryset = queryset.annotate(
+                    _id_match=Case(
+                        When(id=int_search, then=Value(1)),
+                        default=Value(0),
+                        output_field=IntegerField()
+                    )
+                ).filter(
+                    Q(usuario__icontains=search) |
+                    Q(correo__icontains=search) |
+                    Q(id__exact=int_search)
+                ).order_by('-_id_match')
+            else:
+                queryset = queryset.filter(
+                    Q(usuario__icontains=search) |
+                    Q(correo__icontains=search) |
+                    Q(id__icontains=search)
+                )
         
         return queryset
     
     def list(self, request, *args, **kwargs):
-        """Listar usuarios con filtros y búsqueda (RF-016, RF-017)"""
+        """Listar usuarios con filtros y búsqueda (RF-016, RF-017).
+        Registra auditoría y protege contra extracción masiva.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        total = queryset.count()
+
+        # Límite total absoluto para prevenir extracción masiva
+        MAX_TOTAL = 10000
+        if total > MAX_TOTAL:
+            return Response({
+                'error': f'Refina los filtros. La consulta devuelve {total} registros (máx {MAX_TOTAL}).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Si es una búsqueda que devuelve muchos resultados, registrar en auditoría
+        search = request.query_params.get('search')
+        if search and total > 200:
+            self._registrar_auditoria(
+                request.user, None, 'Consulta masiva de usuarios',
+                datos_nuevos={'filtros': request.query_params.dict()},
+                ip_admin=self._obtener_ip_cliente(request)
+            )
+
+        # Control mínimo de page_size si es provisto
+        page_size_param = request.query_params.get(self.pagination_class.page_size_query_param)
+        if page_size_param:
+            try:
+                ps = int(page_size_param)
+                if ps < 5:
+                    # Forzar mínimo
+                    request.GET._mutable = True
+                    request.GET[self.pagination_class.page_size_query_param] = '5'
+                    request.GET._mutable = False
+            except Exception:
+                pass
+
         return super().list(request, *args, **kwargs)
+
+    @action(detail=False, methods=['get'])
+    def suggest(self, request):
+        """Sugerencias para typeahead (RN-BUS-07). Requiere >=3 caracteres."""
+        q = request.query_params.get('q', '')
+        if len(q) < 3:
+            return Response({'error': 'Ingresa al menos 3 caracteres para sugerencias.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Priorizar coincidencias por email exacto o id
+        try:
+            q_int = int(q)
+        except Exception:
+            q_int = None
+
+        queryset = Usuario.objects.filter(
+            Q(usuario__icontains=q) |
+            Q(correo__icontains=q) |
+            Q(id__icontains=q)
+        )
+
+        if q_int is not None:
+            queryset = queryset.annotate(
+                _id_match=Case(When(id=q_int, then=Value(1)), default=Value(0), output_field=IntegerField())
+            ).order_by('-_id_match')
+
+        queryset = queryset[:10]
+        serializer = UsuarioSerializer(queryset, many=True)
+        return Response(serializer.data)
     
     def create(self, request, *args, **kwargs):
         """Crear usuario manualmente desde admin (RF-018, RN-027)"""
@@ -88,14 +189,54 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
                     'error': f'El campo {campo} es requerido'
                 }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Generar contraseña temporal (RN-001)
-        contrasena_temporal = self._generar_contrasena_temporal()
+        # Validar email con expresión regular
+        correo = datos['correo']
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', correo):
+            return Response({
+                'error': 'El formato del correo no es válido.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar que el usuario no exista
+        if Usuario.objects.filter(usuario=datos['usuario']).exists():
+            return Response({
+                'error': 'Ya existe un usuario con ese nombre.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if Usuario.objects.filter(correo=correo).exists():
+            return Response({
+                'error': 'Ya existe un usuario con ese correo.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar contraseña si se envía, o generar temporal
+        contrasena = datos.get('password')
+        if contrasena:
+            if len(contrasena) < 8:
+                return Response({
+                    'error': 'La contraseña debe tener al menos 8 caracteres.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if not re.search(r'[A-Z]', contrasena):
+                return Response({
+                    'error': 'La contraseña debe incluir al menos una letra mayúscula.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if not re.search(r'\d', contrasena):
+                return Response({
+                    'error': 'La contraseña debe incluir al menos un número.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if not re.search(r'[!@#$%^&*(),.?":{}|<>]', contrasena):
+                return Response({
+                    'error': 'La contraseña debe incluir al menos un carácter especial.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            contrasena_final = contrasena
+            contrasena_temporal = None
+        else:
+            contrasena_temporal = self._generar_contrasena_temporal()
+            contrasena_final = contrasena_temporal
         
         try:
             usuario = Usuario.objects.create(
                 usuario=datos['usuario'],
-                correo=datos['correo'],
-                contrasena=make_password(contrasena_temporal),
+                correo=correo,
+                contrasena=make_password(contrasena_final),
                 rol=datos['rol'],
                 estado=datos['estado']
             )
@@ -110,7 +251,10 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             )
             
             # Enviar email con credenciales (RF-018)
-            self._enviar_email_bienvenida(usuario, contrasena_temporal, token.token)
+            if contrasena_temporal:
+                self._enviar_email_bienvenida(usuario, contrasena_temporal, token.token)
+            else:
+                self._enviar_email_verificacion(usuario, token.token)
             
             # Registrar en auditoría
             self._registrar_auditoria(
@@ -130,26 +274,43 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_201_CREATED)
         
         except Exception as e:
+            msg = str(e)
+            if 'UNIQUE constraint' in msg:
+                if 'usuario' in msg:
+                    msg = 'Ya existe un usuario con ese nombre'
+                elif 'correo' in msg:
+                    msg = 'Ya existe un usuario con ese correo'
             return Response({
-                'error': str(e)
+                'error': msg
             }, status=status.HTTP_400_BAD_REQUEST)
     
     def update(self, request, pk=None, *args, **kwargs):
         """Editar usuario (RF-019)"""
         usuario = self.get_object()
         
-        # Validar que no se edite si es el único admin
-        if usuario.rol == 'Administrador' and request.data.get('rol') != 'Administrador':
+        # No permitir que un admin se edite a sí mismo en campos críticos
+        if request.user.pk == usuario.pk:
+            nuevo_rol = request.data.get('rol')
+            nuevo_estado = request.data.get('estado')
+            if nuevo_rol is not None and nuevo_rol != 'Administrador':
+                return Response({
+                    'error': 'No puedes cambiar tu propio rol de administrador'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            if nuevo_estado is not None and nuevo_estado != 'Activo':
+                return Response({
+                    'error': 'No puedes desactivar o bloquear tu propia cuenta'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Evitar que el único administrador activo pierda su rol
+        if usuario.rol == 'Administrador' and request.data.get('rol', usuario.rol) != 'Administrador':
             admins_activos = Usuario.objects.filter(
-                rol='Administrador', 
-                estado='Activo',
-                eliminado=False
+                rol='Administrador', estado='Activo', eliminado=False
             ).count()
-            if admins_activos == 1:
+            if admins_activos <= 1:
                 return Response({
                     'error': 'No puedes cambiar el rol del único administrador activo'
                 }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Guardar datos anteriores para auditoría
         datos_anteriores = {
             'usuario': usuario.usuario,
@@ -331,8 +492,9 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         )
         
         return Response({
-            'mensaje': 'Usuario eliminado exitosamente'
-        }, status=status.HTTP_204_NO_CONTENT)
+            'mensaje': 'Usuario eliminado exitosamente',
+            'usuario': UsuarioDetailSerializer(usuario).data
+        }, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['get'])
     def auditoria(self, request):
@@ -401,7 +563,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     
     def _enviar_email_bienvenida(self, usuario, contrasena_temporal, token):
         """Enviar email de bienvenida con credenciales"""
-        enlace = f"{settings.FRONTEND_URL}/verificar-email?token={token}"
+        enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
         asunto = "Bienvenido - Tu cuenta ha sido creada"
         mensaje = f"""
         Hola {usuario.usuario},
@@ -418,13 +580,42 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         Después podrás cambiar tu contraseña.
         """
         
-        send_mail(
-            asunto,
-            mensaje,
-            settings.DEFAULT_FROM_EMAIL,
-            [usuario.correo],
-            fail_silently=True
-        )
+        try:
+            send_mail(
+                asunto,
+                mensaje,
+                settings.DEFAULT_FROM_EMAIL,
+                [usuario.correo],
+                fail_silently=False
+            )
+        except Exception as exc:
+            logger.exception('Error al enviar email de bienvenida a %s: %s', usuario.correo, exc)
+    
+    def _enviar_email_verificacion(self, usuario, token):
+        """Enviar email de verificación cuando el admin crea usuario con password propia"""
+        enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
+        asunto = "Verifica tu correo electrónico"
+        mensaje = f"""
+        Hola {usuario.usuario},
+        
+        Tu cuenta ha sido creada por un administrador.
+        
+        Por favor, verifica tu correo haciendo clic en el siguiente enlace:
+        {enlace}
+        
+        Este enlace expira en 24 horas.
+        """
+        
+        try:
+            send_mail(
+                asunto,
+                mensaje,
+                settings.DEFAULT_FROM_EMAIL,
+                [usuario.correo],
+                fail_silently=False
+            )
+        except Exception as exc:
+            logger.exception('Error al enviar email de verificación a %s: %s', usuario.correo, exc)
     
     def _enviar_email_reset_password(self, usuario, contrasena_temporal, token):
         """Enviar email de reseteo de contraseña"""
@@ -443,13 +634,16 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         Este enlace expira en 1 hora.
         """
         
-        send_mail(
-            asunto,
-            mensaje,
-            settings.DEFAULT_FROM_EMAIL,
-            [usuario.correo],
-            fail_silently=True
-        )
+        try:
+            send_mail(
+                asunto,
+                mensaje,
+                settings.DEFAULT_FROM_EMAIL,
+                [usuario.correo],
+                fail_silently=False
+            )
+        except Exception as exc:
+            logger.exception('Error al enviar email de reseteo a %s: %s', usuario.correo, exc)
     
     def _registrar_auditoria(self, admin, usuario_afectado, accion, 
                             datos_anteriores=None, datos_nuevos=None, ip_admin=None):

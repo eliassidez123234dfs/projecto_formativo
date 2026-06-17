@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { buildApiUrl } from '../services/api';
 
 export const VerificarEmail = () => {
   const [searchParams] = useSearchParams();
@@ -19,7 +20,7 @@ export const VerificarEmail = () => {
       }
 
       try {
-        const response = await fetch('http://localhost:8000/api/auth/verificar_email/', {
+        const response = await fetch(buildApiUrl('auth/verificar_email/'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -73,7 +74,7 @@ export const VerificacionPendiente = () => {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/reenviar_verificacion/', {
+      const response = await fetch(buildApiUrl('auth/reenviar_verificacion/'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,12 +1,59 @@
 import { useState } from 'react'
+import toast from 'react-hot-toast'
+
+async function safeJson(res) {
+  try { return await res.json() } catch { return null }
+}
 
 function VariantRow({ v, onChange, onRemove }) {
+  const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', 'Único']
+const COLORS = ['Rojo', 'Azul', 'Negro', 'Blanco', 'Gris', 'Verde', 'Amarillo', 'Naranja', 'Rosa', 'Morado', 'Marrón', 'Beige', 'Plateado', 'Dorado']
+const selectStyle = {
+  width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)',
+  borderRadius: 'var(--radius-md)', background: 'var(--color-bg)',
+  color: 'var(--color-text)', fontSize: 13, outline: 'none',
+}
+const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 2 }
   return (
-    <div className="variant-row">
-      <input placeholder="Talla" value={v.size} onChange={e => onChange({ ...v, size: e.target.value })} />
-      <input placeholder="Color" value={v.color} onChange={e => onChange({ ...v, color: e.target.value })} />
-      <input type="number" min="0" placeholder="Stock" value={v.stock} onChange={e => onChange({ ...v, stock: Number(e.target.value) })} />
-      <button type="button" onClick={onRemove}>Eliminar</button>
+    <div style={{
+      display: 'flex', gap: 8, alignItems: 'flex-end', marginTop: 8,
+      padding: '8px 12px', background: 'var(--color-bg-tertiary)',
+      borderRadius: 'var(--radius-lg)',
+    }}>
+      <div style={{ flex: 1 }}>
+        <label style={labelSm}>Talla</label>
+        <select value={v.size} onChange={e => onChange({ ...v, size: e.target.value })} style={selectStyle}>
+          <option value="">Seleccionar talla</option>
+          {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+      <div style={{ flex: 1 }}>
+        <label style={labelSm}>Color</label>
+        <select value={v.color} onChange={e => onChange({ ...v, color: e.target.value })} style={selectStyle}>
+          <option value="">Seleccionar color</option>
+          {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      <div style={{ width: 90 }}>
+        <label style={labelSm}>Stock</label>
+        <input
+          type="number" min="0" placeholder="Stock"
+          value={v.stock}
+          onChange={e => {
+            const val = Number(e.target.value)
+            if (val >= 0) onChange({ ...v, stock: val })
+          }}
+          style={{
+            width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)', background: 'var(--color-bg)',
+            color: 'var(--color-text)', fontSize: 13, outline: 'none',
+          }}
+          onWheel={e => e.target.blur()}
+        />
+      </div>
+      <button type="button" onClick={onRemove} className="btn btn-sm btn-ghost" style={{ color: 'var(--color-error)', marginBottom: 1 }}>
+        Eliminar
+      </button>
     </div>
   )
 }
@@ -24,7 +71,6 @@ export default function ProductForm({ product, onClose, onSaved }) {
   const [variants, setVariants] = useState([])
   const currentVariants = product?.variants || []
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState(null)
 
   function addVariant() {
     setVariants(vs => [...vs, { size: '', color: '', stock: 0 }])
@@ -36,10 +82,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const data = await response.json()
-    if (!response.ok) {
-      throw new Error(Object.values(data).flat().join(' | ') || 'Error actualizando producto')
-    }
+    const data = await safeJson(response)
+    if (!response.ok) throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error actualizando producto')
     return data
   }
 
@@ -47,17 +91,10 @@ export default function ProductForm({ product, onClose, onSaved }) {
     const response = await fetch('/api/products/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        description,
-        base_price: Number(price),
-        is_active: isActive,
-      }),
+      body: JSON.stringify({ name, description, base_price: Number(price), is_active: isActive }),
     })
-    const data = await response.json()
-    if (!response.ok) {
-      throw new Error(Object.values(data).flat().join(' | ') || 'Error creando producto')
-    }
+    const data = await safeJson(response)
+    if (!response.ok) throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error creando producto')
     return data
   }
 
@@ -65,14 +102,9 @@ export default function ProductForm({ product, onClose, onSaved }) {
     const form = new FormData()
     form.append('image', mainImage)
     form.append('is_main', 'true')
-    const response = await fetch(`/api/products/${productId}/images/`, {
-      method: 'POST',
-      body: form,
-    })
-    const data = await response.json()
-    if (!response.ok) {
-      throw new Error(Object.values(data).flat().join(' | ') || 'Error subiendo imagen')
-    }
+    const response = await fetch(`/api/products/${productId}/images/`, { method: 'POST', body: form })
+    const data = await safeJson(response)
+    if (!response.ok) throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error subiendo imagen')
     return data
   }
 
@@ -81,13 +113,10 @@ export default function ProductForm({ product, onClose, onSaved }) {
       const form = new FormData()
       form.append('image', file)
       form.append('is_main', 'false')
-      const response = await fetch(`/api/products/${productId}/images/`, {
-        method: 'POST',
-        body: form,
-      })
+      const response = await fetch(`/api/products/${productId}/images/`, { method: 'POST', body: form })
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(Object.values(data).flat().join(' | ') || 'Error subiendo imágenes adicionales')
+        const data = await safeJson(response)
+        throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error subiendo imágenes')
       }
     }
   }
@@ -101,8 +130,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
         body: JSON.stringify(variant),
       })
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(Object.values(data).flat().join(' | ') || 'Error creando variantes')
+        const data = await safeJson(response)
+        throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error creando variantes')
       }
     }
   }
@@ -110,53 +139,37 @@ export default function ProductForm({ product, onClose, onSaved }) {
   async function reorderImages(nextItems) {
     setImageItems(nextItems)
     if (!isEditing) return
-    const response = await fetch(`/api/products/${product.id}/images/reorder/`, {
+    await fetch(`/api/products/${product.id}/images/reorder/`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        items: nextItems.map((image, index) => ({ id: image.id, order: index + 1 })),
-      }),
+      body: JSON.stringify({ items: nextItems.map((img, i) => ({ id: img.id, order: i + 1 })) }),
     })
-    if (!response.ok) {
-      const data = await response.json()
-      throw new Error(Object.values(data).flat().join(' | ') || 'Error reordenando imágenes')
-    }
   }
 
   async function markImageAsMain(imageId) {
     if (!isEditing) return
-    const response = await fetch(`/api/products/${product.id}/images/${imageId}/`, {
+    await fetch(`/api/products/${product.id}/images/${imageId}/`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_main: true }),
     })
-    if (!response.ok) {
-      const data = await response.json()
-      throw new Error(Object.values(data).flat().join(' | ') || 'No se pudo marcar como principal')
-    }
-    setImageItems(items => items.map(image => ({ ...image, is_main: image.id === imageId })))
+    setImageItems(items => items.map(img => ({ ...img, is_main: img.id === imageId })))
   }
 
   async function removeImage(imageId) {
     if (!isEditing) return
-    const response = await fetch(`/api/products/${product.id}/images/${imageId}/`, { method: 'DELETE' })
-    if (!response.ok && response.status !== 204) {
-      const data = await response.json().catch(() => ({}))
-      throw new Error(Object.values(data).flat().join(' | ') || 'No se pudo eliminar la imagen')
-    }
-    const next = imageItems.filter(image => image.id !== imageId)
-    setImageItems(next)
+    await fetch(`/api/products/${product.id}/images/${imageId}/`, { method: 'DELETE' })
+    setImageItems(items => items.filter(img => img.id !== imageId))
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setError(null)
 
-    if (!name.trim()) return setError('Nombre requerido')
-    if (!description.trim()) return setError('Descripción requerida')
-    if (!price || Number(price) <= 0) return setError('Precio inválido')
-    if (!isEditing && !mainImage) return setError('Imagen principal requerida')
-    if (!isEditing && variants.length === 0) return setError('Agregar al menos una variante')
+    if (!name.trim()) return toast.error('Nombre requerido')
+    if (!description.trim()) return toast.error('Descripción requerida')
+    if (!price || Number(price) <= 0) return toast.error('Precio inválido')
+    if (!isEditing && !mainImage) return toast.error('Imagen principal requerida')
+    if (!isEditing && variants.length === 0) return toast.error('Agregar al menos una variante')
 
     setSaving(true)
     try {
@@ -169,23 +182,18 @@ export default function ProductForm({ product, onClose, onSaved }) {
         await uploadVariants(savedProduct.id)
       }
 
+      if (isEditing && variants.length > 0) await uploadVariants(savedProduct.id)
+      if (isEditing && extraImages.length > 0) await uploadExtraImages(savedProduct.id)
+
       if (isEditing) {
         const nextImages = imageItems.slice().sort((a, b) => a.order - b.order)
         await reorderImages(nextImages)
       }
 
-      if (isEditing && variants.length > 0) {
-        await uploadVariants(savedProduct.id)
-      }
-
-      if (isEditing && extraImages.length > 0) {
-        await uploadExtraImages(savedProduct.id)
-      }
-
+      toast.success(isEditing ? 'Producto actualizado' : 'Producto creado')
       onSaved && onSaved()
     } catch (err) {
-      console.error(err)
-      setError(err.message || 'Error')
+      toast.error(err.message || 'Error')
     } finally {
       setSaving(false)
     }
@@ -196,86 +204,131 @@ export default function ProductForm({ product, onClose, onSaved }) {
     const targetIndex = index + direction
     if (targetIndex < 0 || targetIndex >= next.length) return
     ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
-    reorderImages(next).catch(err => setError(err.message))
+    reorderImages(next).catch(err => toast.error(err.message))
+  }
+
+  const inputStyle = {
+    width: '100%', padding: '10px 12px', border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-lg)', background: 'var(--color-bg)',
+    color: 'var(--color-text)', fontSize: 14, outline: 'none',
+    transition: 'border-color 0.15s',
+  }
+
+  const labelStyle = {
+    display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text)',
+    marginBottom: 6,
   }
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-card modal-card-large">
-        <div className="modal-header">
-          <h3>{isEditing ? 'Editar Producto' : 'Crear Producto'}</h3>
-          <button type="button" onClick={onClose}>✖</button>
+    <div className="form-modal-backdrop" onClick={onClose}>
+      <div className="form-modal" onClick={e => e.stopPropagation()} style={{ width: 'min(820px, 95vw)' }}>
+        <div className="form-modal-header">
+          <h2>{isEditing ? 'Editar Producto' : 'Crear Producto'}</h2>
+          <button className="form-modal-close" onClick={onClose}>✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="product-form">
-          <label>Nombre</label>
-          <input value={name} onChange={e => setName(e.target.value)} maxLength={100} />
+        <form onSubmit={handleSubmit} className="form-modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="form-group">
+              <label style={labelStyle}>Nombre</label>
+              <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} maxLength={100} placeholder="Nombre del producto" />
+            </div>
+            <div className="form-group">
+              <label style={labelStyle}>Precio base</label>
+              <input style={inputStyle} type="number" value={price} onChange={e => setPrice(e.target.value)} min="0.01" step="0.01" placeholder="0.00" />
+            </div>
+          </div>
 
-          <label>Descripción</label>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} maxLength={500} />
-
-          <label>Precio base</label>
-          <input type="number" value={price} onChange={e => setPrice(e.target.value)} min="0.01" step="0.01" />
+          <div className="form-group">
+            <label style={labelStyle}>Descripción</label>
+            <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={description} onChange={e => setDescription(e.target.value)} maxLength={500} placeholder="Descripción del producto" />
+          </div>
 
           {isEditing && (
-            <div className="switch-row">
-              <label>
-                <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
+            <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <label style={{ ...labelStyle, margin: 0, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} style={{ width: 16, height: 16 }} />
                 Producto activo
               </label>
             </div>
           )}
 
           {!isEditing && (
-            <>
-              <label>Imagen principal</label>
-              <input type="file" accept="image/png, image/jpeg" onChange={e => setMainImageFile(e.target.files[0])} />
-            </>
+            <div className="form-group">
+              <label style={labelStyle}>Imagen principal</label>
+              <input type="file" accept="image/png, image/jpeg" onChange={e => setMainImageFile(e.target.files[0])} style={inputStyle} />
+            </div>
           )}
 
           {isEditing && (
-            <>
-              <label>Agregar imágenes</label>
-              <input type="file" multiple accept="image/png, image/jpeg" onChange={e => setExtraImages(Array.from(e.target.files || []))} />
-            </>
+            <div className="form-group">
+              <label style={labelStyle}>Agregar imágenes adicionales</label>
+              <input type="file" multiple accept="image/png, image/jpeg" onChange={e => setExtraImages(Array.from(e.target.files || []))} style={inputStyle} />
+            </div>
           )}
 
-          {isEditing && (
-            <section className="image-manager">
-              <h4>Imágenes del producto</h4>
-              <div className="image-manager-list">
+          {isEditing && imageItems.length > 0 && (
+            <div className="form-group">
+              <label style={labelStyle}>Gestión de imágenes</label>
+              <div style={{ display: 'grid', gap: 10 }}>
                 {imageItems.map((image, index) => (
-                  <article key={image.id} className="image-manager-item">
-                    <img src={image.image_url} alt={`Imagen ${index + 1}`} />
+                  <div key={image.id} style={{
+                    display: 'grid', gridTemplateColumns: '80px 1fr auto', gap: 12,
+                    alignItems: 'center', padding: 12,
+                    background: 'var(--color-bg-tertiary)', borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--color-border-light)',
+                  }}>
+                    <img
+                      src={image.image_url} alt=""
+                      style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 'var(--radius-md)' }}
+                    />
                     <div>
-                      <p>Orden: {image.order}</p>
-                      <p>{image.is_main ? 'Principal' : 'Secundaria'}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                        Orden: {image.order} {image.is_main ? '· Principal' : '· Secundaria'}
+                      </p>
                     </div>
-                    <div className="image-manager-actions">
-                      <button type="button" onClick={() => moveImage(index, -1)} disabled={index === 0}>↑</button>
-                      <button type="button" onClick={() => moveImage(index, 1)} disabled={index === imageItems.length - 1}>↓</button>
-                      <button type="button" onClick={() => markImageAsMain(image.id)}>Principal</button>
-                      <button type="button" onClick={() => removeImage(image.id)}>Eliminar</button>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <button type="button" className="btn btn-xs btn-secondary" onClick={() => moveImage(index, -1)} disabled={index === 0}>↑</button>
+                      <button type="button" className="btn btn-xs btn-secondary" onClick={() => moveImage(index, 1)} disabled={index === imageItems.length - 1}>↓</button>
+                      {!image.is_main && (
+                        <button type="button" className="btn btn-xs btn-secondary" onClick={() => markImageAsMain(image.id)}>Principal</button>
+                      )}
+                      <button type="button" className="btn btn-xs btn-ghost" onClick={() => removeImage(image.id)} style={{ color: 'var(--color-error)' }}>Eliminar</button>
                     </div>
-                  </article>
+                  </div>
                 ))}
               </div>
-            </section>
+            </div>
           )}
 
-          <div className="variants">
-            <div className="variants-header">
-              <h4>Variantes nuevas</h4>
-              <button type="button" onClick={addVariant}>➕ Agregar</button>
+          <div className="form-group">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <label style={labelStyle}>Variantes</label>
+              <button type="button" className="btn btn-sm btn-secondary" onClick={addVariant}>
+                + Agregar variante
+              </button>
             </div>
+            <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Define las variantes del producto: cada combinación de talla y color es una variante con su propio stock.
+            </p>
+
             {currentVariants.length > 0 && (
-              <div className="current-variants">
-                <h5>Variantes existentes</h5>
-                {currentVariants.map(variant => (
-                  <p key={variant.id}>{variant.size} / {variant.color} - Stock: {variant.stock}</p>
+              <div style={{
+                padding: '10px 14px', background: 'var(--color-bg-tertiary)',
+                borderRadius: 'var(--radius-lg)', marginBottom: 8,
+                border: '1px dashed var(--color-border)',
+              }}>
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  Variantes existentes ({currentVariants.length})
+                </p>
+                {currentVariants.map(v => (
+                  <p key={v.id} style={{ margin: '2px 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                    {v.size} / {v.color} — Stock: {v.stock}
+                  </p>
                 ))}
               </div>
             )}
+
             {variants.map((v, idx) => (
               <VariantRow
                 key={idx}
@@ -284,13 +337,20 @@ export default function ProductForm({ product, onClose, onSaved }) {
                 onRemove={() => setVariants(a => a.filter((_, i) => i !== idx))}
               />
             ))}
+            {variants.length === 0 && (
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>
+                No hay variantes nuevas. Haz clic en "+ Agregar variante" para añadir una.
+              </p>
+            )}
           </div>
 
-          {error && <div className="form-error">{error}</div>}
-
-          <div className="modal-actions">
-            <button type="button" onClick={onClose}>Cancelar</button>
-            <button type="submit" disabled={saving}>{saving ? 'Guardando...' : (isEditing ? 'Guardar Cambios' : 'Guardar Producto')}</button>
+          <div className="form-modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Guardando...' : (isEditing ? 'Guardar Cambios' : 'Guardar Producto')}
+            </button>
           </div>
         </form>
       </div>

@@ -10,9 +10,18 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-	list_display = ('id', 'customer_name', 'customer_email', 'status', 'total', 'created_at')
+	list_display = (
+		'id',
+		'customer_name',
+		'customer_email',
+		'status',
+		'total',
+		'image_url',
+		'cloudinary_public_id',
+		'created_at'
+	)
 	list_filter = ('status', 'created_at')
-	search_fields = ('customer_name', 'customer_email')
+	search_fields = ('customer_name', 'customer_email', 'image_url', 'cloudinary_public_id')
 	inlines = [OrderItemInline]
 
 

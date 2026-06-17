@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { fetchCart, addToCart, updateCartItemQuantity, removeCartItem } from '../services/api';
+import { fetchCart, addToCart, updateCartItemQuantity, removeCartItem, clearCart as clearCartApi } from '../services/api';
 
 const CartContext = createContext();
 
@@ -90,8 +90,21 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  const clearCartItems = async () => {
+    try {
+      await clearCartApi();
+      setCart({ items: [], total_items: 0, total_amount: '0.00' });
+    } catch (error) {
+      console.error('Error al vaciar el carrito:', error);
+    }
+  };
+
+  const reloadCart = useCallback(async () => {
+    await loadCart();
+  }, [loadCart]);
+
   return (
-    <CartContext.Provider value={{ cart, loading, addItem, updateQuantity, removeItem }}>
+    <CartContext.Provider value={{ cart, loading, addItem, updateQuantity, removeItem, clearCartItems, reloadCart }}>
       {children}
     </CartContext.Provider>
   );

@@ -12,15 +12,11 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductImage
-        fields = ['id', 'image', 'image_url', 'is_main', 'order', 'created_at']
+        fields = ['id', 'image', 'image_url', 'cloudinary_url', 'is_main', 'order', 'created_at']
         read_only_fields = ['id', 'image_url', 'created_at']
 
     def get_image_url(self, obj):
-        request = self.context.get('request')
-        if not obj.image:
-            return None
-        url = obj.image.url
-        return request.build_absolute_uri(url) if request else url
+        return obj.image_url
 
 
 class VariantSerializer(serializers.ModelSerializer):
@@ -32,7 +28,7 @@ class VariantSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'display_label', 'created_at']
 
     def get_display_label(self, obj):
-        return f'{obj.size} / {obj.color}'
+        return f'Talla {obj.size} — {obj.color}'
 
 
 class ProductWriteSerializer(serializers.ModelSerializer):
@@ -78,9 +74,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         image = obj.main_image
         if not image:
             return None
-        request = self.context.get('request')
-        url = image.image.url
-        return request.build_absolute_uri(url) if request else url
+        return image.image_url
 
     def get_images_count(self, obj):
         return obj.images.count()
@@ -110,39 +104,34 @@ class ProductDetailSerializer(ProductListSerializer):
 class ProductImageCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
-        fields = ['id', 'image', 'is_main', 'order']
+        fields = ['id', 'image', 'cloudinary_url', 'is_main', 'order']
         read_only_fields = ['id']
-
-    def validate_image(self, value):
-        if not value:
-            raise serializers.ValidationError('La imagen es obligatoria.')
-        
-        # Validar formato
-        allowed_formats = ['.jpg', '.jpeg', '.png']
-        file_extension = value.name.lower().split('.')[-1]
-        if f'.{file_extension}' not in allowed_formats:
-            raise serializers.ValidationError('Solo se permiten imágenes JPG o PNG.')
-        
-        # Validar tamaño (2MB)
-        if value.size > 2 * 1024 * 1024:
-            raise serializers.ValidationError('La imagen no puede superar 2MB.')
-        
-        # Validar resolución mínima
-        try:
-            from PIL import Image
-            image = Image.open(value)
-            width, height = image.size
-            if width < 400 or height < 400:
-                raise serializers.ValidationError('La resolución mínima es 400x400 píxeles.')
-        except Exception:
-            raise serializers.ValidationError('No se pudo validar la imagen.')
-        
-        return value
 
     def validate(self, attrs):
         product = self.context['product']
         if product.images.count() >= 5:
             raise serializers.ValidationError({'image': 'Máximo 5 imágenes por producto.'})
+        
+        if not attrs.get('image') and not attrs.get('cloudinary_url'):
+            raise serializers.ValidationError({'image': 'Debe proporcionar una imagen o una URL de Cloudinary.'})
+        
+        if attrs.get('image'):
+            value = attrs['image']
+            allowed_formats = ['.jpg', '.jpeg', '.png']
+            file_extension = value.name.lower().split('.')[-1]
+            if f'.{file_extension}' not in allowed_formats:
+                raise serializers.ValidationError({'image': 'Solo se permiten imágenes JPG o PNG.'})
+            if value.size > 2 * 1024 * 1024:
+                raise serializers.ValidationError({'image': 'La imagen no puede superar 2MB.'})
+            try:
+                from PIL import Image
+                image = Image.open(value)
+                width, height = image.size
+                if width < 400 or height < 400:
+                    raise serializers.ValidationError({'image': 'La resolución mínima es 400x400 píxeles.'})
+            except Exception:
+                raise serializers.ValidationError({'image': 'No se pudo validar la imagen.'})
+        
         return attrs
 
     def create(self, validated_data):

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { buildApiUrl } from '../services/api';
 
 export const RecuperarPassword = () => {
   const [correo, setCorreo] = useState('');
@@ -14,7 +15,7 @@ export const RecuperarPassword = () => {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/recuperar_password/', {
+      const response = await fetch(buildApiUrl('auth/recuperar_password/'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +101,7 @@ export const NuevaPassword = () => {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/nueva_password/', {
+      const response = await fetch(buildApiUrl('auth/nueva_password/'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
