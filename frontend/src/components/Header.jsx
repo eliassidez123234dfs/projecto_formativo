@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useContext } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { CartContext } from '../context/CartContext'
 
-export const Header = ({ cartCount = 0 }) => {
+export const Header = () => {
   const navigate = useNavigate()
+  const { cart } = useContext(CartContext)
+  const cartCount = cart?.items?.length ?? 0
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef(null)
@@ -12,7 +15,9 @@ export const Header = ({ cartCount = 0 }) => {
   const loggedIn = Boolean(token)
   let usuario = null
   try {
-    usuario = localStorage.getItem('usuario') ? JSON.parse(localStorage.getItem('usuario')) : null
+    // usuario = localStorage.getItem('usuario') ? JSON.parse(localStorage.getItem('usuario')) : null
+    const raw = localStorage.getItem('usuario')
+    usuario = raw ? JSON.parse(raw) : null
   } catch { /* ignore */ }
 
   useEffect(() => {

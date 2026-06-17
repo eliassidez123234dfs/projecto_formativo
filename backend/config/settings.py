@@ -51,13 +51,6 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt',
 ]
 
-CLOUDINARY_APPS = [
-    'cloudinary_storage',
-    'cloudinary',
-]
-
-INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
-
 CKEDITOR_CONFIGS = {
     'default': {
         'toolbar': 'Custom',
@@ -72,6 +65,15 @@ CKEDITOR_CONFIGS = {
 }   
 
 CKEDITOR_UPLOAD_PATH = "/media/" # indican donde se van a guardar los archivos
+
+CLOUDINARY_APPS = [
+    'cloudinary_storage',
+    'cloudinary',
+]
+
+INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
+
+
 
 MIDDLEWARE = [
     # Request ID (debe ir al inicio)
@@ -113,7 +115,6 @@ AUTH_USER_MODEL = 'users.Usuario'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Usar SQLite para desarrollo (más fácil para el equipo)
 # Usar SQLite para desarrollo (más fácil para el equipo)
 DATABASES = {
     'default': {
@@ -201,7 +202,6 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '1000/hour', 
         'user': '10000/hour',
-        'contact_form': '3/hour',
     },
 
     'DEFAULT_RENDERER_CLASSES': [
@@ -272,26 +272,11 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
 
-# Rate limiting para formulario de contacto
-RATELIMIT_ENABLE = True
-CONTACT_FORM_RATE_LIMIT = '3/h'  # 3 requests per hour per IP
-
 # Password validation rules (RN-001)
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_REQUIRE_UPPERCASE = True
 PASSWORD_REQUIRE_NUMBER = True
 PASSWORD_REQUIRE_SPECIAL = True
-
-# Definicion de que servicios pueden usar nuestro proyecto 
-CORS_ORIGIN_WHITELIST = env.list(
-    'CORS_ORIGIN_WHITELIST',
-    default=[
-        'http://127.0.0.1:5173',
-        'http://localhost:5173',
-        'http://192.168.1.93:5173',
-        'http://192.168.137.7:5173',
-    ]
-)
 
 # Definir que dominios pueden hacer los request
 CSRF_TRUSTED_ORIGINS = env.list(
