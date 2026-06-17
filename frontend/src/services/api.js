@@ -14,7 +14,7 @@ function processQueue(error, token = null) {
   failedQueue = [];
 }
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
