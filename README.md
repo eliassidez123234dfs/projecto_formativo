@@ -24,6 +24,12 @@ Backend Django + DRF | Frontend React + Vite | Editor 3D Three.js
 | **[CONTRIBUTING.md](CONTRIBUTING.md)** | GitFlow, estructura de ramas, flujo diario, PRs, merges, ramas temporales, estilo de codigo, comandos git |
 | **[Estructura del proyecto](estructura.txt)** | Arbol de directorios completo del repositorio |
 
+### Herramientas y desarrollo
+
+| Documento | Que contiene |
+|-----------|-------------|
+| **[TOOLKIT.md](docs/TOOLKIT.md)** | IDEs, extensiones, IAs, utilidades y herramientas recomendadas para el desarrollo |
+
 ### Stack tecnologico
 
 | Capa | Tecnologias |
