@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Análisis realizado en la fase inicial. Para la especificación actualizada del proyecto consulta [`.specify/spec.md`](../.specify/spec.md).
+
 # 📊 ANÁLISIS COMPLETO - PROYECTO FORMATIVO
 
 ## 🎯 **RESUMEN EJECUTIVO**

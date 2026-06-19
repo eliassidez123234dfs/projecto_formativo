@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Resumen de entrega del rediseño v2.0. Para el estado actual del proyecto consulta [README.md](../README.md).
+
 # ✅ RESUMEN FINAL - Rediseño Corporativo Completado
 
 **Fecha:** 12 de mayo de 2026  
