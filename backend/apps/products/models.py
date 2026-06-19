@@ -67,7 +67,12 @@ class Product(models.Model):
 			raise ValidationError({'description': 'La descripción es requerida.'})
 		if len(self.description) > 500:
 			raise ValidationError({'description': 'La descripción no puede superar 500 caracteres.'})
-		if self.base_price is None or self.base_price <= 0:
+		price = self.base_price
+		try:
+			price = Decimal(str(price))
+		except Exception:
+			raise ValidationError({'base_price': 'Precio base inválido.'})
+		if price is None or price <= 0:
 			raise ValidationError({'base_price': 'El precio base debe ser mayor a 0.'})
 
 	def save(self, *args, **kwargs):

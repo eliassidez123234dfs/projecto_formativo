@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import sys
 
 import environ
 
@@ -72,7 +73,6 @@ CLOUDINARY_APPS = [
 ]
 
 INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
-
 
 
 MIDDLEWARE = [
@@ -324,7 +324,7 @@ try:
         secure=True,
     )
 
-    if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY']:
+    if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY'] and 'test' not in sys.argv:
         STORAGES = {
             "default": {
                 "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
