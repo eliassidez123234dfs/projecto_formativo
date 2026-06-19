@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Esta ficha técnica refleja los requisitos iniciales del proyecto definidos antes de comenzar la codificación. La implementación actual puede diferir en algunos detalles. Para la especificación actualizada del proyecto, consultar [`.specify/spec.md`](./.specify/spec.md) y para el índice completo de documentación [INDICE.md](./INDICE.md).
+
 # **Pestaña 1**
 
 | INFORMACIÓN GENERAL |  |  |  |  |  |  |  |  |  |
