@@ -1,6 +1,8 @@
-# Guía de configuración del proyecto
+# Guía de Configuración del Proyecto — RED Estampación
 
-Esta guía describe cómo instalar y ejecutar el proyecto en un entorno de desarrollo local.
+> Esta guía describe cómo instalar y ejecutar el proyecto en un entorno de desarrollo local.
+> Para una visión general del proyecto, consulta [README.md](./README.md).
+> Para el índice completo de documentación, consulta [INDICE.md](./INDICE.md).
 
 ## Requisitos previos
 
@@ -194,8 +196,62 @@ Esto levanta:
 
 ### 5.3 Ejecutar comandos dentro del contenedor
 
-- ejecutar `python manage.py collectstatic`.
-- usar Gunicorn como servidor WSGI.
-- usar Nginx o un proxy reverso para servir el frontend y los activos.
-- usar una base de datos de producción.
-- mantener las variables de entorno fuera del repositorio.
+```bash
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py loaddata seed_data.json
+```
+
+---
+
+## 6. Seed Data (Datos de Ejemplo)
+
+Para poblar la base de datos con productos, categorías y un usuario admin de ejemplo:
+
+```bash
+cd backend
+python manage.py load_sample_data
+```
+
+Esto crea:
+- Categorías (Camisetas, Hoodies, Gorras, etc.)
+- Productos de ejemplo con variantes (tallas, colores)
+- Imágenes de muestra (si configuraste Cloudinary)
+- Un superusuario: `admin@test.com` / `admin123`
+
+---
+
+## 7. Variables de entorno principales
+
+### Backend
+
+| Variable | Descripción |
+|----------|-------------|
+| `SECRET_KEY` | Clave secreta de Django |
+| `DEBUG` | `True` para desarrollo, `False` para producción |
+| `ALLOWED_HOSTS` | Hosts permitidos separados por coma |
+| `FRONTEND_URL` | URL base del frontend |
+| `DATABASE_URL` | URL de conexión a PostgreSQL (opcional, usa SQLite por defecto) |
+| `EMAIL_HOST` / `EMAIL_PORT` | Configuración de correo |
+| `CLOUDINARY_URL` | URL de Cloudinary para almacenamiento de imágenes |
+
+### Frontend
+
+| Variable | Descripción |
+|----------|-------------|
+| `VITE_API_URL` | URL base de la API backend (ej: `http://localhost:8000/api/`) |
+| `VITE_MEDIA_URL` | URL base para archivos multimedia |
+
+---
+
+## 8. Notas de Producción
+
+Para entornos productivos se recomienda:
+
+- `DEBUG=False`
+- PostgreSQL como base de datos
+- Gunicorn + Nginx como servidor
+- Frontend servido como estáticos desde Nginx
+- HTTPS con Let's Encrypt
+- Variables de entorno seguras (nunca en el repositorio)
+- Consultar [PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md) para la lista completa

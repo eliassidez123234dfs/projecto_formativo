@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Guía de uso del admin panel original. Para la documentación actual del panel consulta [API_DOCUMENTATION.md](../API_DOCUMENTATION.md) y [SETUP_GUIDE.md](../SETUP_GUIDE.md).
+
 # 🎨 Guía de Uso del Panel de Admin Profesional
 
 ## Acceso al Panel

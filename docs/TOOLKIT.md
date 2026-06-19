@@ -1,6 +1,7 @@
 # Toolkit recomendado para desarrollo
 
-Herramientas, extensiones, IDEs y recursos de IA recomendados para trabajar con este proyecto.
+> Herramientas, extensiones, IDEs y recursos de IA recomendados para trabajar con este proyecto.  
+> Para el índice completo de documentación consulta [INDICE.md](../INDICE.md).
 
 ---
 
