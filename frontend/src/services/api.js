@@ -168,6 +168,11 @@ export const fetchAdminCartDetail = async (id) => {
   return response.data;
 };
 
+export const updateCartStatus = async (cartId, status) => {
+  const response = await api.patch(`admin/carts/${cartId}/status/`, { status });
+  return response.data;
+};
+
 export const fetchAdminUsers = async (params = {}) => {
   const response = await api.get('admin/usuarios/', { params });
   return response.data;
@@ -204,5 +209,47 @@ export const deleteContactMessage = async (id) => {
 
 export const fetchAuditLogs = async (page = 1, pageSize = 20) => {
   const response = await api.get('admin/usuarios/auditoria/', { params: { page, page_size: pageSize } });
+  return response.data;
+};
+
+// ─────────── ADMIN ORDERS ───────────
+export const fetchAdminOrders = async (page = 1, pageSize = 20) => {
+  const response = await api.get('admin/orders/', { params: { page, page_size: pageSize } });
+  return response.data;
+};
+
+export const fetchAdminOrderDetail = async (id) => {
+  const response = await api.get(`admin/orders/${id}/`);
+  return response.data;
+};
+
+export const updateOrderStatus = async (id, status) => {
+  const response = await api.patch(`admin/orders/${id}/status/`, { status });
+  return response.data;
+};
+
+export const reprocessOrder = async (id) => {
+  const response = await api.post(`admin/orders/${id}/reprocess/`);
+  return response.data;
+};
+
+// ─────────── CHECKOUT / PAYMENT ───────────
+export const fetchCheckoutSummary = async () => {
+  const response = await sessionApi.get('checkout/summary/');
+  return response.data;
+};
+
+export const initCheckout = async (shippingData) => {
+  const response = await sessionApi.post('checkout/init/', shippingData);
+  return response.data;
+};
+
+export const createPayment = async (orderId) => {
+  const response = await sessionApi.post('checkout/create-payment/', { order_id: orderId });
+  return response.data;
+};
+
+export const fetchPaymentStatus = async (reference) => {
+  const response = await sessionApi.get('checkout/payment-status/', { params: { reference } });
   return response.data;
 };

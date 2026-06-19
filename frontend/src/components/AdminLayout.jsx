@@ -26,6 +26,9 @@ export default function AdminLayout({ children }) {
           <Link to="/admin-products" className={`admin-nav-item ${isActive('/admin-products')}`}>
             <span className="admin-nav-icon">📦</span> Productos
           </Link>
+          <Link to="/admin-orders" className={`admin-nav-item ${isActive('/admin-orders')}`}>
+            <span className="admin-nav-icon">📋</span> Pedidos
+          </Link>
           <Link to="/admin-cart" className={`admin-nav-item ${isActive('/admin-cart')}`}>
             <span className="admin-nav-icon">🛒</span> Carritos
           </Link>

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.authentication import SessionAuthentication
@@ -9,6 +12,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.carts.models import Cart, CartItem
+from apps.orders.models import Order, OrderItem
 from apps.users.api.admin_viewset import AdminPermission
 from apps.users.api.auth_backend import UsuarioJWTAuthentication
 
@@ -127,6 +131,93 @@ class AdminCartViewSet(viewsets.ReadOnlyModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = AdminCartDetailSerializer(instance, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'])
+    def status(self, request, pk=None):
+        cart = self.get_object()
+        nuevo_status = request.data.get('status')
+
+        STATUS_MAP = dict(Order.STATUS_CHOICES)
+        if not nuevo_status or nuevo_status not in STATUS_MAP:
+            return Response({'error': f'Estado invalido. Opciones: {", ".join(STATUS_MAP.keys())}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            if not cart.order_id:
+                items = list(cart.items.select_related('product', 'variant').all())
+                if not items:
+                    return Response({'error': 'El carrito esta vacio.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                order = Order.objects.create(
+                    user=cart.user,
+                    customer_name=cart.user.usuario if cart.user else 'Administrador',
+                    customer_email=cart.user.correo if cart.user else '',
+                    status=nuevo_status,
+                    total=Decimal('0.00'),
+                )
+
+                running_total = Decimal('0.00')
+                for item in items:
+                    if item.quantity > item.variant.stock:
+                        return Response(
+                            {'error': f'Stock insuficiente para {item.product.name} ({item.variant.size}/{item.variant.color}).'},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
+                    OrderItem.objects.create(
+                        order=order,
+                        product=item.product,
+                        variant=item.variant,
+                        quantity=item.quantity,
+                        unit_price=item.unit_price,
+                    )
+
+                    item.variant.stock -= item.quantity
+                    item.variant.save(update_fields=['stock'])
+                    running_total += item.subtotal
+
+                order.total = running_total
+                order.save(update_fields=['total'])
+
+                cart.items.all().delete()
+                cart.order = order
+                cart.save(update_fields=['order'])
+
+                if nuevo_status == Order.STATUS_PAID:
+                    new_order = Order.objects.create(
+                        user=cart.user,
+                        customer_name=cart.user.usuario if cart.user else 'Administrador',
+                        customer_email=cart.user.correo if cart.user else '',
+                        status=Order.STATUS_PENDING,
+                        total=Decimal('0.00'),
+                    )
+                    cart.order = new_order
+                    cart.save(update_fields=['order'])
+            else:
+                order = cart.order
+
+                if order.status == Order.STATUS_PAID:
+                    return Response({'error': 'No se puede modificar un pedido pagado.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                if order.status == Order.STATUS_CANCELLED:
+                    return Response({'error': 'Pedido cancelado. Use "Procesar nuevamente" para reactivarlo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+                order.status = nuevo_status
+                order.save(update_fields=['status', 'updated_at'])
+
+                if nuevo_status == Order.STATUS_PAID:
+                    cart.items.all().delete()
+                    new_order = Order.objects.create(
+                        user=cart.user,
+                        customer_name=cart.user.usuario if cart.user else 'Administrador',
+                        customer_email=cart.user.correo if cart.user else '',
+                        status=Order.STATUS_PENDING,
+                        total=Decimal('0.00'),
+                    )
+                    cart.order = new_order
+                    cart.save(update_fields=['order'])
+
+        serializer = AdminCartDetailSerializer(cart, context={'request': request})
         return Response(serializer.data)
 
 

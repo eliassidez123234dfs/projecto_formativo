@@ -15,6 +15,7 @@ export const Header = () => {
   const loggedIn = Boolean(token)
   let usuario = null
   try {
+    // usuario = localStorage.getItem('usuario') ? JSON.parse(localStorage.getItem('usuario')) : null
     const raw = localStorage.getItem('usuario')
     usuario = raw ? JSON.parse(raw) : null
   } catch { /* ignore */ }

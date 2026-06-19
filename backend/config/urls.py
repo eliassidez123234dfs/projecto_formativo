@@ -1,4 +1,4 @@
-from django.contrib import admin
+﻿from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
@@ -96,7 +96,7 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
-    # Verificación directa de email desde el link del correo
+    # VerificaciÃ³n directa de email desde el link del correo
     path('api/auth/verificar-email/', verificar_email_directo, name='verificar-email-directo'),
 
     # API Router
@@ -109,7 +109,7 @@ urlpatterns = [
     # Productos
     path('api/products/', include('apps.products.api.urls')),
 
-    # Catálogo
+    # CatÃ¡logo
     path('api/catalog/', include('apps.catalog.api.urls')),
 
     # Modelos 3D
@@ -121,9 +121,10 @@ urlpatterns = [
     # Admin carritos
     path('api/admin/carts/', include('apps.carts.api.admin_urls')),
 
-    # Órdenes
+    # Ã“rdenes
     path('api/checkout/', include('apps.checkout.urls')),
     path('api/orders/', include('apps.orders.api.urls')),
+    path('api/admin/orders/', include('apps.orders.api.admin_urls')),
 ]
 
 # Media files

@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import sys
 
 import environ
 
@@ -51,13 +52,27 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt',
 ]
 
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'Custom',
+        'toolbar_Custom': [
+            ['Bold', 'Italic', 'Underline'],
+            ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
+            ['Link', 'Unlink'],
+            ['RemoveFormat', 'Source']
+        ],
+        'autoParagraph': False
+    }
+}   
+
+CKEDITOR_UPLOAD_PATH = "/media/" # indican donde se van a guardar los archivos
+
 CLOUDINARY_APPS = [
     'cloudinary_storage',
     'cloudinary',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
-
 
 
 MIDDLEWARE = [
@@ -282,6 +297,14 @@ if not DEBUG and env('DATABASE_URL', default=''):
     }
     DATABASES['default']['ATOMIC_REQUESTS'] = True
 
+# ─────────── Wompi Payment Gateway ───────────
+WOMPI_PUBLIC_KEY = env('WOMPI_PUBLIC_KEY', default='')
+WOMPRI_PRIVATE_KEY = env('WOMPRI_PRIVATE_KEY', default='')
+WOMPI_INTEGRITY_KEY = env('WOMPI_INTEGRITY_KEY', default='')
+WOMPI_API_URL = env('WOMPI_API_URL', default='https://sandbox.wompi.co')
+WOMPI_WEBHOOK_SECRET = env('WOMPI_WEBHOOK_SECRET', default='')
+WOMPI_REDIRECT_URL = env('WOMPI_REDIRECT_URL', default=f'{FRONTEND_URL}/checkout/resultado')
+
 # ─────────── Cloudinary Configuration ───────────
 try:
     import cloudinary
@@ -301,7 +324,7 @@ try:
         secure=True,
     )
 
-    if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY']:
+    if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY'] and 'test' not in sys.argv:
         STORAGES = {
             "default": {
                 "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
