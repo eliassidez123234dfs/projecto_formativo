@@ -27,8 +27,9 @@ import AdminContact from './pages/AdminContact';
 import AdminAudit from './pages/AdminAudit';
 import UserProfile from './pages/UserProfile';
 import CheckoutPage from './pages/CheckoutPage';
-// Si CatalogPage es diferente a Catalog, renómbralo o unifica
-// import CatalogPage from './pages/CatalogPage';
+import CartPage from './pages/CartPage';
+import CatalogPage from './pages/CatalogPage';
+import PublicProductDetail from './pages/PublicProductDetail';
 
 function App() {
   return (
