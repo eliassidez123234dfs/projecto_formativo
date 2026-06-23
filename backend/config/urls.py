@@ -2,7 +2,6 @@
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils import timezone
 
@@ -23,36 +22,6 @@ from apps.users.api.admin_viewset import AdminUsuarioViewSet
 from apps.users.api.stats_viewset import AdminStatsViewSet
 from apps.landing.api.viewset import ContactoViewSet
 from apps.users.models import Token_Verificacion
-
-def api_root(request):
-    """API Root - Lista todos los endpoints disponibles"""
-    return JsonResponse({
-        'message': 'Proyecto Formativo API',
-        'version': '1.0.0',
-        'endpoints': {
-            'products': '/api/products/',
-            'catalog': '/api/catalog/',
-            'cart': '/api/cart/',
-            'checkout': '/api/checkout/',
-            'orders': '/api/orders/',
-            'admin': '/admin/'
-        },
-        'documentation': 'https://github.com/tu-repo/projecto_formativo'
-    })
-
-def home_redirect(request):
-    """Redirigir a la documentación o frontend"""
-    return JsonResponse({
-        'message': 'Proyecto Formativo - Tienda de Ropa Virtual con Estampados 3D',
-        'frontend': 'http://localhost:5173',
-        'admin': '/admin/',
-        'api': '/api/',
-        'endpoints': {
-            'products': '/api/products/',
-            'catalog': '/api/catalog/',
-            'cart': '/api/cart/'
-        }
-    })
 
 # Crear router
 router = DefaultRouter()
@@ -91,8 +60,6 @@ def verificar_email_directo(request):
         return redirect(f"{settings.FRONTEND_URL}/login?error=token-invalido")
 
 urlpatterns = [
-    path('', home_redirect, name='home'),
-    path('api/', api_root, name='api_root'),
     # Admin
     path('admin/', admin.site.urls),
 

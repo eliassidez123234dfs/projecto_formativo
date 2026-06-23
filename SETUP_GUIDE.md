@@ -142,59 +142,18 @@ python manage.py runserver
 ```bash
 cd frontend
 npm install
-```
-
-Si da error `EACCES: permission denied`, corrige los permisos:
-
-```bash
-# Linux/macOS
-sudo chown -R $USER:$USER package.json package-lock.json
-```
-
-### 4.2 Iniciar servidor de desarrollo
-
-```bash
 npm run dev -- --host
 ```
 
-El frontend queda disponible en `http://localhost:5173`.
-
-### 4.3 Build para produccion
-
-```bash
-npm run build
-npm run preview    # Vista previa del build
-```
-
----
-
-## 5. Docker
-
-### 5.1 Requisitos
-
-- Docker Desktop instalado y en ejecucion
-  - **Linux:** `sudo systemctl start docker`
-  - **Windows/macOS:** Abre Docker Desktop desde el menu de inicio
-
-Verifica que Docker esta corriendo:
-
-```bash
-docker info
-```
-
-### 5.2 Construir y levantar los contenedores
-
-Desde la raiz del proyecto:
+### Docker
 
 ```bash
 docker compose up --build
 ```
 
-Esto levanta:
-- **Backend** en `http://localhost:8000` (con Gunicorn)
-- **Frontend** en `http://localhost:5173` (con Vite)
+## Despliegue en producción
 
-### 5.3 Ejecutar comandos dentro del contenedor
+Para un entorno de producción se recomienda:
 
 ```bash
 docker compose exec backend python manage.py migrate

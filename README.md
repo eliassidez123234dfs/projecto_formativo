@@ -1,7 +1,6 @@
 # Proyecto Formativo: Tienda de Ropa Virtual con Estampados 3D
 
-Aplicacion fullstack para una tienda de ropa virtual con personalizacion de estampados 3D.  
-**RED** (Redimido, Redencion) **Estampacion** — Proyecto formativo ADSO, ficha 3147208, SENA CTGI.
+Este repositorio contiene una aplicación fullstack para una tienda de ropa virtual con personalización de estampados. El proyecto está compuesto por un backend Django que expone una API REST y un frontend React construido con Vite.
 
 ## Estructura del repositorio
 

@@ -34,64 +34,6 @@ import OrderConfirmation from './pages/OrderConfirmation';
 // import CatalogPage from './pages/CatalogPage';
 
 function App() {
-  const path = typeof window !== 'undefined' ? window.location.pathname : '/'
-  const adminDetailMatch = path.match(/^\/admin-products\/detail\/(\d+)\/?$/)
-  const productDetailMatch = path.match(/^\/(?:productos|products)\/(\d+)\/?$/)
-
-  if (adminDetailMatch) {
-    return (
-      <>
-        <Navigation />
-        <AdminProductDetail productId={adminDetailMatch[1]} />
-      </>
-    )
-  }
-
-  if (path.startsWith('/admin-products')) {
-    return (
-      <>
-        <Navigation />
-        <AdminProducts />
-      </>
-    )
-  }
-
-  if (path.startsWith('/cart') || path.startsWith('/carrito')) {
-    return (
-      <>
-        <Navigation />
-        <CartPage />
-      </>
-    )
-  }
-
-  if (path.startsWith('/checkout')) {
-    return (
-      <>
-        <Navigation />
-        <CheckoutPage />
-      </>
-    )
-  }
-
-  if (productDetailMatch) {
-    return (
-      <>
-        <Navigation />
-        <PublicProductDetail productId={productDetailMatch[1]} />
-      </>
-    )
-  }
-
-  if (path.startsWith('/catalogo') || path === '/' || path.startsWith('/catalog')) {
-    return (
-      <>
-        <Navigation />
-        <CatalogPage />
-      </>
-    )
-  }
-
   return (
     <ThemeProvider>
       <CartProvider>

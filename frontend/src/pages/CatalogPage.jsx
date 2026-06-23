@@ -24,7 +24,6 @@ function ProductCard({ product }) {
 export default function CatalogPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [totalCount, setTotalCount] = useState(0)
   const [page, setPage] = useState(1)
   const pageSize = 12
@@ -41,19 +40,10 @@ export default function CatalogPage() {
   useEffect(() => {
     let cancelled = false
     async function loadFilters() {
-      try {
-        const response = await fetch('/api/catalog/filters/')
-        if (!response.ok) {
-          throw new Error(`No se pudieron cargar los filtros (${response.status})`)
-        }
-        const data = await response.json()
-        if (!cancelled) {
-          setFilterOptions(data)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'No se pudieron cargar los filtros')
-        }
+      const response = await fetch('/api/catalog/filters/')
+      const data = await response.json()
+      if (!cancelled) {
+        setFilterOptions(data)
       }
     }
     loadFilters()
@@ -64,7 +54,6 @@ export default function CatalogPage() {
     let cancelled = false
     async function load() {
       setLoading(true)
-      setError('')
       const params = new URLSearchParams({ ordering: sort, page_size: pageSize, page })
       if (search.trim()) params.set('q', search.trim())
       if (category) params.set('category', category)
@@ -73,26 +62,12 @@ export default function CatalogPage() {
       if (hasStock) params.set('has_stock', 'true')
       if (minPrice) params.set('min_price', minPrice)
       if (maxPrice) params.set('max_price', maxPrice)
-      try {
-        const response = await fetch(`/api/catalog/?${params.toString()}`)
-        if (!response.ok) {
-          throw new Error(`No se pudo cargar el catálogo (${response.status})`)
-        }
-        const data = await response.json()
-        if (!cancelled) {
-          setItems(data.results || data)
-          setTotalCount(data.count || (Array.isArray(data) ? data.length : 0))
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setItems([])
-          setTotalCount(0)
-          setError(err instanceof Error ? err.message : 'No se pudo cargar el catálogo')
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
-        }
+      const response = await fetch(`/api/catalog/?${params.toString()}`)
+      const data = await response.json()
+      if (!cancelled) {
+        setItems(data.results || data)
+        setTotalCount(data.count || (Array.isArray(data) ? data.length : 0))
+        setLoading(false)
       }
     }
     load()
@@ -204,8 +179,6 @@ export default function CatalogPage() {
 
       {loading ? (
         <div className="shop-empty">Cargando catálogo...</div>
-      ) : error ? (
-        <div className="shop-empty">{error}</div>
       ) : (
         <>
           <section className="shop-grid">

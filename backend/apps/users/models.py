@@ -1,6 +1,4 @@
 from django.db import models
-from django.contrib.auth.hashers import make_password
-from django.contrib.auth.models import BaseUserManager
 from django.core.validators import EmailValidator
 from django.utils import timezone
 import secrets
@@ -11,8 +9,6 @@ class Usuario(models.Model):
     """Modelo unificado de Usuario (RI-001)"""
     # Los diferentes estados que usare en el apartado de usuarios
     ESTADO_CHOICES = (('Activo', 'Activo'), ('Inactivo', 'Inactivo'), ('Bloqueado', 'Bloqueado'),)
-    
-    objects = UsuarioManager()
     
     # Roles a usar en el usuario 
     ROL_CHOICES = (('Administrador', 'Administrador'), ('Usuario', 'Usuario'),)
