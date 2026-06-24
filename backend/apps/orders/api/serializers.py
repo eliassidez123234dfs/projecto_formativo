@@ -1,6 +1,6 @@
 ﻿from rest_framework import serializers
 
-from apps.orders.models import Order, OrderItem
+from apps.orders.models import Invoice, Order, OrderItem
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -80,3 +80,17 @@ class AdminOrderDetailSerializer(serializers.ModelSerializer):
             'payment_wompi_status', 'payment_confirmed_at',
             'payment_rejection_reason', 'items',
         ]
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    order_number = serializers.CharField(source='order.order_number', read_only=True)
+    customer_name = serializers.CharField(source='order.customer_name', read_only=True)
+    items = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Invoice
+        fields = ['id', 'invoice_number', 'order', 'order_number', 'customer_name',
+                  'subtotal', 'total', 'generated_at', 'pdf_url', 'items']
+
+    def get_items(self, obj):
+        return AdminOrderItemSerializer(obj.order.items.all(), many=True).data

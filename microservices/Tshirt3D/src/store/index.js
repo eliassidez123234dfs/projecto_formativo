@@ -10,6 +10,7 @@ const state = proxy({
   fullDecal: './circuit.png',
   logoPosition: [0, 0.04, 0.15],
   logoScale: 0.15,
+  lightIntensity: 50,
 });
 
 export default state;

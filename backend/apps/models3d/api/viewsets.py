@@ -25,7 +25,7 @@ class Model3DViewSet(viewsets.ModelViewSet):
         return Model3DSerializer
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'create']:
+        if self.action in ['list', 'retrieve', 'create', 'active', 'approved', 'preview_images']:
             permission_classes = []
         else:
             permission_classes = [IsAuthenticated]

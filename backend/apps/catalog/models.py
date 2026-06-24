@@ -77,6 +77,20 @@ class CatalogFilter(models.Model):
         return self.name
 
 
+class CatalogSession(models.Model):
+    user = models.ForeignKey('users.Usuario', null=True, blank=True, on_delete=models.SET_NULL)
+    session_key = models.CharField(max_length=255, blank=True, null=True)
+    accessed_at = models.DateTimeField(auto_now_add=True)
+    products_viewed = models.PositiveIntegerField(default=0)
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-accessed_at']
+
+    def __str__(self) -> str:
+        return f'Session {self.session_key or self.user_id} — {self.accessed_at}'
+
+
 class PopularSearch(models.Model):
     query = models.CharField(max_length=200, unique=True)
     search_count = models.PositiveIntegerField(default=0)

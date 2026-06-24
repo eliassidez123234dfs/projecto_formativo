@@ -9,6 +9,7 @@ from apps.products.models import Product, Variant
 class Order(models.Model):
 	STATUS_PENDING = 'pendiente'
 	STATUS_PAID = 'pagado'
+	STATUS_PRODUCTION = 'produccion'
 	STATUS_SHIPPED = 'enviado'
 	STATUS_DELIVERED = 'entregado'
 	STATUS_CANCELLED = 'cancelado'
@@ -16,6 +17,7 @@ class Order(models.Model):
 	STATUS_CHOICES = [
 		(STATUS_PENDING, 'Pendiente'),
 		(STATUS_PAID, 'Pagado'),
+		(STATUS_PRODUCTION, 'Producción'),
 		(STATUS_SHIPPED, 'Enviado'),
 		(STATUS_DELIVERED, 'Entregado'),
 		(STATUS_CANCELLED, 'Cancelado'),
@@ -73,7 +75,29 @@ class Order(models.Model):
 
 	@property
 	def is_active_order(self) -> bool:
-		return self.status in {self.STATUS_PENDING, self.STATUS_PAID, self.STATUS_SHIPPED}
+		return self.status in {self.STATUS_PENDING, self.STATUS_PAID, self.STATUS_PRODUCTION, self.STATUS_SHIPPED}
+
+
+class Invoice(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='invoice')
+    invoice_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    generated_at = models.DateTimeField(auto_now_add=True)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-generated_at']
+
+    def __str__(self):
+        return f'Factura #{self.invoice_number or self.pk}'
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and not self.invoice_number:
+            self.invoice_number = f'FAC-{self.pk:06d}'
+            super().save(update_fields=['invoice_number'])
 
 
 class OrderItem(models.Model):
@@ -82,6 +106,10 @@ class OrderItem(models.Model):
 	variant = models.ForeignKey(Variant, on_delete=models.PROTECT)
 	quantity = models.PositiveIntegerField(default=1)
 	unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+	@property
+	def subtotal(self):
+		return self.unit_price * self.quantity
 
 	def __str__(self) -> str:
 		return f'{self.product.name} x {self.quantity}'

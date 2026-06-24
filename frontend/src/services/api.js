@@ -253,3 +253,35 @@ export const fetchPaymentStatus = async (reference) => {
   const response = await sessionApi.get('checkout/payment-status/', { params: { reference } });
   return response.data;
 };
+
+// ─────────── REVIEWS ───────────
+export const fetchProductReviews = async (productId) => {
+  const response = await publicApi.get('products/reviews/', { params: { product: productId } });
+  return response.data;
+};
+
+export const createReview = async (productId, rating, comment) => {
+  const response = await api.post('products/reviews/', { product: productId, rating, comment });
+  return response.data;
+};
+
+export const updateReview = async (reviewId, rating, comment) => {
+  const response = await api.patch(`products/reviews/${reviewId}/`, { rating, comment });
+  return response.data;
+};
+
+// ─────────── INVOICES ───────────
+export const generateInvoice = async (orderId) => {
+  const response = await api.post('orders/invoices/generate/', { order_id: orderId });
+  return response.data;
+};
+
+export const fetchInvoice = async (invoiceId) => {
+  const response = await api.get(`orders/invoices/${invoiceId}/`);
+  return response.data;
+};
+
+export const fetchOrderInvoice = async (orderId) => {
+  const response = await api.get('orders/invoices/', { params: { order: orderId } });
+  return response.data;
+};

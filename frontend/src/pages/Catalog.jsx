@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchCatalog, fetchProductDetail } from '../services/api';
+import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { Header } from '../components/Header';
@@ -15,7 +15,7 @@ export const Catalog = () => {
   const [filtersData, setFiltersData] = useState({ categories: [], price_range: { min: 0, max: 0 } });
   const [pageInfo, setPageInfo] = useState(null);
   const navigate = useNavigate();
-  const { cart, addItem } = useCart();
+  const { cart } = useCart();
 
   const loadProducts = async () => {
     setLoading(true);
@@ -42,23 +42,6 @@ export const Catalog = () => {
       [name]: name === 'category' ? (value ? Number(value) : '') : value,
       page: 1,
     }));
-  };
-
-  const handleAddToCart = async (product) => {
-    try {
-      let prod = product;
-      if (!prod.variants) prod = await fetchProductDetail(product.id);
-      const variantId = prod.variants?.find(v => v.stock > 0)?.id;
-      if (!variantId) {
-        alert('Este producto no tiene variantes disponibles');
-        return;
-      }
-      await addItem(prod.id, variantId, 1);
-      alert('Producto agregado al carrito');
-    } catch (error) {
-      const msg = error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito';
-      alert(msg);
-    }
   };
 
   return (
@@ -173,9 +156,13 @@ export const Catalog = () => {
                     price: Number(product.base_price) || 0,
                     badge: product.is_new ? 'Nuevo' : null,
                     image: product.main_image || null,
+                    base_price: product.base_price,
+                    available_sizes: product.available_sizes || [],
+                    available_colors: product.available_colors || [],
+                    stock_total: product.stock_total || 0,
+                    variants_summary: product.variants_summary || {},
                   }}
                   onView={(id) => navigate(`/product/${id}`)}
-                  onAdd={() => handleAddToCart(product)}
                 />
               ))}
             </div>

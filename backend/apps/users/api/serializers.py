@@ -42,12 +42,9 @@ class RegistroSerializer(serializers.Serializer):
 
     def validate_usuario(self, value):
         if not value or not value.strip():
-            raise EmptyFieldException('usuario', user_message='El nombre de usuario es obligatorio.')
+            raise serializers.ValidationError('El nombre de usuario es obligatorio.')
         if len(value) < 3:
-            raise InvalidPasswordFormatException(
-                'El usuario debe tener al menos 3 caracteres.',
-                user_message='El usuario debe tener al menos 3 caracteres.'
-            )
+            raise serializers.ValidationError('El usuario debe tener al menos 3 caracteres.')
         if Usuario.objects.filter(usuario=value).exists():
             ex = UsernameAlreadyExistsException(context={'field': 'usuario', 'value': value})
             raise serializers.ValidationError(ex.user_message)

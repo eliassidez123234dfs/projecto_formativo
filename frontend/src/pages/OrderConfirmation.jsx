@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchPaymentStatus } from '../services/api'
+import toast from 'react-hot-toast'
+import { fetchPaymentStatus, generateInvoice, fetchOrderInvoice } from '../services/api'
 import { Header } from '../components/Header'
 import './checkout.css'
 
@@ -10,6 +11,8 @@ export default function OrderConfirmation() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [invoice, setInvoice] = useState(null)
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
 
   const loadStatus = useCallback(async () => {
     if (!reference) {
@@ -34,6 +37,34 @@ export default function OrderConfirmation() {
       setLoading(false)
     }
   }, [reference])
+
+  const loadInvoice = useCallback(async (orderId) => {
+    try {
+      const result = await fetchOrderInvoice(orderId)
+      if (result.length > 0) setInvoice(result[0])
+    } catch {
+      // no invoice yet
+    }
+  }, [])
+
+  useEffect(() => {
+    if (data?.id) loadInvoice(data.id)
+  }, [data, loadInvoice])
+
+  const handleGenerateInvoice = async () => {
+    if (!data?.id) return
+    setGeneratingInvoice(true)
+    try {
+      const result = await generateInvoice(data.id)
+      setInvoice(result)
+      toast.success('Factura generada correctamente.')
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Error al generar factura'
+      toast.error(msg)
+    } finally {
+      setGeneratingInvoice(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -180,6 +211,34 @@ export default function OrderConfirmation() {
               </div>
             </div>
           </div>
+
+          {data.status === 'pagado' && (
+            <>
+              <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid var(--color-border)' }} />
+              <div style={{ textAlign: 'center' }}>
+                <h3>Factura</h3>
+                {invoice ? (
+                  <div style={{ fontSize: 14, marginTop: 8 }}>
+                    <p><strong>No. Factura:</strong> {invoice.invoice_number}</p>
+                    <p><strong>Subtotal:</strong> ${Number(invoice.subtotal).toFixed(2)}</p>
+                    <p><strong>Total:</strong> ${Number(invoice.total).toFixed(2)}</p>
+                    <p style={{ color: '#6b7280', fontSize: 12 }}>
+                      Generada el {new Date(invoice.generated_at).toLocaleDateString('es-CO')}
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleGenerateInvoice}
+                    disabled={generatingInvoice}
+                    className="btn btn-outline"
+                    style={{ marginTop: 8 }}
+                  >
+                    {generatingInvoice ? 'Generando...' : 'Descargar Factura'}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
 
           <div className="confirmation-actions">
             <Link to="/dashboard" className="btn btn-primary">Mis pedidos</Link>

@@ -74,6 +74,30 @@ CLOUDINARY_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
 
+# Redis cache
+if 'REDIS_URL' in env:
+    INSTALLED_APPS += ['django_redis']
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': env('REDIS_URL'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': True,
+            },
+            'KEY_PREFIX': 'projecto_formativo',
+        }
+    }
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
 
 MIDDLEWARE = [
     # Request ID (debe ir al inicio)
@@ -202,6 +226,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '1000/hour', 
         'user': '10000/hour',
+        'contact_form': '3/hour',
     },
 
     'DEFAULT_RENDERER_CLASSES': [

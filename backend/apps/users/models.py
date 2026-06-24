@@ -3,6 +3,12 @@ from django.core.validators import EmailValidator
 from django.utils import timezone
 import secrets
 
+
+class UsuarioManager(models.Manager):
+    def get_by_natural_key(self, username):
+        return self.get(usuario=username)
+
+
 # Clase de usuarios para el modelo de la base de datos del usuario bien estructurado
 # Patron Active Record
 class Usuario(models.Model):
@@ -43,6 +49,9 @@ class Usuario(models.Model):
     # foreignkey a si mismo, PERMITE al administrador eliminar a un usuario sin crear tablas extras
     admin_eliminador = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='usuarios_eliminados')
 
+    # Use custom manager
+    objects = UsuarioManager()
+
     # Django auth required attributes
     USERNAME_FIELD = 'usuario'
     REQUIRED_FIELDS = ['correo']
@@ -65,6 +74,14 @@ class Usuario(models.Model):
     @property
     def is_anonymous(self):
         return False
+
+    def check_password(self, raw_password):
+        from django.contrib.auth.hashers import check_password
+        return check_password(raw_password, self.contrasena)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     # funcion para mostrar en el backend los nombres de usuario y los de correo
     def __str__(self):

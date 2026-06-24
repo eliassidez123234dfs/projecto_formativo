@@ -488,5 +488,12 @@ sketch
 # End of https://www.toptal.com/developers/gitignore/api/python,django,node,linux,react,visualstudiocode,macos
 venv/
 
-.github/
-.github/*
+# Secret files
+*.key
+*.pem
+
+# Instructor checklist attachments (images/PDFs from email)
+lista de chequeos/
+
+# IDE workspace files
+*.code-workspace

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../crud-django"
+		},
+		{
+			"path": "../../red_estampacion"
+		}
+	],
+	"settings": {}
+}

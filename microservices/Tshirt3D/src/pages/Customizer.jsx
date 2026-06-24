@@ -73,12 +73,25 @@ const Customizer = ({ onOrderCreated }) => {
             </div>
           </motion.div>
 
-          {/* PANEL DERECHO: tamaño (vertical, pegado al borde derecho) */}
+          {/* PANEL DERECHO: tamaño + luz (vertical, pegado al borde derecho) */}
           <motion.div className="absolute top-1/2 transform -translate-y-1/2 right-2 z-10 flex flex-col gap-4" {...fadeAnimation}>
             <div className="p-2 glassmorphism rounded-lg border-[2px] border-white flex flex-col items-center gap-3 w-14 h-40 justify-center">
               <p className="text-white text-[10px] font-black uppercase text-center">Tamaño</p>
               <button onClick={() => handleScale(0.02)} className="w-10 h-10 bg-white/20 hover:bg-white/40 rounded-full text-white font-bold transition-all">+</button>
               <button onClick={() => handleScale(-0.02)} className="w-10 h-10 bg-white/20 hover:bg-white/40 rounded-full text-white font-bold transition-all">-</button>
+            </div>
+
+            <div className="p-2 glassmorphism rounded-lg border-[2px] border-white flex flex-col items-center gap-2 w-14 h-40 justify-center">
+              <p className="text-white text-[10px] font-black uppercase text-center">Luz</p>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={snap.lightIntensity}
+                onChange={(e) => (state.lightIntensity = Number(e.target.value))}
+                className="w-24 -rotate-90 origin-center mb-8"
+              />
+              <span className="text-white text-[10px] font-bold">{snap.lightIntensity}</span>
             </div>
           </motion.div>
 
@@ -86,6 +99,24 @@ const Customizer = ({ onOrderCreated }) => {
             {FilterTabs.map((tab) => (
               <Tab key={tab.name} tab={tab} isFilterTab isActiveTab={activeFilterTab[tab.name]} handleClick={() => handleActiveFilterTab(tab.name)} />
             ))}
+            <button
+              className="text-white text-[10px] font-black uppercase bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 transition-all border border-white/30"
+              onClick={() => {
+                state.color = '#353934';
+                state.isLogoTexture = true;
+                state.isFullTexture = false;
+                state.logoDecal = './superman_logo1.png';
+                state.fullDecal = './circuit.png';
+                state.logoPosition = [0, 0.04, 0.15];
+                state.logoScale = 0.15;
+                state.lightIntensity = 50;
+                setFile("");
+                setActiveEditorTab("");
+                setActiveFilterTab({ logoShirt: true, stylishShirt: false });
+              }}
+            >
+              Restaurar diseño original
+            </button>
             <button
               className="download-btn"
               onClick={async () => {
