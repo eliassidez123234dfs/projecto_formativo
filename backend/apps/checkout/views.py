@@ -18,6 +18,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.carts.models import Cart
+from apps.checkout.models import TransactionLog
 from apps.orders.models import Order, OrderItem
 
 from .serializers import (
@@ -286,6 +287,11 @@ def wompi_webhook(request):
             is_valid = verify_webhook_signature(raw_body, signature_header)
             if not is_valid:
                 logger.warning('Webhook con firma invalida rechazado')
+                TransactionLog.objects.create(
+                    estado='INVALID_SIGNATURE',
+                    evento='webhook - firma invalida',
+                    raw_response=body,
+                )
                 return Response({'error': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
 
         event = body.get('event', '')
@@ -295,9 +301,16 @@ def wompi_webhook(request):
         transaction_id = transaction_data.get('id', '')
         transaction_reference = transaction_data.get('reference', '')
         wompi_status = transaction_data.get('status', '')
+        amount_cents = transaction_data.get('amount_in_cents', None)
+        valor_pagado = Decimal(str(amount_cents / 100)) if amount_cents else None
 
         if not transaction_reference:
             logger.warning('Webhook sin referencia')
+            TransactionLog.objects.create(
+                estado='MISSING_REFERENCE',
+                evento=event,
+                raw_response=body,
+            )
             return Response({'error': 'Missing reference'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -307,10 +320,25 @@ def wompi_webhook(request):
                 order = Order.objects.get(payment_reference=transaction_reference)
             except Order.DoesNotExist:
                 logger.warning('Webhook: orden no encontrada para ref %s', transaction_reference)
+                TransactionLog.objects.create(
+                    reference_wompi=transaction_reference,
+                    estado='ORDER_NOT_FOUND',
+                    valor_pagado=valor_pagado,
+                    evento=event,
+                    raw_response=body,
+                )
                 return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
 
         if order.status == Order.STATUS_PAID:
             logger.info('Webhook: orden %s ya esta pagada, ignorando', order.order_number)
+            TransactionLog.objects.create(
+                order=order,
+                reference_wompi=transaction_reference,
+                estado='ALREADY_PAID',
+                valor_pagado=valor_pagado,
+                evento=event,
+                raw_response=body,
+            )
             return Response({'status': 'already_processed'})
 
         if event == 'transaction.updated' or wompi_status:
@@ -345,6 +373,15 @@ def wompi_webhook(request):
                     'payment_rejection_reason',
                     'updated_at',
                 ]
+            )
+
+            TransactionLog.objects.create(
+                order=order,
+                reference_wompi=transaction_reference,
+                estado=wompi_status or event,
+                valor_pagado=valor_pagado,
+                evento=event,
+                raw_response=body,
             )
 
         return Response({'status': 'received'})

@@ -5,7 +5,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.catalog.models import Category, PopularSearch, SearchHistory
+from apps.catalog.models import CatalogSession, Category, PopularSearch, SearchHistory
 from apps.products.models import Product
 
 from .serializers import (
@@ -73,6 +73,14 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        
+        # Registrar sesión de catálogo (RF-052)
+        session_key = request.session.session_key
+        CatalogSession.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            session_key=session_key,
+            products_viewed=queryset.count(),
+        )
         
         # Guardar historial de búsqueda
         session_key = request.session.session_key
@@ -197,8 +205,8 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
 
-class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Category.objects.filter(is_active=True)
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
     @action(detail=True, methods=['get'], url_path='products')

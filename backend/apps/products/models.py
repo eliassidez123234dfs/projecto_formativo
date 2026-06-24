@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from pathlib import Path
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -26,6 +27,17 @@ class Product(models.Model):
 
 	def __str__(self) -> str:
 		return self.name
+
+	@property
+	def average_rating(self):
+		reviews = self.reviews.all()
+		if not reviews:
+			return None
+		return sum(r.rating for r in reviews) / len(reviews)
+
+	@property
+	def total_reviews(self):
+		return self.reviews.count()
 
 	@property
 	def main_image(self):
@@ -155,6 +167,7 @@ class Variant(models.Model):
 	size = models.CharField(max_length=20)
 	color = models.CharField(max_length=20)
 	stock = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])
+	precio_variante = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal('0.01'))])
 	created_at = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
@@ -202,11 +215,15 @@ class ProductAudit(models.Model):
 	ACTION_CREATED = 'created'
 	ACTION_UPDATED = 'updated'
 	ACTION_PUBLISHED = 'published'
+	ACTION_APPROVED = 'approved'
+	ACTION_DISAPPROVED = 'disapproved'
 
 	ACTION_CHOICES = [
 		(ACTION_CREATED, 'Creado'),
 		(ACTION_UPDATED, 'Actualizado'),
 		(ACTION_PUBLISHED, 'Publicado'),
+		(ACTION_APPROVED, 'Aprobado'),
+		(ACTION_DISAPPROVED, 'Desaprobado'),
 	]
 
 	product = models.ForeignKey(Product, related_name='audit_entries', on_delete=models.CASCADE)
@@ -221,3 +238,35 @@ class ProductAudit(models.Model):
 
 	def __str__(self) -> str:
 		return f'{self.product.name} - {self.action}'
+
+
+class MotivoDesaprobacion(models.Model):
+	product = models.ForeignKey(Product, related_name='disapproval_reasons', on_delete=models.CASCADE)
+	motivo = models.CharField(max_length=200)
+	usuario_id_revisor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+	approved = models.BooleanField(default=False)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['-created_at']
+
+	def __str__(self) -> str:
+		return f'{self.product.name} - {self.motivo[:50]}'
+
+
+class Review(models.Model):
+	product = models.ForeignKey(Product, related_name='reviews', on_delete=models.CASCADE)
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
+	rating = models.PositiveSmallIntegerField(choices=[(i, str(i)) for i in range(1, 6)])
+	comment = models.TextField(max_length=1000, blank=True)
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		ordering = ['-created_at']
+		constraints = [
+			models.UniqueConstraint(fields=['product', 'user'], name='unique_product_user_review')
+		]
+
+	def __str__(self):
+		return f'{self.product.name} - {self.user} ({self.rating}★)'

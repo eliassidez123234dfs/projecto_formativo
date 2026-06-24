@@ -17,12 +17,12 @@ const CanvasModel = () => {
       gl={{ preserveDrawingBuffer: true, alpha: true }}
       className="w-full max-w-full h-full transition-all ease-in"
     >
-      <ambientLight intensity={0.5} />
+      <ambientLight intensity={snap.lightIntensity / 100} />
       {!snap.captureTransparent && <color attach="background" args={["#ffffff"]} />}
 
       <directionalLight
         castShadow
-        intensity={0.8}
+        intensity={(snap.lightIntensity / 100) * 1.6}
         position={[5, 10, 5]}
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}

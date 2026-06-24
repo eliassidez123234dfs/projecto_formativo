@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { fetchAdminOrderDetail, updateOrderStatus, reprocessOrder } from '../services/api'
+import { fetchAdminOrderDetail, updateOrderStatus, reprocessOrder, generateInvoice, fetchOrderInvoice } from '../services/api'
 import MainLayout from '../components/MainLayout'
 
 const STATUS_OPTIONS = [
@@ -26,6 +26,8 @@ export default function AdminOrderDetail() {
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [invoice, setInvoice] = useState(null)
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
 
   useEffect(() => {
     const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
@@ -44,6 +46,34 @@ export default function AdminOrderDetail() {
     load()
     return () => { mounted = false }
   }, [id])
+
+  useEffect(() => {
+    if (!order?.id) return
+    let mounted = true
+    async function loadInvoice() {
+      try {
+        const result = await fetchOrderInvoice(order.id)
+        if (mounted && result.length > 0) setInvoice(result[0])
+      } catch { /* no invoice */ }
+    }
+    loadInvoice()
+    return () => { mounted = false }
+  }, [order?.id])
+
+  const handleGenerateInvoice = async () => {
+    if (!order?.id) return
+    setGeneratingInvoice(true)
+    try {
+      const result = await generateInvoice(order.id)
+      setInvoice(result)
+      toast.success('Factura generada correctamente.')
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Error al generar factura'
+      toast.error(msg)
+    } finally {
+      setGeneratingInvoice(false)
+    }
+  }
 
   const canEditStatus = order && order.status !== 'pagado' && order.status !== 'cancelado'
 
@@ -151,6 +181,26 @@ export default function AdminOrderDetail() {
               >
                 {saving ? 'Procesando...' : 'Procesar nuevamente'}
               </button>
+            )}
+
+            {order.status === 'pagado' && !invoice && (
+              <button
+                onClick={handleGenerateInvoice}
+                disabled={generatingInvoice}
+                className="btn btn-primary"
+                style={{ background: '#2563eb', fontSize: 13 }}
+              >
+                {generatingInvoice ? 'Generando...' : 'Generar Factura'}
+              </button>
+            )}
+
+            {invoice && (
+              <span style={{
+                display: 'inline-block', padding: '4px 14px', borderRadius: 999, fontSize: 13,
+                fontWeight: 600, background: '#d1fae5', color: '#065f46',
+              }}>
+                Factura: {invoice.invoice_number}
+              </span>
             )}
           </div>
         </div>
