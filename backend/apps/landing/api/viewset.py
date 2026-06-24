@@ -76,14 +76,13 @@ class ContactoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def marcar_leido(self, request, pk=None):
         """Marcar mensaje como leído (admin)"""
-        contacto = self.get_object()
-        
-        # Solo admin puede marcar como leído
+        # Verificar permisos antes de buscar el objeto
         if not hasattr(request.user, 'rol') or request.user.rol != 'Administrador':
             return Response({
                 'error': 'No tienes permiso para realizar esta acción'
             }, status=status.HTTP_403_FORBIDDEN)
         
+        contacto = self.get_object()
         contacto.leido = True
         contacto.fecha_lectura = timezone.now()
         contacto.save()
@@ -95,14 +94,13 @@ class ContactoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['delete'], permission_classes=[permissions.IsAuthenticated])
     def eliminar(self, request, pk=None):
         """Eliminar mensaje de contacto (admin)"""
-        contacto = self.get_object()
-        
-        # Solo admin puede eliminar
+        # Verificar permisos antes de buscar el objeto
         if not hasattr(request.user, 'rol') or request.user.rol != 'Administrador':
             return Response({
                 'error': 'No tienes permiso para realizar esta acción'
             }, status=status.HTTP_403_FORBIDDEN)
         
+        contacto = self.get_object()
         contacto.delete()
         
         return Response({

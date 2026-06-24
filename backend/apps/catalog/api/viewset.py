@@ -200,10 +200,9 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.filter(is_active=True)
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
 
     @action(detail=True, methods=['get'], url_path='products')
-    def products(self, request, slug=None):
+    def products(self, request, pk=None):
         """Obtener productos de una categoría específica"""
         category = self.get_object()
         products = Product.objects.filter(

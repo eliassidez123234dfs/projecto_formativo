@@ -1,0 +1,101 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam participantBorderColor #2E4057
+skinparam participantFontColor #2E4057
+skinparam participantFontSize 11
+skinparam sequenceArrowColor #2E4057
+skinparam sequenceArrowThickness 2
+skinparam sequenceLifeLineBorderColor #2E4057
+skinparam sequenceLifeLineBackgroundColor #F0F4F8
+
+title "Diagrama de Secuencia - Flujo de Checkout"
+
+' ============================================================
+' ACTORES / PARTICIPANTES
+' ============================================================
+actor "Usuario" as User
+participant "Frontend\n(React + Vite)" as Frontend
+participant "Backend API\n(Django + DRF)" as Backend
+participant "Base de Datos" as DB
+participant "Wompi API" as Wompi
+participant "Cloudinary" as Cloudinary
+
+' ============================================================
+' FLUJO PRINCIPAL
+' ============================================================
+
+== Agregar al Carrito ==
+
+User -> Frontend: Selecciona producto,\ntalla y color
+Frontend -> Backend: POST /api/cart/add/\n{product_id, variant_id, quantity}
+Backend -> DB: Validar stock disponible
+DB --> Backend: Stock confirmado
+Backend -> DB: Crear/actualizar CartItem
+DB --> Backend: CartItem creado
+Backend --> Frontend: 201 Created\n{cart_id, items, total}
+Frontend --> User: Carrito actualizado
+
+== Iniciar Checkout ==
+
+User -> Frontend: Proceder al pago
+Frontend -> Backend: POST /api/checkout/init/\n{shipping_info, design_data}
+Backend -> DB: Crear Order (status: pendiente)
+DB --> Backend: Order creada
+Backend -> DB: Crear OrderItems desde CartItems
+DB --> Backend: OrderItems creados
+Backend -> Backend: Calcular total de la orden
+
+== Integración con Wompi ==
+
+Backend -> Wompi: POST /v1/transactions/\n{amount, reference, currency, redirect_url}
+note right
+  Payload incluye:
+  - monto total
+  - referencia única (order_number)
+  - URL de redirección
+  - URL de webhook
+end note
+Wompi --> Backend: 201 Created\n{data: {id, redirect_url}}
+
+Backend -> DB: Guardar payment_transaction_id\ny payment_reference
+Backend --> Frontend: 200 OK\n{redirect_url, order_number}
+Frontend --> User: Redirigiendo a pasarela...
+
+== Pago en Wompi ==
+
+User -> Wompi: Completa formulario de pago\n(tarjeta, PSE, etc.)
+Wompi --> User: Confirmación de pago
+
+== Notificación Webhook ==
+
+Wompi -> Backend: POST /api/webhook/wompi/\n{transaction: {id, status, ...}}
+note right
+  Wompi envía webhook
+  con el resultado de
+  la transacción
+end note
+Backend -> Wompi: Validar firma del webhook
+Backend -> DB: Actualizar Order.status\n(pagado / rechazado)
+Backend -> DB: Guardar payment_wompi_status\ny payment_confirmed_at
+Backend -> DB: Descontar stock de Variants
+DB --> Backend: Confirmación
+
+alt Pago exitoso
+  Backend --> Frontend: (opcional) Evento WebSocket\norden confirmada
+  Frontend --> User: Pedido confirmado\n¡Gracias por tu compra!
+else Pago rechazado
+  Backend --> Frontend: (opcional) Evento WebSocket\npago rechazado
+  Frontend --> User: Error en el pago\nIntenta de nuevo
+end
+
+== Consultar Estado de Orden ==
+
+User -> Frontend: Consultar estado del pedido
+Frontend -> Backend: GET /api/orders/{order_number}/
+Backend -> DB: Consultar Order + OrderItems
+DB --> Backend: Datos de la orden
+Backend --> Frontend: 200 OK\n{order, items, status, payment}
+Frontend --> User: Detalle del pedido
+
+@enduml
