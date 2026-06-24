@@ -24,7 +24,7 @@ class VariantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Variant
-        fields = ['id', 'size', 'color', 'stock', 'display_label', 'created_at']
+        fields = ['id', 'size', 'color', 'stock', 'precio_variante', 'display_label', 'created_at']
         read_only_fields = ['id', 'display_label', 'created_at']
 
     def get_display_label(self, obj):
@@ -93,12 +93,20 @@ class ProductDetailSerializer(ProductListSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     variants = VariantSerializer(many=True, read_only=True)
     publication_message = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    total_reviews = serializers.SerializerMethodField()
 
     class Meta(ProductListSerializer.Meta):
-        fields = ProductListSerializer.Meta.fields + ['images', 'variants', 'publication_message']
+        fields = ProductListSerializer.Meta.fields + ['images', 'variants', 'publication_message', 'average_rating', 'total_reviews']
 
     def get_publication_message(self, obj):
         return 'Listo para publicar' if obj.can_be_published else 'Faltan imagen principal o variante con stock'
+
+    def get_average_rating(self, obj):
+        return obj.average_rating
+
+    def get_total_reviews(self, obj):
+        return obj.total_reviews
 
 
 class ProductImageCreateSerializer(serializers.ModelSerializer):
@@ -142,7 +150,7 @@ class ProductImageCreateSerializer(serializers.ModelSerializer):
 class VariantCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Variant
-        fields = ['id', 'size', 'color', 'stock']
+        fields = ['id', 'size', 'color', 'stock', 'precio_variante']
         read_only_fields = ['id']
 
     def validate_size(self, value):

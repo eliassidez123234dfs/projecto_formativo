@@ -136,6 +136,7 @@ export default function MainLayout({ children, title, subtitle }) {
     { label: 'Dashboard', href: '/dashboard', icon: Icons.Dashboard },
     { label: 'Usuarios', href: '/admin-users', icon: Icons.Users, admin: true },
     { label: 'Productos', href: '/admin-products', icon: Icons.Products, admin: true },
+    { label: 'Pedidos', href: '/admin-orders', icon: Icons.Clipboard, admin: true },
     { label: 'Carrito', href: '/admin-cart', icon: Icons.Orders },
     { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail, admin: true },
     { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard, admin: true },

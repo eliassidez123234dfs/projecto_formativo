@@ -14,7 +14,7 @@ function processQueue(error, token = null) {
   failedQueue = [];
 }
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
@@ -168,6 +168,11 @@ export const fetchAdminCartDetail = async (id) => {
   return response.data;
 };
 
+export const updateCartStatus = async (cartId, status) => {
+  const response = await api.patch(`admin/carts/${cartId}/status/`, { status });
+  return response.data;
+};
+
 export const fetchAdminUsers = async (params = {}) => {
   const response = await api.get('admin/usuarios/', { params });
   return response.data;
@@ -204,5 +209,79 @@ export const deleteContactMessage = async (id) => {
 
 export const fetchAuditLogs = async (page = 1, pageSize = 20) => {
   const response = await api.get('admin/usuarios/auditoria/', { params: { page, page_size: pageSize } });
+  return response.data;
+};
+
+// ─────────── ADMIN ORDERS ───────────
+export const fetchAdminOrders = async (page = 1, pageSize = 20) => {
+  const response = await api.get('admin/orders/', { params: { page, page_size: pageSize } });
+  return response.data;
+};
+
+export const fetchAdminOrderDetail = async (id) => {
+  const response = await api.get(`admin/orders/${id}/`);
+  return response.data;
+};
+
+export const updateOrderStatus = async (id, status) => {
+  const response = await api.patch(`admin/orders/${id}/status/`, { status });
+  return response.data;
+};
+
+export const reprocessOrder = async (id) => {
+  const response = await api.post(`admin/orders/${id}/reprocess/`);
+  return response.data;
+};
+
+// ─────────── CHECKOUT / PAYMENT ───────────
+export const fetchCheckoutSummary = async () => {
+  const response = await sessionApi.get('checkout/summary/');
+  return response.data;
+};
+
+export const initCheckout = async (shippingData) => {
+  const response = await sessionApi.post('checkout/init/', shippingData);
+  return response.data;
+};
+
+export const createPayment = async (orderId) => {
+  const response = await sessionApi.post('checkout/create-payment/', { order_id: orderId });
+  return response.data;
+};
+
+export const fetchPaymentStatus = async (reference) => {
+  const response = await sessionApi.get('checkout/payment-status/', { params: { reference } });
+  return response.data;
+};
+
+// ─────────── REVIEWS ───────────
+export const fetchProductReviews = async (productId) => {
+  const response = await publicApi.get('products/reviews/', { params: { product: productId } });
+  return response.data;
+};
+
+export const createReview = async (productId, rating, comment) => {
+  const response = await api.post('products/reviews/', { product: productId, rating, comment });
+  return response.data;
+};
+
+export const updateReview = async (reviewId, rating, comment) => {
+  const response = await api.patch(`products/reviews/${reviewId}/`, { rating, comment });
+  return response.data;
+};
+
+// ─────────── INVOICES ───────────
+export const generateInvoice = async (orderId) => {
+  const response = await api.post('orders/invoices/generate/', { order_id: orderId });
+  return response.data;
+};
+
+export const fetchInvoice = async (invoiceId) => {
+  const response = await api.get(`orders/invoices/${invoiceId}/`);
+  return response.data;
+};
+
+export const fetchOrderInvoice = async (orderId) => {
+  const response = await api.get('orders/invoices/', { params: { order: orderId } });
   return response.data;
 };

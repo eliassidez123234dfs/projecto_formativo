@@ -13,7 +13,7 @@ export const Category = () => {
   const [filters, setFilters] = useState({ q: '', min_price: '', max_price: '', ordering: '', page: 1 });
   const [pageInfo, setPageInfo] = useState(null);
   const [categoryName, setCategoryName] = useState('Categoría');
-  const { cart, addItem } = useCart();
+  const { cart } = useCart();
 
   const loadProducts = async () => {
     setLoading(true);
@@ -39,17 +39,6 @@ export const Category = () => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
-  };
-
-  const handleAddToCart = async (product) => {
-    const variantId = product.variants?.[0]?.id;
-    if (!variantId) { alert('Este producto no tiene variantes disponibles'); return }
-    try {
-      await addItem(product.id, variantId, 1);
-      alert('Producto agregado al carrito');
-    } catch (error) {
-      alert(error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito');
-    }
   };
 
   return (
@@ -105,13 +94,18 @@ export const Category = () => {
                 <ProductCard
                   key={product.id}
                   product={{
-                    id: product.id, name: product.name,
+                    id: product.id,
+                    name: product.name,
                     price: Number(product.base_price) || 0,
                     badge: product.is_new ? 'Nuevo' : null,
                     image: product.main_image || null,
+                    base_price: product.base_price,
+                    available_sizes: product.available_sizes || [],
+                    available_colors: product.available_colors || [],
+                    stock_total: product.stock_total || 0,
+                    variants_summary: product.variants_summary || {},
                   }}
                   onView={(id) => window.location.href = `/product/${id}`}
-                  onAdd={() => handleAddToCart(product)}
                 />
               ))}
             </div>

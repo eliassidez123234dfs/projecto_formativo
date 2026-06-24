@@ -262,4 +262,18 @@ main                    # Produccion
 
 ---
 
+## Referencias de Documentación del Proyecto
+
+| Documento | Descripción |
+|-----------|-------------|
+| [`docs/diagrams/modelo-clases.puml`](diagrams/modelo-clases.puml) | Diagrama de clases PlantUML con todas las entidades del sistema |
+| [`docs/diagrams/casos-uso.puml`](diagrams/casos-uso.puml) | Diagrama de casos de uso con actores y funcionalidades |
+| [`docs/diagrams/secuencia-checkout.puml`](diagrams/secuencia-checkout.puml) | Diagrama de secuencia del flujo de checkout con Wompi |
+| [`docs/diagrams/despliegue.puml`](diagrams/despliegue.puml) | Diagrama de despliegue con nodos y servicios externos |
+| [`docs/PATRONES_DISENO.md`](PATRONES_DISENO.md) | Catálogo de patrones de diseño aplicados (MVC, Adapter, Strategy, etc.) |
+| [`docs/BITACORA.md`](BITACORA.md) | Bitácora de trabajo con hitos semanales del desarrollo |
+| [`docs/MODELO_ARQUITECTONICO.md`](MODELO_ARQUITECTONICO.md) | Descripción del modelo arquitectónico (monolito modular, capas, flujos) |
+
+---
+
 > Manten este documento actualizado a medida que el equipo adopte nuevas herramientas.

@@ -23,13 +23,18 @@ class CatalogProductSerializer(serializers.ModelSerializer):
     min_price = serializers.SerializerMethodField()
     max_price = serializers.SerializerMethodField()
     categories = serializers.SerializerMethodField()
+    stock_total = serializers.SerializerMethodField()
+    variants_summary = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    total_reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'description', 'base_price', 'is_active', 'is_approved',
             'main_image', 'available_sizes', 'available_colors', 'min_price', 'max_price',
-            'categories', 'created_at', 'updated_at'
+            'categories', 'stock_total', 'variants_summary', 'average_rating', 'total_reviews',
+            'created_at', 'updated_at'
         ]
 
     def get_main_image(self, obj):
@@ -54,6 +59,25 @@ class CatalogProductSerializer(serializers.ModelSerializer):
 
     def get_categories(self, obj):
         return [cat.category.name for cat in obj.categories.all()]
+
+    def get_stock_total(self, obj):
+        return sum(v.stock for v in obj.variants.all())
+
+    def get_variants_summary(self, obj):
+        variants = obj.variants.filter(stock__gt=0)
+        sizes = sorted(set(v.size for v in variants))
+        colors = sorted(set(v.color for v in variants))
+        return {
+            'sizes': sizes,
+            'colors': colors,
+            'min_price': min((float(v.precio_variante or obj.base_price) for v in variants), default=0)
+        }
+
+    def get_average_rating(self, obj):
+        return obj.average_rating
+
+    def get_total_reviews(self, obj):
+        return obj.total_reviews
 
 
 class SearchHistorySerializer(serializers.ModelSerializer):

@@ -53,10 +53,13 @@ class AdminCartListSerializer(serializers.ModelSerializer):
     items_count = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField()
     user_name = serializers.SerializerMethodField()
+    order_id = serializers.SerializerMethodField()
+    order_status = serializers.SerializerMethodField()
+    order_status_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Cart
-        fields = ['id', 'session_key', 'user', 'user_name', 'items_count', 'total_amount', 'created_at', 'updated_at']
+        fields = ['id', 'session_key', 'user', 'user_name', 'items_count', 'total_amount', 'created_at', 'updated_at', 'order_id', 'order_status', 'order_status_display']
 
     def get_items_count(self, obj):
         return obj.items.count()
@@ -69,16 +72,32 @@ class AdminCartListSerializer(serializers.ModelSerializer):
             return f"{obj.user.usuario} ({obj.user.correo})"
         return "Anónimo"
 
+    def get_order_id(self, obj):
+        return obj.order_id if obj.order_id else None
+
+    def get_order_status(self, obj):
+        if obj.order_id:
+            return obj.order.status
+        return 'pendiente'
+
+    def get_order_status_display(self, obj):
+        if obj.order_id:
+            return obj.order.get_status_display()
+        return 'Pendiente'
+
 
 class AdminCartDetailSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
     total_items = serializers.IntegerField(read_only=True)
     total_amount = serializers.SerializerMethodField()
     user_name = serializers.SerializerMethodField()
+    order_id = serializers.SerializerMethodField()
+    order_status = serializers.SerializerMethodField()
+    order_status_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Cart
-        fields = ['id', 'session_key', 'user', 'user_name', 'items', 'total_items', 'total_amount', 'created_at', 'updated_at']
+        fields = ['id', 'session_key', 'user', 'user_name', 'items', 'total_items', 'total_amount', 'created_at', 'updated_at', 'order_id', 'order_status', 'order_status_display']
 
     def get_total_amount(self, obj):
         return str(obj.total_amount)
@@ -87,6 +106,19 @@ class AdminCartDetailSerializer(serializers.ModelSerializer):
         if obj.user:
             return f"{obj.user.usuario} ({obj.user.correo})"
         return "Anónimo"
+
+    def get_order_id(self, obj):
+        return obj.order_id if obj.order_id else None
+
+    def get_order_status(self, obj):
+        if obj.order_id:
+            return obj.order.status
+        return 'pendiente'
+
+    def get_order_status_display(self, obj):
+        if obj.order_id:
+            return obj.order.get_status_display()
+        return 'Pendiente'
 
 
 class CartAddSerializer(serializers.Serializer):

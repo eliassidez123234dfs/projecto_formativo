@@ -52,12 +52,51 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt',
 ]
 
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar': 'Custom',
+        'toolbar_Custom': [
+            ['Bold', 'Italic', 'Underline'],
+            ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
+            ['Link', 'Unlink'],
+            ['RemoveFormat', 'Source']
+        ],
+        'autoParagraph': False
+    }
+}   
+
+CKEDITOR_UPLOAD_PATH = "/media/" # indican donde se van a guardar los archivos
+
 CLOUDINARY_APPS = [
     'cloudinary_storage',
     'cloudinary',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
+
+# Redis cache
+if 'REDIS_URL' in env:
+    INSTALLED_APPS += ['django_redis']
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': env('REDIS_URL'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': True,
+            },
+            'KEY_PREFIX': 'projecto_formativo',
+        }
+    }
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 
 MIDDLEWARE = [
@@ -258,26 +297,12 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
 
-# Rate limiting para formulario de contacto
-RATELIMIT_ENABLE = True
-CONTACT_FORM_RATE_LIMIT = '3/h'  # 3 requests per hour per IP
-
 # Password validation rules (RN-001)
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_REQUIRE_UPPERCASE = True
 PASSWORD_REQUIRE_NUMBER = True
 PASSWORD_REQUIRE_SPECIAL = True
 
-# Definicion de que servicios pueden usar nuestro proyecto 
-CORS_ORIGIN_WHITELIST = env.list(
-    'CORS_ORIGIN_WHITELIST',
-    default=[
-        'http://127.0.0.1:5173',
-        'http://localhost:5173',
-        'http://192.168.1.93:5173',
-        'http://192.168.137.7:5173',
-    ]
-)
 # Definir que dominios pueden hacer los request
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
@@ -296,6 +321,14 @@ if not DEBUG and env('DATABASE_URL', default=''):
         'default': env.db('DATABASE_URL'),
     }
     DATABASES['default']['ATOMIC_REQUESTS'] = True
+
+# ─────────── Wompi Payment Gateway ───────────
+WOMPI_PUBLIC_KEY = env('WOMPI_PUBLIC_KEY', default='')
+WOMPRI_PRIVATE_KEY = env('WOMPRI_PRIVATE_KEY', default='')
+WOMPI_INTEGRITY_KEY = env('WOMPI_INTEGRITY_KEY', default='')
+WOMPI_API_URL = env('WOMPI_API_URL', default='https://sandbox.wompi.co')
+WOMPI_WEBHOOK_SECRET = env('WOMPI_WEBHOOK_SECRET', default='')
+WOMPI_REDIRECT_URL = env('WOMPI_REDIRECT_URL', default=f'{FRONTEND_URL}/checkout/resultado')
 
 # ─────────── Cloudinary Configuration ───────────
 try:

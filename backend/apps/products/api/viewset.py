@@ -8,8 +8,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
-from apps.products.models import Product, ProductAudit, ProductImage
+from apps.products.models import Product, ProductAudit, ProductImage, MotivoDesaprobacion, Review
 
+from .review_serializers import ReviewSerializer
 from .serializers import (
     CartItemSerializer,
     ProductAuditSerializer,
@@ -208,6 +209,38 @@ class ProductViewSet(viewsets.ModelViewSet):
             actor=getattr(request.user, 'username', '') or 'anonymous',
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
         )
+        ProductAudit.objects.create(
+            product=product,
+            action=ProductAudit.ACTION_APPROVED,
+            actor=getattr(request.user, 'username', '') or 'anonymous',
+            after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
+
+    @action(detail=True, methods=['post'], url_path='disapprove')
+    def disapprove(self, request, pk=None):
+        product = self.get_object()
+        motivo = request.data.get('motivo', '').strip()
+        if not motivo:
+            return Response({'motivo': 'El motivo es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(motivo) > 200:
+            return Response({'motivo': 'El motivo no puede superar 200 caracteres.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        product.is_approved = False
+        product.save(update_fields=['is_approved', 'updated_at'])
+
+        MotivoDesaprobacion.objects.create(
+            product=product,
+            motivo=motivo,
+            usuario_id_revisor=request.user if request.user.is_authenticated else None,
+        )
+
+        ProductAudit.objects.create(
+            product=product,
+            action=ProductAudit.ACTION_DISAPPROVED,
+            actor=getattr(request.user, 'username', '') or 'anonymous',
+            after_data={'motivo': motivo},
+        )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=['post'], url_path='images')
@@ -337,3 +370,18 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         serializer = ProductListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            qs = qs.filter(product_id=product_id)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
