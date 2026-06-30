@@ -117,20 +117,11 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     
     def list(self, request, *args, **kwargs):
         """Listar usuarios con filtros y búsqueda (RF-016, RF-017).
-        Registra auditoría y protege contra extracción masiva.
+        Registra auditoría si la búsqueda devuelve muchos resultados.
         """
         queryset = self.filter_queryset(self.get_queryset())
-
         total = queryset.count()
 
-        # Límite total absoluto para prevenir extracción masiva
-        MAX_TOTAL = 10000
-        if total > MAX_TOTAL:
-            return Response({
-                'error': f'Refina los filtros. La consulta devuelve {total} registros (máx {MAX_TOTAL}).'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # Si es una búsqueda que devuelve muchos resultados, registrar en auditoría
         search = request.query_params.get('search')
         if search and total > 200:
             self._registrar_auditoria(
@@ -139,20 +130,13 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
                 ip_admin=self._obtener_ip_cliente(request)
             )
 
-        # Control mínimo de page_size si es provisto
-        page_size_param = request.query_params.get(self.pagination_class.page_size_query_param)
-        if page_size_param:
-            try:
-                ps = int(page_size_param)
-                if ps < 5:
-                    # Forzar mínimo
-                    request.GET._mutable = True
-                    request.GET[self.pagination_class.page_size_query_param] = '5'
-                    request.GET._mutable = False
-            except Exception:
-                pass
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
-        return super().list(request, *args, **kwargs)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def suggest(self, request):

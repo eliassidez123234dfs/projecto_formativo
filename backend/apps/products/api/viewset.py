@@ -274,9 +274,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
-    @action(detail=True, methods=['post'], url_path='images')
-    def add_image(self, request, pk=None):
+    @action(detail=True, methods=['get', 'post'], url_path='images')
+    def manage_images(self, request, pk=None):
         product = self.get_object()
+        if request.method == 'GET':
+            serializer = ProductImageSerializer(product.images.all(), many=True, context={'request': request})
+            return Response(serializer.data)
         serializer = ProductImageCreateSerializer(data=request.data, context={'product': product, 'request': request})
         serializer.is_valid(raise_exception=True)
         image = serializer.save()

@@ -86,6 +86,8 @@ class Product(models.Model):
 		if len(self.description) > 500:
 			raise ValidationError({'description': 'La descripción no puede superar 500 caracteres.'})
 		price = self.base_price
+		if price is None:
+			raise ValidationError({'base_price': 'Precio base inválido.'})
 		try:
 			price = Decimal(str(price))
 		except Exception:
@@ -136,19 +138,19 @@ class ProductImage(models.Model):
 
 		if self.image:
 			extension = Path(self.image.name).suffix.lower()
-			if extension not in {'.jpg', '.jpeg', '.png'}:
-				raise ValidationError({'image': 'Solo se permiten imágenes JPG o PNG.'})
+			if extension not in {'.jpg', '.jpeg', '.png', '.webp'}:
+				raise ValidationError({'image': 'Solo se permiten imágenes JPG, PNG o WebP.'})
 
-			if getattr(self.image, 'size', 0) > 2 * 1024 * 1024:
-				raise ValidationError({'image': 'La imagen no puede superar 2MB.'})
+			if getattr(self.image, 'size', 0) > 5 * 1024 * 1024:
+				raise ValidationError({'image': 'La imagen no puede superar 5MB.'})
 
 			try:
 				from PIL import Image
 				self.image.seek(0)
 				with Image.open(self.image) as image_file:
 					width, height = image_file.size
-					if width < 400 or height < 400:
-						raise ValidationError({'image': 'La resolución mínima es 400x400 píxeles.'})
+				if width < 100 or height < 100:
+					raise ValidationError({'image': 'La resolución mínima es 100x100 píxeles.'})
 			except ValidationError:
 				raise
 			except Exception as exc:
