@@ -1,139 +1,119 @@
-# Guía de Configuración del Proyecto — RED Estampación
+# Guía de Configuración — Red Estampación
 
-> Esta guía describe cómo instalar y ejecutar el proyecto en un entorno de desarrollo local.
-> Para una visión general del proyecto, consulta [README.md](./README.md).
-> Para el índice completo de documentación, consulta [INDICE.md](./INDICE.md).
+Guía completa para clonar, configurar y ejecutar el proyecto en cualquier
+sistema operativo (Windows, Linux, macOS).
 
-## Requisitos previos
+---
 
-- Git
-- Python 3.11 o superior
-- Node.js 18 o superior
-- npm 10 o superior
-- Docker y Docker Compose (opcional)
+## Requisitos mínimos
 
-## Clonar el repositorio
+| Herramienta | Versión mínima | Opcional |
+|------------|---------------|----------|
+| Python | 3.11 | — |
+| Node.js | 18 | — |
+| npm | 10 | — |
+| PostgreSQL | 16 | ✅ (sin Docker) |
+| MongoDB | 7 | ✅ (sin Docker) |
+| Docker | 24 + Compose | ✅ |
+| Git | 2.30 | — |
+
+> **Sin Docker** necesitas PostgreSQL y MongoDB instalados localmente.
+> **Con Docker** solo necesitas Docker + Git — los contenedores incluyen
+> PostgreSQL; MongoDB queda opcional.
+
+---
+
+## 1. Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
+git clone <url-del-repositorio>
 cd proyecto_formativo
 ```
 
-## Variables de entorno
-
-Copie el archivo de ejemplo y adapte los valores a su entorno:
+## 2. Configurar variables de entorno
 
 ```bash
 cp .env.example .env
 ```
 
-### Backend
+Edita `.env` con tus credenciales. Valores obligatorios:
 
-1. Entre en el directorio `backend`:
+| Variable | Dónde obtenerla |
+|----------|----------------|
+| `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `DATABASE_URL` | Tu instancia PostgreSQL local, Docker o Neon |
+| `MONGODB_URI` | Tu instancia MongoDB local o Atlas |
 
-   ```bash
-   cd backend
-   ```
+### Ejemplo para desarrollo local sin Docker (PostgreSQL + MongoDB locales)
 
-2. Cree y active el entorno virtual:
-
-   Linux / macOS:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
-
-   Windows:
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate
-   ```
-
-3. Instale las dependencias:
-
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
-
-4. Ejecute las migraciones:
-
-   ```bash
-   python manage.py migrate
-   ```
-
-5. Cree un superusuario:
-
-   ```bash
-   python manage.py createsuperuser
-   ```
-
-6. Inicie el servidor de desarrollo:
-
-   ```bash
-   python manage.py runserver
-   ```
-
-El backend quedará disponible en `http://localhost:8000`.
-
-### Frontend
-
-1. Entre en el directorio `frontend`:
-
-   ```bash
-   cd ../frontend
-   ```
-
-2. Instale las dependencias:
-
-   ```bash
-   npm install
-   ```
-
-3. Inicie el servidor de desarrollo:
-
-   ```bash
-   npm run dev -- --host
-   ```
-
-El frontend quedará disponible en `http://localhost:5173`.
-
-## Ejecución con Docker Compose
-
-Para levantar los servicios del backend y el frontend:
-
-```bash
-docker compose up --build
+```env
+SECRET_KEY=generada-con-el-comando-de-arriba
+DEBUG=True
+DATABASE_URL=postgres://proyecto_user:proyecto_pass@localhost:5432/projecto_formativo
+MONGODB_URI=mongodb://localhost:27017/projecto_formativo
 ```
 
-## Variables de entorno principales
+### Ejemplo para desarrollo local con Docker
 
-### Backend
+```env
+SECRET_KEY=generada-con-el-comando-de-arriba
+DEBUG=True
+DATABASE_URL=postgres://proyecto_user:proyecto_pass@postgres:5432/projecto_formativo
+MONGODB_URI=
+```
 
-- `SECRET_KEY`
-- `DEBUG`
-- `ALLOWED_HOSTS`
-- `FRONTEND_URL`
-- `EMAIL_HOST`
-- `EMAIL_PORT`
-- `EMAIL_USE_TLS`
-- `EMAIL_HOST_USER`
-- `EMAIL_HOST_PASSWORD`
-- `DEFAULT_FROM_EMAIL`
+> Si `DATABASE_URL` está vacío, Django usará SQLite automáticamente.
+> Si `MONGODB_URI` está vacío, MongoDB se omite sin errores.
 
-### Frontend
+---
 
-- `VITE_API_URL`
-- `VITE_MEDIA_URL`
+## 3. Opción A — Ejecutar con Docker (recomendado)
 
-## Comandos útiles
+```bash
+# Iniciar PostgreSQL + Backend + Frontend
+docker compose up --build
+
+# Servicio          Puerto
+# PostgreSQL        5432
+# Backend Django    8000
+# Frontend React    5173
+```
+
+El `docker-compose.yml` ya incluye seed de datos automático.
+
+> Docker no incluye MongoDB por defecto. Para añadirlo:
+> ```bash
+> docker run -d --name proyecto_mongo -p 27017:27017 mongo:7
+> ```
+
+---
+
+## 3. Opción B — Ejecutar sin Docker
 
 ### Backend
 
 ```bash
+# 1. Entorno virtual
 cd backend
+python -m venv venv
+
+# Linux/macOS:
 source venv/bin/activate
+# Windows:
+# venv\Scripts\activate
+
+# 2. Dependencias
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 3. Migraciones
 python manage.py migrate
+
+# 4. Semilla de datos (crea usuarios de prueba)
+python manage.py seed_users
+python manage.py seed_data
+
+# 5. Servidor
 python manage.py runserver
 ```
 
@@ -142,75 +122,72 @@ python manage.py runserver
 ```bash
 cd frontend
 npm install
-npm run dev -- --host
+npm run dev
 ```
 
-### Docker
+### MongoDB (opcional — necesario solo para carritos persistentes, diseños 3D y logs)
 
 ```bash
-docker compose up --build
-```
-
-## Despliegue en producción
-
-Para un entorno de producción se recomienda:
-
-```bash
-docker compose exec backend python manage.py migrate
-docker compose exec backend python manage.py createsuperuser
-docker compose exec backend python manage.py loaddata seed_data.json
+# Instalar MongoDB local o usar Docker:
+docker run -d --name proyecto_mongo -p 27017:27017 mongo:7
 ```
 
 ---
 
-## 6. Seed Data (Datos de Ejemplo)
+## 4. Usuarios de prueba (seed)
 
-Para poblar la base de datos con productos, categorías y un usuario admin de ejemplo:
+| Usuario | Contraseña | Rol | Acceso |
+|---------|-----------|-----|--------|
+| `admin_red` | `Admin123!` | Administrador API | Dashboard admin |
+| `superadmin` | `SuperAdmin123!` | Superusuario | Dashboard admin + Django admin |
+| `admin` | `Admin123!` | Administrador | Desde seed_data |
+| `test` | `Test123!` | Usuario | Catálogo, perfil |
+
+> Las contraseñas por defecto pueden sobreescribirse con variables de entorno:
+> `SEED_ADMIN_PASSWORD`, `SEED_SUPER_PASSWORD`, `SEED_TEST_PASSWORD`
+
+---
+
+## 5. Arquitectura de almacenamiento
+
+| Tipo | Tecnología | Qué almacena |
+|------|-----------|-------------|
+| **SQL** | PostgreSQL (o SQLite dev) | Usuarios, productos, variantes, órdenes, facturas |
+| **NoSQL** | MongoDB | Diseños 3D guardados, logs de auditoría, carritos persistentes, plantillas comunitarias |
+| **Archivos** | Cloudinary | Imágenes de productos, texturas, modelos 3D (.glb) |
+| **Memoria** | RAM (navegador) | JWT access token (nunca en localStorage) |
+| **SessionStorage** | Navegador | JWT refresh token (se borra al cerrar pestaña) |
+
+---
+
+## 6. Verificar que todo funciona
 
 ```bash
-cd backend
-python manage.py load_sample_data
+# Backend health check
+curl http://localhost:8000/api/health/
+
+# Frontend
+Abrir http://localhost:5173 en el navegador
+
+# MongoDB (si configurado)
+cd backend && python -c "
+from apps.users.mongodb import is_mongo_connected
+print('MongoDB:', 'conectado' if is_mongo_connected() else 'no configurado')
+"
 ```
 
-Esto crea:
-- Categorías (Camisetas, Hoodies, Gorras, etc.)
-- Productos de ejemplo con variantes (tallas, colores)
-- Imágenes de muestra (si configuraste Cloudinary)
-- Un superusuario: `admin@test.com` / `admin123`
-
 ---
 
-## 7. Variables de entorno principales
+## 7. Despliegue a producción (Render + Vercel)
 
-### Backend
+Ver `render.yaml` para el blueprint de Render.
 
-| Variable | Descripción |
-|----------|-------------|
-| `SECRET_KEY` | Clave secreta de Django |
-| `DEBUG` | `True` para desarrollo, `False` para producción |
-| `ALLOWED_HOSTS` | Hosts permitidos separados por coma |
-| `FRONTEND_URL` | URL base del frontend |
-| `DATABASE_URL` | URL de conexión a PostgreSQL (opcional, usa SQLite por defecto) |
-| `EMAIL_HOST` / `EMAIL_PORT` | Configuración de correo |
-| `CLOUDINARY_URL` | URL de Cloudinary para almacenamiento de imágenes |
-
-### Frontend
-
-| Variable | Descripción |
-|----------|-------------|
-| `VITE_API_URL` | URL base de la API backend (ej: `http://localhost:8000/api/`) |
-| `VITE_MEDIA_URL` | URL base para archivos multimedia |
-
----
-
-## 8. Notas de Producción
-
-Para entornos productivos se recomienda:
-
+Variables requeridas en producción:
+- `SECRET_KEY` — generada, **nunca** la misma que desarrollo
+- `DATABASE_URL` — apuntando a Neon PostgreSQL
+- `MONGODB_URI` — apuntando a MongoDB Atlas
 - `DEBUG=False`
-- PostgreSQL como base de datos
-- Gunicorn + Nginx como servidor
-- Frontend servido como estáticos desde Nginx
-- HTTPS con Let's Encrypt
-- Variables de entorno seguras (nunca en el repositorio)
-- Consultar [PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md) para la lista completa
+- `DJANGO_ALLOWED_HOSTS=dominio.com`
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- `EMAIL_BACKEND`, `EMAIL_HOST`, etc. — SMTP real
+- `WOMPI_*` — credenciales de Wompi (producción)

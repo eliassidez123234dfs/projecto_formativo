@@ -6,9 +6,8 @@ from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
-
 from apps.products.models import Product, ProductAudit, ProductImage, MotivoDesaprobacion, Review
+from apps.users.mongo_service import log_event as mongo_log_event
 
 from .review_serializers import ReviewSerializer
 from .serializers import (
@@ -86,6 +85,14 @@ class ProductViewSet(viewsets.ModelViewSet):
             actor=getattr(request.user, 'username', '') or 'anonymous',
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
         )
+        mongo_log_event(
+            action='product.created',
+            actor_id=getattr(request.user, 'id', None),
+            target_type='product',
+            target_id=str(product.id),
+            metadata={'name': product.name},
+            severity='info',
+        )
         response_serializer = ProductDetailSerializer(product, context=self.get_serializer_context())
         headers = self.get_success_headers(response_serializer.data)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -110,6 +117,14 @@ class ProductViewSet(viewsets.ModelViewSet):
             actor=getattr(request.user, 'username', '') or 'anonymous',
             before_data=before_data,
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        mongo_log_event(
+            action='product.updated',
+            actor_id=getattr(request.user, 'id', None),
+            target_type='product',
+            target_id=str(product.id),
+            metadata={'name': product.name, 'changed_fields': list(request.data.keys())},
+            severity='info',
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
@@ -215,6 +230,14 @@ class ProductViewSet(viewsets.ModelViewSet):
             actor=getattr(request.user, 'username', '') or 'anonymous',
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
         )
+        mongo_log_event(
+            action='product.published',
+            actor_id=getattr(request.user, 'id', None),
+            target_type='product',
+            target_id=str(product.id),
+            metadata={'name': product.name},
+            severity='info',
+        )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=['post'], url_path='disapprove')
@@ -240,6 +263,14 @@ class ProductViewSet(viewsets.ModelViewSet):
             action=ProductAudit.ACTION_DISAPPROVED,
             actor=getattr(request.user, 'username', '') or 'anonymous',
             after_data={'motivo': motivo},
+        )
+        mongo_log_event(
+            action='product.disapproved',
+            actor_id=getattr(request.user, 'id', None),
+            target_type='product',
+            target_id=str(product.id),
+            metadata={'name': product.name, 'motivo': motivo},
+            severity='warning',
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
@@ -373,7 +404,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    queryset = Review.objects.all()
+    queryset = Review.objects.select_related('user').all()
     serializer_class = ReviewSerializer
 
     def get_queryset(self):

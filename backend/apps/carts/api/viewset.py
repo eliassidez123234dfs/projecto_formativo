@@ -15,6 +15,8 @@ from apps.carts.models import Cart, CartItem
 from apps.orders.models import Order, OrderItem
 from apps.users.api.admin_viewset import AdminPermission
 from apps.users.api.auth_backend import UsuarioJWTAuthentication
+from apps.users.mongo_service import upsert_cart as mongo_upsert_cart, \
+    get_cart as mongo_get_cart, merge_carts as mongo_merge_carts
 
 from .serializers import CartAddSerializer, CartItemSerializer, CartSerializer, AdminCartListSerializer, AdminCartDetailSerializer
 
@@ -52,6 +54,21 @@ class CartViewSet(viewsets.ViewSet):
                 item.cart = user_cart
                 item.save()
         session_cart.delete()
+        mongo_merge_carts(user.id, session_cart.session_key)
+
+    # Helper: sync cart to MongoDB to avoid repeated logic
+    def _sync_cart_to_mongo(self, cart):
+        mongo_upsert_cart(
+            user_id=cart.user_id if hasattr(cart, 'user_id') else None,
+            session_key=self.request.session.session_key,
+            items=[{
+                'product_id': i.product_id,
+                'variant_id': i.variant_id,
+                'product_name': i.product.name,
+                'quantity': i.quantity,
+                'unit_price': str(i.unit_price),
+            } for i in cart.items.select_related('product').all()],
+        )
 
     def list(self, request):
         cart = self._get_cart(request)
@@ -85,6 +102,7 @@ class CartViewSet(viewsets.ViewSet):
             item.quantity = new_quantity
             item.save()
 
+        self._sync_cart_to_mongo(cart)
         return Response(CartItemSerializer(item, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['patch'], url_path='items/(?P<item_id>[^/.]+)/quantity')
@@ -100,6 +118,7 @@ class CartViewSet(viewsets.ViewSet):
 
         item.quantity = quantity
         item.save()
+        self._sync_cart_to_mongo(cart)
         return Response(CartItemSerializer(item, context={'request': request}).data)
 
     @action(detail=False, methods=['delete'], url_path='items/(?P<item_id>[^/.]+)/remove')
@@ -107,12 +126,14 @@ class CartViewSet(viewsets.ViewSet):
         cart = self._get_cart(request)
         item = get_object_or_404(CartItem, pk=item_id, cart=cart)
         item.delete()
+        self._sync_cart_to_mongo(cart)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['delete'], url_path='clear')
     def clear(self, request):
         cart = self._get_cart(request)
         cart.items.all().delete()
+        self._sync_cart_to_mongo(cart)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

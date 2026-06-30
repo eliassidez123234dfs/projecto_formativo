@@ -1,3 +1,8 @@
+"""
+Modelos de datos para la app de landing page.
+Define Contacto para mensajes del formulario de contacto.
+"""
+
 from django.db import models
 from django.core.validators import EmailValidator
 

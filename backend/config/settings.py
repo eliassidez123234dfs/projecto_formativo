@@ -17,12 +17,12 @@ environ.Env.read_env(BASE_DIR.parent / '.env')
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY', default='django-insecure-projecto-formativo-dev-key')
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool('DEBUG', default=True)
+DEBUG = env.bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
 # Application definition
 
@@ -50,6 +50,7 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 CKEDITOR_CONFIGS = {
@@ -111,6 +112,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # CSP middleware (Content-Security-Policy)
+    'apps.users.middleware.ContentSecurityPolicyMiddleware',
     # Logging de excepciones no manejadas
     'apps.users.middleware.ExceptionLoggingMiddleware',
 ]
@@ -139,25 +142,19 @@ AUTH_USER_MODEL = 'users.Usuario'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Usar SQLite para desarrollo (más fácil para el equipo)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Usar DATABASE_URL si existe (PostgreSQL en producción/Neon), si no SQLite local
+if env('DATABASE_URL', default=''):
+    DATABASES = {
+        'default': env.db('DATABASE_URL'),
     }
-}
-
-# Descomentar para PostgreSQL (cuando esté configurado)
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': env('DB_NAME'),
-#         'USER': env('DB_USER'),
-#         'PASSWORD': env('DB_PASSWORD'),
-#         'HOST': env('DB_HOST'),
-#         'PORT': env('DB_PORT'),
-#     }
-# }
+    DATABASES['default']['ATOMIC_REQUESTS'] = True
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -240,9 +237,9 @@ from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': False,
-    'UPDATE_LAST_LOGIN': False,
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
@@ -252,20 +249,34 @@ SIMPLE_JWT = {
     'TOKEN_TYPE_CLAIM': 'token_type',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_USER_CLASS': 'apps.users.Usuario',
 }
 
 # CORS configuration
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-    'http://192.168.1.93:5173',
-    'http://192.168.137.7:5173',
-]
+CORS_ALLOWED_ORIGINS = env.list(
+    'CORS_ALLOWED_ORIGINS',
+    default=[
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173',
+    ]
+)
+
+# En producción, agregar aquí los dominios del frontend (Vercel) y se pasan por variable de entorno
+# CORS_ALLOWED_ORIGINS=https://tu-app.vercel.app,https://tu-dominio-custom.com
 
 CORS_ALLOW_CREDENTIALS = True
+
+# HTTP Security Headers
+SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=0 if DEBUG else 31536000)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_REFERRER_POLICY = 'same-origin'
 
 # SameSite/ Secure cookies: HTTP (dev) -> Lax, HTTPS (prod) -> None + Secure
 if DEBUG:
@@ -297,6 +308,10 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
 
+# MongoDB Configuration (NoSQL)
+MONGODB_URI = env('MONGODB_URI', default='')
+MONGODB_NAME = env('MONGODB_NAME', default='projecto_formativo')
+
 # Password validation rules (RN-001)
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_REQUIRE_UPPERCASE = True
@@ -315,16 +330,9 @@ CSRF_TRUSTED_ORIGINS = env.list(
 )
 
 
-# si no esta 
-if not DEBUG and env('DATABASE_URL', default=''):
-    DATABASES = {
-        'default': env.db('DATABASE_URL'),
-    }
-    DATABASES['default']['ATOMIC_REQUESTS'] = True
-
 # ─────────── Wompi Payment Gateway ───────────
 WOMPI_PUBLIC_KEY = env('WOMPI_PUBLIC_KEY', default='')
-WOMPRI_PRIVATE_KEY = env('WOMPRI_PRIVATE_KEY', default='')
+WOMPI_PRIVATE_KEY = env('WOMPI_PRIVATE_KEY', default='')
 WOMPI_INTEGRITY_KEY = env('WOMPI_INTEGRITY_KEY', default='')
 WOMPI_API_URL = env('WOMPI_API_URL', default='https://sandbox.wompi.co')
 WOMPI_WEBHOOK_SECRET = env('WOMPI_WEBHOOK_SECRET', default='')

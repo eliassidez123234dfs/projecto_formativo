@@ -1,3 +1,8 @@
+"""
+Modelos de datos para la app de productos.
+Define Product, ProductImage, Variant, ProductAudit, MotivoDesaprobacion y Review.
+"""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -10,6 +15,7 @@ from django.db import models
 
 
 class Product(models.Model):
+	"""Producto del catálogo. Núcleo del inventario con control de publicación y validación."""
 	name = models.CharField(max_length=100, unique=True)
 	description = models.CharField(max_length=500)
 	base_price = models.DecimalField(
@@ -93,6 +99,7 @@ class Product(models.Model):
 
 
 class ProductImage(models.Model):
+	"""Imágenes asociadas a un producto. Soporta almacenamiento local y Cloudinary."""
 	product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
 	image = models.ImageField(upload_to='products/%Y/%m', blank=True, null=True)
 	cloudinary_url = models.URLField(max_length=500, blank=True, null=True, help_text='URL directa de Cloudinary')
@@ -163,6 +170,7 @@ class ProductImage(models.Model):
 
 
 class Variant(models.Model):
+	"""Variante de producto por talla y color. Controla stock y precio diferenciado."""
 	product = models.ForeignKey(Product, related_name='variants', on_delete=models.CASCADE)
 	size = models.CharField(max_length=20)
 	color = models.CharField(max_length=20)
@@ -212,6 +220,7 @@ class Variant(models.Model):
 
 
 class ProductAudit(models.Model):
+	"""Registro de auditoría para acciones sobre productos (creación, publicación, aprobación)."""
 	ACTION_CREATED = 'created'
 	ACTION_UPDATED = 'updated'
 	ACTION_PUBLISHED = 'published'
@@ -241,6 +250,7 @@ class ProductAudit(models.Model):
 
 
 class MotivoDesaprobacion(models.Model):
+	"""Motivo por el que un producto fue desaprobado por un revisor."""
 	product = models.ForeignKey(Product, related_name='disapproval_reasons', on_delete=models.CASCADE)
 	motivo = models.CharField(max_length=200)
 	usuario_id_revisor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
@@ -255,6 +265,7 @@ class MotivoDesaprobacion(models.Model):
 
 
 class Review(models.Model):
+	"""Reseña de usuario sobre un producto. Una reseña por usuario/producto."""
 	product = models.ForeignKey(Product, related_name='reviews', on_delete=models.CASCADE)
 	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reviews')
 	rating = models.PositiveSmallIntegerField(choices=[(i, str(i)) for i in range(1, 6)])

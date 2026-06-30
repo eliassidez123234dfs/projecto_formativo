@@ -1,3 +1,8 @@
+"""
+Modelos de datos para la app de catálogo.
+Define Category, ProductCategory, SearchHistory, CatalogFilter, CatalogSession y PopularSearch.
+"""
+
 from __future__ import annotations
 
 from django.db import models
@@ -5,6 +10,7 @@ from django.db.models import Q
 
 
 class Category(models.Model):
+    """Categoría de productos para organización del catálogo."""
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -24,6 +30,7 @@ class Category(models.Model):
 
 
 class ProductCategory(models.Model):
+    """Relación muchos-a-muchos entre productos y categorías."""
     product = models.ForeignKey('products.Product', related_name='categories', on_delete=models.CASCADE)
     category = models.ForeignKey(Category, related_name='products', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -38,6 +45,7 @@ class ProductCategory(models.Model):
 
 
 class SearchHistory(models.Model):
+    """Historial de búsquedas realizadas por sesión para análisis y autocompletado."""
     session_key = models.CharField(max_length=64, db_index=True)
     query = models.CharField(max_length=200)
     filters = models.JSONField(default=dict)
@@ -55,6 +63,7 @@ class SearchHistory(models.Model):
 
 
 class CatalogFilter(models.Model):
+    """Filtro configurable del catálogo (rango precio, talla, color, etc.)."""
     name = models.CharField(max_length=100, unique=True)
     filter_type = models.CharField(
         max_length=20,
@@ -78,6 +87,7 @@ class CatalogFilter(models.Model):
 
 
 class CatalogSession(models.Model):
+    """Sesión de navegación en el catálogo con métricas de visualización."""
     user = models.ForeignKey('users.Usuario', null=True, blank=True, on_delete=models.SET_NULL)
     session_key = models.CharField(max_length=255, blank=True, null=True)
     accessed_at = models.DateTimeField(auto_now_add=True)
@@ -92,6 +102,7 @@ class CatalogSession(models.Model):
 
 
 class PopularSearch(models.Model):
+    """Términos de búsqueda populares con contador de frecuencia."""
     query = models.CharField(max_length=200, unique=True)
     search_count = models.PositiveIntegerField(default=0)
     last_searched = models.DateTimeField(auto_now=True)

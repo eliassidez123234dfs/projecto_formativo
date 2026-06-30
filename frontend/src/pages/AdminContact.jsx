@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchContactMessages, markContactRead, deleteContactMessage } from '../services/api'
 import MainLayout from '../components/MainLayout'
+import { getCurrentUser } from '../services/authService'
 import InfoModal from '../components/InfoModal'
 
+// Admin contact messages inbox — read, mark as read, delete with stats summary
 export default function AdminContact() {
   const navigate = useNavigate()
   const [messages, setMessages] = useState([])
@@ -12,7 +14,7 @@ export default function AdminContact() {
   const [viewMsg, setViewMsg] = useState(null)
 
   useEffect(() => {
-    const u = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+    const u = getCurrentUser()
     if (!u || u.rol !== 'Administrador') navigate('/login')
   }, [navigate])
 

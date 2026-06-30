@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { fetchAdminOrders } from '../services/api'
 import MainLayout from '../components/MainLayout'
+import { getCurrentUser } from '../services/authService'
 
 const STATUS_STYLES = {
   pendiente: { bg: '#fef3c7', color: '#92400e', label: 'Pendiente' },
@@ -23,6 +24,7 @@ function StatusBadge({ status }) {
   )
 }
 
+// Admin orders list with status badges, pagination, and detail links
 export default function AdminOrders() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState({ results: [], count: 0 })
@@ -31,7 +33,7 @@ export default function AdminOrders() {
   const pageSize = 20
 
   useEffect(() => {
-    const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
+    const usuario = getCurrentUser()
     if (!usuario || usuario.rol !== 'Administrador') navigate('/login')
   }, [navigate])
 

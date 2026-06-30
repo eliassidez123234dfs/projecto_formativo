@@ -11,9 +11,11 @@ from .admin_viewset import AdminPermission
 
 
 class AdminStatsViewSet(viewsets.ViewSet):
+    """ViewSet for admin dashboard statistics (user counts, orders, products)."""
     permission_classes = [AdminPermission]
 
     def list(self, request):
+        """Return aggregated stats for users, products, and orders."""
         now = timezone.now()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 

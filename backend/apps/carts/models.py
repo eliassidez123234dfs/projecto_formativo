@@ -1,15 +1,20 @@
+"""
+Modelos de datos para la app de carritos.
+Define Cart y CartItem para carritos de compra anónimos y autenticados.
+"""
+
 from __future__ import annotations
 
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Sum
 
 from apps.products.models import Product, Variant
 
 
 class Cart(models.Model):
+	"""Carrito de compras. Vinculado a sesión anónima o a usuario autenticado."""
 	session_key = models.CharField(max_length=64, unique=True)
 	user = models.ForeignKey('users.Usuario', null=True, blank=True, on_delete=models.SET_NULL, related_name='carts')
 	order = models.OneToOneField('orders.Order', null=True, blank=True, on_delete=models.SET_NULL, related_name='cart')
@@ -21,17 +26,18 @@ class Cart(models.Model):
 
 	@property
 	def total_items(self) -> int:
-		return self.items.aggregate(total=Sum('quantity'))['total'] or 0
+		return self.items.aggregate(total=models.Sum('quantity'))['total'] or 0
 
 	@property
 	def total_amount(self):
-		total = Decimal('0.00')
-		for item in self.items.all():
-			total += item.subtotal
-		return total
+		aggregate = self.items.aggregate(
+			total=models.Sum(models.F('quantity') * models.F('unit_price'))
+		)['total']
+		return aggregate or Decimal('0.00')
 
 
 class CartItem(models.Model):
+	"""Producto con variante y cantidad dentro de un carrito."""
 	cart = models.ForeignKey(Cart, related_name='items', on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, on_delete=models.CASCADE)
 	variant = models.ForeignKey(Variant, on_delete=models.CASCADE)

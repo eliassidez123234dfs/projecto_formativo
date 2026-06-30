@@ -4,11 +4,12 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+from apps.users.services.email_service import EmailService
 
 from ..models import Contacto
 from .serializers import (
@@ -18,7 +19,7 @@ from .serializers import (
 
 
 class ContactRateThrottle(AnonRateThrottle):
-    """Rate throttle personalizado para formulario de contacto (RN-031)"""
+    """Rate throttle for contact form — max 3 requests/hour per IP (RN-031)."""
     scope = 'contact_form'
     rate = '3/h'  # 3 requests per hour per IP
 
@@ -64,7 +65,7 @@ class ContactoViewSet(viewsets.ModelViewSet):
             contacto = serializer.save(ip_origen=ip_origen)
             
             # Enviar email al admin de forma asíncrona (RF-032, RN-032)
-            self._enviar_email_admin(contacto)
+            EmailService.send_contact_notification(contacto)
             
             return Response({
                 'mensaje': 'Mensaje enviado exitosamente. Nos contactaremos pronto.',
@@ -106,37 +107,6 @@ class ContactoViewSet(viewsets.ModelViewSet):
         return Response({
             'mensaje': 'Mensaje eliminado'
         }, status=status.HTTP_204_NO_CONTENT)
-    
-    def _enviar_email_admin(self, contacto):
-        """Enviar notificación al admin (RF-032, RN-032)"""
-        admin_email = settings.DEFAULT_FROM_EMAIL
-        
-        asunto = f"Nuevo mensaje de contacto de {contacto.nombre}"
-        mensaje = f"""
-        Nuevo mensaje de contacto:
-        
-        Nombre: {contacto.nombre}
-        Correo: {contacto.correo}
-        Asunto: {contacto.asunto or 'Sin asunto'}
-        
-        Mensaje:
-        {contacto.mensaje}
-        
-        IP de origen: {contacto.ip_origen}
-        Fecha: {contacto.fecha_envio}
-        """
-        
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [admin_email],
-                fail_silently=False
-            )
-        except Exception as exc:
-            # RN-032: Si falla el email, el mensaje se guarda igual
-            logger.exception('Error al enviar email de notificación de contacto: %s', exc)
     
     def _obtener_ip_cliente(self, request):
         """Obtener IP del cliente para rate limiting"""

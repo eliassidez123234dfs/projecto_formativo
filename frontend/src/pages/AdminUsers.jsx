@@ -5,6 +5,7 @@ import MainLayout from '../components/MainLayout'
 import UserFilters from '../components/UserFilters'
 import UserList from '../components/UserList'
 import FormModal from '../components/FormModal'
+import { getCurrentUser } from '../services/authService'
 
 function useUserStats() {
   const [stats, setStats] = useState({ total: 0, active: 0, admin: 0, blocked: 0 })
@@ -30,6 +31,7 @@ function useUserStats() {
   return stats
 }
 
+// Admin user management page with stats, filtering, and create/edit modals
 export default function AdminUsers() {
   const navigate = useNavigate()
   const [filters, setFilters] = useState({ page: 1, page_size: 20 })
@@ -40,10 +42,8 @@ export default function AdminUsers() {
   const stats = useUserStats()
 
   useEffect(() => {
-    try {
-      const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
-      if (!usuario || usuario.rol !== 'Administrador') navigate('/login')
-    } catch { navigate('/login') }
+    const usuario = getCurrentUser()
+    if (!usuario || usuario.rol !== 'Administrador') navigate('/login')
   }, [navigate])
 
   const onFiltersChange = useCallback((next) => {

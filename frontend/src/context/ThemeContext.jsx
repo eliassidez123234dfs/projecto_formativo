@@ -1,23 +1,19 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect } from 'react'
+import useAppStore from '../store/appStore'
 
 const ThemeContext = createContext()
 
+// Provides light/dark theme state backed by the Zustand persisted store
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') || 'light'
-    }
-    return 'light'
-  })
+  const theme = useAppStore(s => s.theme)
+  const setTheme = useAppStore(s => s.setTheme)
 
   useEffect(() => {
-    const html = document.documentElement
-    html.setAttribute('data-theme', theme)
-    localStorage.setItem('theme', theme)
+    document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
   const toggleTheme = () => {
-    setTheme(t => t === 'light' ? 'dark' : 'light')
+    setTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
   return (

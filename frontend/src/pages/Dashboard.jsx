@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MainLayout from '../components/MainLayout'
 import { buildApiUrl, fetchAdminStats } from '../services/api'
+import { getAccessToken, getCurrentUser } from '../services/authService'
 
 const Icons = {
   Package: () => (
@@ -29,6 +30,7 @@ const Icons = {
   ),
 }
 
+// User dashboard with profile editing, password change, and admin stats overview
 export function Dashboard() {
   const navigate = useNavigate()
   const [usuario, setUsuario] = useState(null)
@@ -41,9 +43,8 @@ export function Dashboard() {
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
-    const usuarioData = localStorage.getItem('usuario')
-    if (usuarioData) {
-      const user = JSON.parse(usuarioData)
+    const user = getCurrentUser()
+    if (user) {
       setUsuario(user)
       setFormData(user)
     }
@@ -52,7 +53,6 @@ export function Dashboard() {
 
   useEffect(() => {
     if (!loading && !usuario) navigate('/login')
-    else if (!loading && usuario?.rol !== 'Administrador') navigate('/perfil')
   }, [loading, usuario, navigate])
 
   const handleChange = (e) => {
@@ -68,7 +68,7 @@ export function Dashboard() {
   const handleUpdatePerfil = async (e) => {
     e.preventDefault()
     setSaving(true); setErrors({}); setMessage('')
-    const accessToken = localStorage.getItem('access_token')
+    const accessToken = getAccessToken()
     try {
       const response = await fetch(buildApiUrl('usuarios/actualizar_perfil/'), {
         method: 'PATCH',
@@ -79,7 +79,6 @@ export function Dashboard() {
       if (!response.ok) setErrors(data)
       else {
         setMessage('Perfil actualizado exitosamente')
-        localStorage.setItem('usuario', JSON.stringify(data.usuario))
         setUsuario(data.usuario)
       }
     } catch { setErrors({ general: 'Error al conectar con el servidor' }) }
@@ -89,7 +88,7 @@ export function Dashboard() {
   const handleChangePassword = async (e) => {
     e.preventDefault()
     setSaving(true); setErrors({}); setMessage('')
-    const accessToken = localStorage.getItem('access_token')
+    const accessToken = getAccessToken()
     try {
       const response = await fetch(buildApiUrl('usuarios/cambiar_password/'), {
         method: 'POST',
@@ -136,8 +135,7 @@ export function Dashboard() {
     ...(isAdmin ? [
       { label: 'Panel Admin', action: () => navigate('/admin'), variant: 'btn-primary' },
       { label: 'Productos', action: () => navigate('/admin-products'), variant: 'btn-secondary' },
-      { label: 'Usuarios', action: () => navigate('/admin-users'), variant: 'btn-secondary' },
-      { label: 'Carritos', action: () => navigate('/admin-cart'), variant: 'btn-secondary' },
+      { label: 'Pedidos', action: () => navigate('/admin-orders'), variant: 'btn-secondary' },
     ] : []),
     { label: 'Mi Carrito', action: () => navigate('/cart'), variant: 'btn-secondary' },
   ]

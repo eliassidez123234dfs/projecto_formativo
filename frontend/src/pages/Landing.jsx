@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { buildApiUrl } from '../services/api'
+import { isAuthenticated, getCurrentUser } from '../services/authService'
 
 const ProfessionalTshirtSVG = () => (
   <svg viewBox="0 0 200 180" width="200" height="180" xmlns="http://www.w3.org/2000/svg">
@@ -31,10 +32,11 @@ const features = [
   },
 ]
 
+// Public landing page — hero, feature cards, contact form with rate limiting, and footer
 export const Landing = () => {
   const navigate = useNavigate()
-  const loggedIn = typeof window !== 'undefined' ? Boolean(localStorage.getItem('access_token')) : false
-  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+  const [loggedIn, setLoggedIn] = useState(() => isAuthenticated())
+  const [usuario, setUsuario] = useState(() => getCurrentUser())
 
   const [formData, setFormData] = useState({ nombre: '', correo: '', asunto: '', mensaje: '' })
   const [loading, setLoading] = useState(false)

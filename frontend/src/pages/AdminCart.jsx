@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { fetchAdminCarts } from '../services/api'
 import MainLayout from '../components/MainLayout'
+import { getCurrentUser } from '../services/authService'
 
 const STATUS_STYLES = {
   pendiente: { bg: '#fef3c7', color: '#92400e' },
@@ -11,6 +12,7 @@ const STATUS_STYLES = {
   cancelado: { bg: '#fee2e2', color: '#991b1b' },
 }
 
+// Admin cart listing with user info, item counts, and status display
 export default function AdminCart() {
   const navigate = useNavigate()
   const [carts, setCarts] = useState({ results: [], count: 0 })
@@ -19,7 +21,7 @@ export default function AdminCart() {
   const pageSize = 20
 
   useEffect(() => {
-    const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
+    const usuario = getCurrentUser()
     if (!usuario || usuario.rol !== 'Administrador') navigate('/login')
   }, [navigate])
 

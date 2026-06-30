@@ -1,3 +1,8 @@
+"""
+Serializadores para la app de productos.
+Define serializadores para Product, ProductImage, Variant, auditoría y carrito.
+"""
+
 from __future__ import annotations
 
 from django.db import transaction
@@ -8,6 +13,7 @@ from apps.products.models import Product, ProductAudit, ProductImage, Variant
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    """Serializador de lectura para imágenes de producto con URL resuelta."""
     image_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -20,6 +26,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 
 class VariantSerializer(serializers.ModelSerializer):
+    """Serializador de lectura para variantes con etiqueta descriptiva."""
     display_label = serializers.SerializerMethodField()
 
     class Meta:
@@ -32,6 +39,7 @@ class VariantSerializer(serializers.ModelSerializer):
 
 
 class ProductWriteSerializer(serializers.ModelSerializer):
+    """Serializador de escritura para crear/actualizar productos."""
     class Meta:
         model = Product
         fields = ['id', 'name', 'description', 'base_price', 'is_active', 'is_approved', 'created_at', 'updated_at']
@@ -56,6 +64,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
+    """Serializador de listado con resumen de imágenes, variantes y checklist de publicación."""
     main_image = serializers.SerializerMethodField()
     images_count = serializers.SerializerMethodField()
     variants_count = serializers.SerializerMethodField()
@@ -90,6 +99,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 
 class ProductDetailSerializer(ProductListSerializer):
+    """Serializador de detalle con imágenes, variantes, rating y estado de publicación."""
     images = ProductImageSerializer(many=True, read_only=True)
     variants = VariantSerializer(many=True, read_only=True)
     publication_message = serializers.SerializerMethodField()
@@ -110,6 +120,7 @@ class ProductDetailSerializer(ProductListSerializer):
 
 
 class ProductImageCreateSerializer(serializers.ModelSerializer):
+    """Serializador de creación de imágenes con validación de formato, tamaño y resolución."""
     class Meta:
         model = ProductImage
         fields = ['id', 'image', 'cloudinary_url', 'is_main', 'order']
@@ -148,6 +159,7 @@ class ProductImageCreateSerializer(serializers.ModelSerializer):
 
 
 class VariantCreateSerializer(serializers.ModelSerializer):
+    """Serializador de creación de variantes con límite de 4 tallas y 10 colores por producto."""
     class Meta:
         model = Variant
         fields = ['id', 'size', 'color', 'stock', 'precio_variante']
@@ -189,6 +201,7 @@ class VariantCreateSerializer(serializers.ModelSerializer):
 
 
 class ProductAuditSerializer(serializers.ModelSerializer):
+    """Serializador de solo lectura para entradas de auditoría de productos."""
     class Meta:
         model = ProductAudit
         fields = ['id', 'action', 'actor', 'before_data', 'after_data', 'created_at']
@@ -196,6 +209,7 @@ class ProductAuditSerializer(serializers.ModelSerializer):
 
 
 class ProductPagination(PageNumberPagination):
+    """Paginación personalizada con parámetro page_size y máximo 100 elementos."""
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
@@ -213,6 +227,7 @@ class ProductPagination(PageNumberPagination):
 
 
 class CartItemSerializer(serializers.Serializer):
+    """Serializador para añadir items al carrito. Valida stock y estado del producto."""
     product_id = serializers.IntegerField()
     variant_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1)

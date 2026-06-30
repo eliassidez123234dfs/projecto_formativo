@@ -1,3 +1,8 @@
+"""
+Serializadores para la app de usuarios.
+Define serializadores para registro, login, verificación, recuperación de password y auditoría.
+"""
+
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
@@ -18,6 +23,7 @@ from ..exceptions import (
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
+    """Serializador de solo lectura para datos básicos del usuario."""
     class Meta:
         model = Usuario
         fields = [
@@ -28,6 +34,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 
 class UsuarioDetailSerializer(UsuarioSerializer):
+    """Serializador de solo lectura con campos de seguridad adicionales (bloqueo, eliminación)."""
     class Meta(UsuarioSerializer.Meta):
         fields = UsuarioSerializer.Meta.fields + [
             'intentos_fallidos', 'fecha_bloqueo', 'eliminado', 'fecha_eliminacion'
@@ -35,6 +42,7 @@ class UsuarioDetailSerializer(UsuarioSerializer):
 
 
 class RegistroSerializer(serializers.Serializer):
+    """Serializador de registro. Valida credenciales, crea usuario y genera token de verificación."""
     usuario = serializers.CharField(max_length=100, required=True)
     correo = serializers.EmailField(required=True)
     contrasena = serializers.CharField(max_length=255, required=True, write_only=True)
@@ -120,6 +128,7 @@ class RegistroSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
+    """Serializador de login. Valida credenciales y maneja bloqueo por intentos fallidos."""
     correo = serializers.EmailField(required=True)
     contrasena = serializers.CharField(max_length=255, required=True, write_only=True)
 
@@ -153,6 +162,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 class VerificacionEmailSerializer(serializers.Serializer):
+    """Serializador para verificar el email mediante token."""
     token = serializers.CharField(required=True)
 
     def validate_token(self, value):
@@ -174,6 +184,7 @@ class VerificacionEmailSerializer(serializers.Serializer):
 
 
 class ReenvioVerificacionSerializer(serializers.Serializer):
+    """Serializador para reenviar token de verificación con límite de 3 reenvíos/24h."""
     correo = serializers.EmailField(required=True)
 
     def validate_correo(self, value):
@@ -199,6 +210,7 @@ class ReenvioVerificacionSerializer(serializers.Serializer):
 
 
 class RecuperacionPasswordSerializer(serializers.Serializer):
+    """Serializador para solicitar recuperación de contraseña por correo."""
     correo = serializers.EmailField(required=True)
 
     def validate_correo(self, value):
@@ -210,6 +222,7 @@ class RecuperacionPasswordSerializer(serializers.Serializer):
 
 
 class NuevaPasswordSerializer(serializers.Serializer):
+    """Serializador para establecer nueva contraseña mediante token de recuperación."""
     token = serializers.CharField(required=True)
     contrasena = serializers.CharField(max_length=255, required=True, write_only=True)
     confirmar_contrasena = serializers.CharField(max_length=255, required=True, write_only=True)
@@ -252,6 +265,7 @@ class NuevaPasswordSerializer(serializers.Serializer):
 
 
 class CambioPasswordSerializer(serializers.Serializer):
+    """Serializador para cambiar contraseña desde sesión autenticada."""
     contrasena_actual = serializers.CharField(max_length=255, required=True, write_only=True)
     contrasena_nueva = serializers.CharField(max_length=255, required=True, write_only=True)
     confirmar_contrasena = serializers.CharField(max_length=255, required=True, write_only=True)
@@ -283,6 +297,7 @@ class CambioPasswordSerializer(serializers.Serializer):
 
 
 class ActualizarPerfilSerializer(serializers.ModelSerializer):
+    """Serializador para actualizar perfil (usuario/correo). Requiere contraseña actual para cambios de correo."""
     contrasena_actual = serializers.CharField(
         max_length=255,
         required=False,
@@ -306,6 +321,7 @@ class ActualizarPerfilSerializer(serializers.ModelSerializer):
 
 
 class LogAuditoriaSerializer(serializers.ModelSerializer):
+    """Serializador de solo lectura para registros de auditoría administrativa."""
     usuario_admin = UsuarioSerializer(read_only=True)
     usuario_afectado = UsuarioSerializer(read_only=True)
 

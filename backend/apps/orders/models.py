@@ -1,4 +1,9 @@
-﻿from __future__ import annotations
+﻿"""
+Modelos de datos para la app de pedidos.
+Define Order, Invoice y OrderItem con su ciclo de vida de estado.
+"""
+
+from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
@@ -7,6 +12,7 @@ from apps.products.models import Product, Variant
 
 
 class Order(models.Model):
+	"""Pedido completo con datos de envío, pago y diseño. Núcleo del proceso de compra."""
 	STATUS_PENDING = 'pendiente'
 	STATUS_PAID = 'pagado'
 	STATUS_PRODUCTION = 'produccion'
@@ -79,6 +85,7 @@ class Order(models.Model):
 
 
 class Invoice(models.Model):
+    """Factura generada a partir de un pedido confirmado."""
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='invoice')
     invoice_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -101,6 +108,7 @@ class Invoice(models.Model):
 
 
 class OrderItem(models.Model):
+	"""Línea de pedido. Producto + variante con cantidad y precio congelado."""
 	order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, on_delete=models.PROTECT)
 	variant = models.ForeignKey(Variant, on_delete=models.PROTECT)

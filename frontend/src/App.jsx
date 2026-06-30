@@ -3,10 +3,12 @@ import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/theme.css';
 import './styles/globals.css';
+import './styles/responsive.css';
 
-// Lazy-loaded pages
+// All page components are lazy-loaded for code splitting
 import { lazy, Suspense } from 'react';
 
 const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
@@ -34,6 +36,7 @@ const AdminAudit = lazy(() => import('./pages/AdminAudit'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const OrderConfirmation = lazy(() => import('./pages/OrderConfirmation'));
+const UIShowcase = lazy(() => import('./pages/UIShowcase'));
 
 function LoadingFallback() {
   return (
@@ -46,6 +49,7 @@ function LoadingFallback() {
   );
 }
 
+// Root component: providers > router > error boundary > lazy routes
 function App() {
   return (
     <ThemeProvider>
@@ -55,21 +59,27 @@ function App() {
             <Toaster position="top-right" toastOptions={{ duration: 4000, style: { fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
+                {/* Public */}
                 <Route path="/" element={<Landing />} />
                 <Route path="/catalog" element={<Catalog />} />
                 <Route path="/category/:id" element={<Category />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/product/:id/3d" element={<Product3D />} />
+                {/* Auth */}
                 <Route path="/login" element={<AuthPage defaultMode="login" />} />
                 <Route path="/register" element={<AuthPage defaultMode="register" />} />
+                {/* User */}
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/perfil" element={<UserProfile />} />
+                {/* Email verification */}
                 <Route path="/email" element={<VerificarEmail />} />
                 <Route path="/verificar-email" element={<VerificarEmail />} />
                 <Route path="/verificar-email-pendiente" element={<VerificacionPendiente />} />
+                {/* Password recovery */}
                 <Route path="/password" element={<RecuperarPassword />} />
                 <Route path="/nueva-password" element={<NuevaPassword />} />
+                {/* Admin */}
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin-products" element={<AdminProducts />} />
                 <Route path="/admin-products/detail/:id" element={<AdminProductDetail />} />
@@ -80,9 +90,12 @@ function App() {
                 <Route path="/admin-cart/:id" element={<AdminCartDetail />} />
                 <Route path="/admin-contact" element={<AdminContact />} />
                 <Route path="/admin-audit" element={<AdminAudit />} />
+                {/* Checkout */}
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/checkout/resultado" element={<OrderConfirmation />} />
+                {/* Dev / redirect */}
                 <Route path="/catalogo" element={<Catalog />} />
+                <Route path="/ui" element={<UIShowcase />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>

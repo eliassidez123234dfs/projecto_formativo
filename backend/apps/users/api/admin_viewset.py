@@ -1,10 +1,11 @@
+"""ViewSets for admin user management, audit logging, and soft-delete (RF-016 to RF-024)."""
+
 import logging
 
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
-from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Q, Case, When, Value, IntegerField
 from rest_framework.pagination import PageNumberPagination
@@ -17,9 +18,12 @@ import re
 
 logger = logging.getLogger(__name__)
 
+from ..services.email_service import EmailService
+
 from ..models import (
     Usuario, Token_Verificacion, Log_Auditoria, Historial_Estado_Usuario
 )
+from ..mongo_service import log_event as mongo_log_event
 from .serializers import (
     UsuarioSerializer, UsuarioDetailSerializer, LogAuditoriaSerializer
 )
@@ -38,6 +42,7 @@ class AdminPermission(permissions.BasePermission):
 
 
 class AdminPagination(PageNumberPagination):
+    """Paginación personalizada para el panel de administración."""
     page_size = settings.REST_FRAMEWORK.get('PAGE_SIZE', 20)
     page_size_query_param = 'page_size'
     max_page_size = 100
@@ -252,9 +257,9 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             
             # Enviar email con credenciales (RF-018)
             if contrasena_temporal:
-                self._enviar_email_bienvenida(usuario, contrasena_temporal, token.token)
+                EmailService.send_welcome_email(usuario, contrasena_temporal)
             else:
-                self._enviar_email_verificacion(usuario, token.token)
+                EmailService.send_verification_email(usuario, token)
             
             # Registrar en auditoría
             self._registrar_auditoria(
@@ -383,9 +388,11 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         
         # Si se desactiva o bloquea, invalidar tokens (RN-022)
         if nuevo_estado in ['Inactivo', 'Bloqueado']:
-            # Aquí se implementaría la invalidación de tokens JWT
-            # Usando django-rest-framework-simplejwt token blacklist
-            pass
+            from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+            from django.utils import timezone as tz
+            usuario.token_version += 1
+            usuario.save(update_fields=['token_version'])
+            OutstandingToken.objects.filter(user_id=usuario.id).delete()
         
         # Registrar en auditoría
         self._registrar_auditoria(
@@ -451,7 +458,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         )
         
         # Enviar email
-        self._enviar_email_reset_password(usuario, contrasena_temporal, token.token)
+        EmailService.send_admin_reset_email(usuario, contrasena_temporal)
         
         # Registrar en auditoría
         self._registrar_auditoria(
@@ -505,7 +512,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         fecha_inicio = request.query_params.get('fecha_inicio')
         fecha_fin = request.query_params.get('fecha_fin')
         
-        queryset = Log_Auditoria.objects.all()
+        queryset = Log_Auditoria.objects.select_related('usuario_admin', 'usuario_afectado').all()
         
         if usuario_admin:
             queryset = queryset.filter(usuario_admin_id=usuario_admin)
@@ -532,118 +539,15 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     def _generar_contrasena_temporal(self):
         """Generar contraseña temporal que cumple RN-001"""
         caracteres_especiales = '!@#$%^&*()'
-        mientras = True
-        while mientras:
-            contrasena = ''
-            
-            # Agregar mayúsculas
-            contrasena += secrets.choice(string.ascii_uppercase)
-            
-            # Agregar número
-            contrasena += secrets.choice(string.digits)
-            
-            # Agregar carácter especial
-            contrasena += secrets.choice(caracteres_especiales)
-            
-            # Completar el resto
-            resto = secrets.choice(string.ascii_letters + string.digits + caracteres_especiales)
-            contrasena += ''.join(
-                secrets.choice(string.ascii_letters + string.digits) 
-                for _ in range(5)
-            )
-            
-            # Mezclar
-            contrasena_lista = list(contrasena)
-            secrets.SystemRandom().shuffle(contrasena_lista)
-            contrasena = ''.join(contrasena_lista)
-            
-            mientras = False
-        
-        return contrasena
-    
-    def _enviar_email_bienvenida(self, usuario, contrasena_temporal, token):
-        """Enviar email de bienvenida con credenciales"""
-        enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
-        asunto = "Bienvenido - Tu cuenta ha sido creada"
-        mensaje = f"""
-        Hola {usuario.usuario},
-        
-        Tu cuenta ha sido creada por un administrador.
-        
-        Credenciales temporales:
-        Correo: {usuario.correo}
-        Contraseña: {contrasena_temporal}
-        
-        Por favor, verifica tu correo haciendo clic en el siguiente enlace:
-        {enlace}
-        
-        Después podrás cambiar tu contraseña.
-        """
-        
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
-        except Exception as exc:
-            logger.exception('Error al enviar email de bienvenida a %s: %s', usuario.correo, exc)
-    
-    def _enviar_email_verificacion(self, usuario, token):
-        """Enviar email de verificación cuando el admin crea usuario con password propia"""
-        enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
-        asunto = "Verifica tu correo electrónico"
-        mensaje = f"""
-        Hola {usuario.usuario},
-        
-        Tu cuenta ha sido creada por un administrador.
-        
-        Por favor, verifica tu correo haciendo clic en el siguiente enlace:
-        {enlace}
-        
-        Este enlace expira en 24 horas.
-        """
-        
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
-        except Exception as exc:
-            logger.exception('Error al enviar email de verificación a %s: %s', usuario.correo, exc)
-    
-    def _enviar_email_reset_password(self, usuario, contrasena_temporal, token):
-        """Enviar email de reseteo de contraseña"""
-        enlace = f"{settings.FRONTEND_URL}/nueva-password?token={token}"
-        asunto = "Tu contraseña ha sido reseteada"
-        mensaje = f"""
-        Hola {usuario.usuario},
-        
-        Tu contraseña ha sido reseteada por un administrador.
-        
-        Contraseña temporal: {contrasena_temporal}
-        
-        Para establecer una nueva contraseña, haz clic en:
-        {enlace}
-        
-        Este enlace expira en 1 hora.
-        """
-        
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
-        except Exception as exc:
-            logger.exception('Error al enviar email de reseteo a %s: %s', usuario.correo, exc)
+        contrasena = (
+            secrets.choice(string.ascii_uppercase) +
+            secrets.choice(string.digits) +
+            secrets.choice(caracteres_especiales) +
+            ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(5))
+        )
+        contrasena_lista = list(contrasena)
+        secrets.SystemRandom().shuffle(contrasena_lista)
+        return ''.join(contrasena_lista)
     
     def _registrar_auditoria(self, admin, usuario_afectado, accion, 
                             datos_anteriores=None, datos_nuevos=None, ip_admin=None):
@@ -655,6 +559,19 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             datos_anteriores=datos_anteriores,
             datos_nuevos=datos_nuevos,
             ip_admin=ip_admin
+        )
+        mongo_log_event(
+            action=f'admin.{accion.lower().replace(" ", "_")}',
+            actor_id=admin.id if admin else None,
+            target_type='usuario',
+            target_id=str(usuario_afectado.id) if usuario_afectado else None,
+            metadata={
+                'accion': accion,
+                'datos_anteriores': datos_anteriores,
+                'datos_nuevos': datos_nuevos,
+            },
+            ip_address=ip_admin,
+            severity='info',
         )
     
     def _obtener_ip_cliente(self, request):

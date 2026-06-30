@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
+import { getAccessToken, clearAuth, isAuthenticated, getCurrentUser } from '../services/authService'
+import useAppStore from '../store/appStore'
+import { fetchCurrentUser, buildApiUrl } from '../services/api'
 import '../styles/main-layout.css'
 
 const Icons = {
@@ -36,12 +39,23 @@ const Icons = {
       <polyline points="10 9 9 9 8 9" />
     </svg>
   ),
-  Reports: () => (
+  Cart: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-      <line x1="2" y1="20" x2="22" y2="20" />
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+    </svg>
+  ),
+  Mail: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <polyline points="22,6 12,13 2,6" />
+    </svg>
+  ),
+  Clipboard: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
     </svg>
   ),
   ChevronLeft: () => (
@@ -79,18 +93,6 @@ const Icons = {
       <line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   ),
-  Search: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  ),
-  Plus: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  ),
   LogOut: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -98,92 +100,143 @@ const Icons = {
       <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
-  Mail: () => (
+  Store: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-      <polyline points="22,6 12,13 2,6" />
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   ),
-  Clipboard: () => (
+  CatalogIcon: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
     </svg>
   ),
 }
 
+// Authenticated admin/user shell with sidebar navigation, header, footer, and access control
 export default function MainLayout({ children, title, subtitle }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try { return localStorage.getItem('sidebarOpen') !== 'false' } catch { return true }
-  })
   const { theme, toggleTheme } = useTheme()
-  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+  const sidebarOpen = useAppStore(s => s.sidebarOpen)
+  const setSidebarOpen = useAppStore(s => s.setSidebarOpen)
+  const [usuario, setUsuario] = useState(() => getCurrentUser())
+  const [loadingUser, setLoadingUser] = useState(!usuario)
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate('/login')
+      return
+    }
+    if (!usuario) {
+      fetchCurrentUser().then(user => {
+        if (user) {
+          setUsuario(user)
+
+        } else {
+          navigate('/login')
+        }
+        setLoadingUser(false)
+      })
+    } else {
+      setLoadingUser(false)
+    }
+  }, [navigate])
+
   const isAdmin = usuario?.rol === 'Administrador'
+  const isActive = usuario?.estado === 'Activo'
+  const isAdminRoute = location.pathname.startsWith('/admin')
 
   useEffect(() => {
-    try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch {}
-  }, [sidebarOpen])
-
-  useEffect(() => {
-    if (!usuario) { navigate('/login') }
-    else if (!isAdmin) { navigate('/perfil') }
-  }, [usuario, isAdmin, navigate, location.pathname])
+    if (loadingUser) return
+    if (!usuario || !isActive) {
+      navigate('/login')
+      return
+    }
+    if (isAdminRoute && !isAdmin) {
+      navigate('/perfil')
+    }
+  }, [usuario, isAdmin, isActive, isAdminRoute, navigate, loadingUser])
 
   const menuItems = [
-    { label: 'Resumen', href: '/admin', icon: Icons.Dashboard, admin: true },
-    { label: 'Dashboard', href: '/dashboard', icon: Icons.Dashboard },
-    { label: 'Usuarios', href: '/admin-users', icon: Icons.Users, admin: true },
-    { label: 'Productos', href: '/admin-products', icon: Icons.Products, admin: true },
-    { label: 'Pedidos', href: '/admin-orders', icon: Icons.Clipboard, admin: true },
-    { label: 'Carrito', href: '/admin-cart', icon: Icons.Orders },
-    { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail, admin: true },
-    { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard, admin: true },
+    { section: 'Gestión', admin: false, items: [
+      { label: 'Dashboard', href: '/dashboard', icon: Icons.Dashboard, admin: false },
+      { label: 'Catálogo', href: '/catalog', icon: Icons.CatalogIcon, admin: false },
+      { label: 'Tienda', href: '/', icon: Icons.Store, admin: false },
+    ]},
+    { section: 'Administración', admin: true, items: [
+      { label: 'Resumen', href: '/admin', icon: Icons.Dashboard },
+      { label: 'Usuarios', href: '/admin-users', icon: Icons.Users },
+      { label: 'Productos', href: '/admin-products', icon: Icons.Products },
+      { label: 'Pedidos', href: '/admin-orders', icon: Icons.Orders },
+      { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },
+      { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
+      { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard },
+    ]},
   ]
 
-  const filteredMenu = menuItems.filter(item => !item.admin || isAdmin)
+  const filteredSections = menuItems.map(section => ({
+    ...section,
+    items: section.items.filter(item => !item.admin || isAdmin),
+  })).filter(section => section.items.length > 0)
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('usuario')
+  const handleLogout = async () => {
+    try {
+      await fetch(buildApiUrl('login/logout/'), { method: 'POST', credentials: 'include' })
+    } catch {}
+    clearAuth()
     navigate('/login')
   }
 
-  const isActive = (href) => {
+  const isActiveLink = (href) => {
+    if (href === '/') return location.pathname === '/'
     if (href === '/dashboard') return location.pathname === '/dashboard'
     if (href === '/admin') return location.pathname === '/admin'
     return location.pathname.startsWith(href)
   }
 
+  if (loadingUser) return null
+
   return (
     <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '260px 1fr' : '60px 1fr' }}>
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-brand">
-          <div className="sidebar-brand-text">
-            <span className="sidebar-brand-name">RED</span>
-            <span className="sidebar-brand-role">Admin</span>
-          </div>
+          <Link to="/" style={{ textDecoration: 'none' }}>
+            <div className="sidebar-brand-text">
+              <span className="sidebar-brand-name">RED</span>
+              <span className="sidebar-brand-role">{isAdmin ? 'Admin' : 'Usuario'}</span>
+            </div>
+          </Link>
         </div>
 
-        {sidebarOpen && <div className="nav-section-label">Navegación</div>}
-
         <nav className="sidebar-nav">
-          {filteredMenu.map(item => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={`nav-item ${isActive(item.href) ? 'active' : ''}`}
-              title={!sidebarOpen ? item.label : ''}
-            >
-              <span className="nav-item-icon"><item.icon /></span>
-              {sidebarOpen && <span className="nav-label">{item.label}</span>}
-            </Link>
+          {filteredSections.map((section) => (
+            <div key={section.section}>
+              {sidebarOpen && section.admin && isAdmin && (
+                <div className="nav-section-label">{section.section}</div>
+              )}
+              {section.items.map(item => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`nav-item ${isActiveLink(item.href) ? 'active' : ''}`}
+                  title={!sidebarOpen ? item.label : ''}
+                >
+                  <span className="nav-item-icon"><item.icon /></span>
+                  {sidebarOpen && <span className="nav-label">{item.label}</span>}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
 
         <div className="sidebar-footer">
+          <div className="sidebar-theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+            {theme === 'dark' ? <Icons.Sun /> : <Icons.Moon />}
+          </div>
+
           <button
             className="sidebar-toggle-btn"
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -227,7 +280,6 @@ export default function MainLayout({ children, title, subtitle }) {
 
         <footer className="main-footer">
           <p>&copy; {new Date().getFullYear()} RED. Todos los derechos reservados.</p>
-          <p>Panel de Administración</p>
         </footer>
       </div>
     </div>

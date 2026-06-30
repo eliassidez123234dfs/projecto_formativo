@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { fetchAdminOrderDetail, updateOrderStatus, reprocessOrder, generateInvoice, fetchOrderInvoice } from '../services/api'
 import MainLayout from '../components/MainLayout'
+import { getCurrentUser } from '../services/authService'
 
 const STATUS_OPTIONS = [
   { value: 'pendiente', label: 'Pendiente' },
@@ -30,7 +31,7 @@ export default function AdminOrderDetail() {
   const [generatingInvoice, setGeneratingInvoice] = useState(false)
 
   useEffect(() => {
-    const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
+    const usuario = getCurrentUser()
     if (!usuario || usuario.rol !== 'Administrador') navigate('/login')
   }, [navigate])
 

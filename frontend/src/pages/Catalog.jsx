@@ -5,6 +5,7 @@ import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { Header } from '../components/Header';
 
+// Product catalog page with search, filter chips, pagination, and skeleton loading states
 export const Catalog = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);

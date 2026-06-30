@@ -53,6 +53,7 @@ function validateForm(data) {
   return errors
 }
 
+// Checkout page with shipping form, cart summary, and Wompi payment integration
 export default function CheckoutPage() {
   const [summary, setSummary] = useState({ items: [], total_items: 0, total_amount: '0.00' })
   const [loading, setLoading] = useState(true)
@@ -194,6 +195,7 @@ export default function CheckoutPage() {
                     value={form.shipping_name}
                     onChange={handleChange}
                     placeholder="Ej: Juan Pérez"
+                    required minLength={3} maxLength={100} autoComplete="name"
                     className={fieldErrors.shipping_name ? 'field-error' : ''}
                   />
                   {fieldErrors.shipping_name && <span className="field-error-text">{fieldErrors.shipping_name}</span>}
@@ -208,6 +210,8 @@ export default function CheckoutPage() {
                     value={form.shipping_email}
                     onChange={handleChange}
                     placeholder="correo@ejemplo.com"
+                    required autoComplete="email"
+                    pattern="[^\s@]+@[^\s@]+\.[^\s@]+" maxLength={254}
                     className={fieldErrors.shipping_email ? 'field-error' : ''}
                   />
                   {fieldErrors.shipping_email && <span className="field-error-text">{fieldErrors.shipping_email}</span>}
@@ -222,6 +226,8 @@ export default function CheckoutPage() {
                     value={form.shipping_phone}
                     onChange={handleChange}
                     placeholder="Ej: 3001234567"
+                    required autoComplete="tel"
+                    pattern="[0-9]{7,15}" maxLength={15}
                     className={fieldErrors.shipping_phone ? 'field-error' : ''}
                   />
                   {fieldErrors.shipping_phone && <span className="field-error-text">{fieldErrors.shipping_phone}</span>}

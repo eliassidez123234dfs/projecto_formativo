@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { buildApiUrl } from '../services/api'
+import { setTokens, getAccessToken, isAuthenticated } from '../services/authService'
 import { useCart } from '../context/CartContext'
 
 function passwordStrength(pw) {
@@ -16,6 +17,7 @@ function passwordStrength(pw) {
   return { label, color, pct }
 }
 
+// Login/Register dual-mode page with client-side validation, password strength meter, email verification status
 export default function AuthPage({ defaultMode = 'login' }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -37,7 +39,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
   }, [mode])
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
+    const token = getAccessToken()
     if (token) navigate('/dashboard')
   }, [navigate])
 
@@ -120,9 +122,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
         setErrors(errData)
         setFieldErrors(extractFieldErrors(errData))
       } else {
-        localStorage.setItem('access_token', data.access)
-        localStorage.setItem('refresh_token', data.refresh)
-        localStorage.setItem('usuario', JSON.stringify(data.usuario))
+        setTokens(data.access, data.refresh, data.usuario)
         await reloadCart()
         const usr = data.usuario || {}
         navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
@@ -203,7 +203,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
                   <label>Correo electrónico</label>
                   <input type="email" value={loginData.correo}
                     onChange={e => { setLoginData(p => ({ ...p, correo: e.target.value })); setFieldErrors(f => ({...f, correo: undefined})) }}
-                    placeholder="tu@email.com" required
+                    placeholder="tu@email.com" required autoComplete="email"
+                    pattern="[^\s@]+@[^\s@]+\.[^\s@]+" maxLength={254}
                     className={fieldErrors.correo ? 'input-error' : ''}
                   />
                   {fieldErrors.correo && <span className="field-error">{fieldErrors.correo}</span>}
@@ -227,7 +228,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
                   <label>Nombre de usuario</label>
                   <input type="text" value={registerData.usuario}
                     onChange={e => { setRegisterData(p => ({ ...p, usuario: e.target.value })); setFieldErrors(f => ({...f, usuario: undefined})) }}
-                    placeholder="miusuario" required
+                    placeholder="miusuario" required autoComplete="username"
+                    minLength={3} maxLength={100} pattern="[A-Za-z0-9_]+"
                     className={fieldErrors.usuario ? 'input-error' : ''}
                   />
                   {fieldErrors.usuario && <span className="field-error">{fieldErrors.usuario}</span>}

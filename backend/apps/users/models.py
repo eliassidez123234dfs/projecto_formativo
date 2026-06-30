@@ -1,3 +1,8 @@
+"""
+Modelos de datos para la app de usuarios.
+Define Usuario, Token_Verificacion, Cambio_Email, Historial_Estado_Usuario y Log_Auditoria.
+"""
+
 from django.db import models
 from django.core.validators import EmailValidator
 from django.utils import timezone
@@ -5,14 +10,13 @@ import secrets
 
 
 class UsuarioManager(models.Manager):
+    """Manager personalizado con get_by_natural_key para compatibilidad con Django auth."""
     def get_by_natural_key(self, username):
         return self.get(usuario=username)
 
 
-# Clase de usuarios para el modelo de la base de datos del usuario bien estructurado
-# Patron Active Record
 class Usuario(models.Model):
-    """Modelo unificado de Usuario (RI-001)"""
+    """Modelo unificado de Usuario (RI-001). Gestiona autenticación, roles, bloqueos y soft-delete."""
     # Los diferentes estados que usare en el apartado de usuarios
     ESTADO_CHOICES = (('Activo', 'Activo'), ('Inactivo', 'Inactivo'), ('Bloqueado', 'Bloqueado'),)
     
@@ -35,6 +39,12 @@ class Usuario(models.Model):
     
     # Verificación de email
     email_verificado = models.BooleanField(default=False)
+    
+    # Superusuario para acceso a Django admin (NO es un rol)
+    is_superuser = models.BooleanField(default=False, verbose_name='Superusuario')
+
+    # Versión de token para invalidación de JWT al bloquear/desactivar
+    token_version = models.IntegerField(default=0, verbose_name='Versión de token')
     
     # Intentos fallidos de login y bloqueo
     intentos_fallidos = models.IntegerField(default=0)
@@ -88,10 +98,8 @@ class Usuario(models.Model):
         return f"{self.usuario} ({self.correo})"
 
 
-# Clase para para el modelo del token de verificacion el cual permite recuperar un token y mandarlo a el correo
 class Token_Verificacion(models.Model):
-    """Modelo para manejar tokens de verificación de email, 
-    recuperación de contraseña y cambio de email (RI-009)"""
+    """Token de verificación de email, recuperación de contraseña y cambio de email (RI-009)."""
     
     # Tipo de token el cual se requiera utilizar en el caso de aplicarse
     TIPO_CHOICES = (('Verificacion_Email', 'Verificación de Email'), ('Recuperacion_Password', 'Recuperación de Contraseña'), ('Cambio_Email', 'Cambio de Email'),)
@@ -139,9 +147,8 @@ class Cambio_Email(models.Model):
         return f"{self.usuario.usuario}: {self.email_anterior} -> {self.email_nuevo}"
 
 
-# Clase para ver el estado del usuario actual que este registrado
 class Historial_Estado_Usuario(models.Model):
-    """Modelo para auditar cambios de estado de usuarios"""
+    """Auditoría de cambios de estado (Activo/Inactivo/Bloqueado) de usuarios (RI-018)."""
     
     ESTADO_CHOICES = (('Activo', 'Activo'), ('Inactivo', 'Inactivo'),('Bloqueado', 'Bloqueado'),)
     
@@ -161,7 +168,7 @@ class Historial_Estado_Usuario(models.Model):
 
 
 class Log_Auditoria(models.Model):
-    """Modelo para registrar todas las acciones administrativas (RI-019)"""
+    """Registro de todas las acciones administrativas sobre usuarios (RI-019)."""
     
     id = models.AutoField(primary_key=True)
     usuario_admin = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True,

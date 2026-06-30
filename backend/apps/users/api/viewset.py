@@ -1,3 +1,5 @@
+"""ViewSets for user registration, authentication, and profile management (RF-001 to RF-012)."""
+
 import logging
 
 from rest_framework import viewsets, status, permissions
@@ -5,8 +7,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from django.utils import timezone
-from django.core.mail import send_mail
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
@@ -15,6 +17,7 @@ from datetime import timedelta
 
 from apps.carts.models import Cart
 
+from ..services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +47,10 @@ class RegistroViewSet(viewsets.ViewSet):
                 usuario = serializer.save()
                 
                 # Enviar email de verificación (no bloquea el registro si falla)
-                email_enviado = self._enviar_email_verificacion(usuario)
+                token_obj = usuario.tokens_verificacion.filter(
+                    tipo='Verificacion_Email', usado=False
+                ).first()
+                email_enviado = EmailService.send_verification_email(usuario, token_obj) if token_obj else False
                 if not email_enviado:
                     logger.warning('No se pudo enviar email de verificación a %s', usuario.correo)
             
@@ -98,7 +104,7 @@ class RegistroViewSet(viewsets.ViewSet):
             )
             
             # Enviar email
-            if not self._enviar_email_verificacion(usuario, nuevo_token.token):
+            if not EmailService.send_verification_email(usuario, nuevo_token):
                 return Response({
                     'error': 'No se pudo enviar el correo de verificación. Intenta más tarde.'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -127,7 +133,7 @@ class RegistroViewSet(viewsets.ViewSet):
             )
             
             # Enviar email
-            if not self._enviar_email_recuperacion(usuario, token.token):
+            if not EmailService.send_password_reset_email(usuario, token):
                 return Response({
                     'error': 'No se pudo enviar el correo de recuperación. Intenta más tarde.'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -165,63 +171,6 @@ class RegistroViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-    def _send_email(self, asunto, mensaje, destinatarios):
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                destinatarios,
-                fail_silently=False
-            )
-            return True
-        except Exception as exc:
-            logger.exception('Error al enviar email a %s: %s', destinatarios, exc)
-            return False
-
-    def _enviar_email_verificacion(self, usuario, token=None):
-        """Enviar email de verificación"""
-        if not token:
-            token_obj = usuario.tokens_verificacion.filter(
-                tipo='Verificacion_Email',
-                usado=False
-            ).first()
-            token = token_obj.token if token_obj else None
-        
-        if token:
-            enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
-            logger.info('Enlace de verificación para %s: %s', usuario.correo, enlace)
-            asunto = "Verifica tu cuenta"
-            mensaje = f"""
-            Hola {usuario.usuario},
-            
-            Para completar tu registro, haz clic en el siguiente enlace:
-            {enlace}
-            
-            Este enlace expira en 24 horas.
-            """
-
-            return self._send_email(asunto, mensaje, [usuario.correo])
-
-        logger.error('No se encontró token de verificación para el usuario %s', usuario.id)
-        return False
-    
-
-    def _enviar_email_recuperacion(self, usuario, token):
-        """Enviar email de recuperación de contraseña"""
-        enlace = f"{settings.FRONTEND_URL}/nueva-password?token={token}"
-        asunto = "Recupera tu contraseña"
-        mensaje = f"""
-        Hola {usuario.usuario},
-        
-        Para recuperar tu contraseña, haz clic en el siguiente enlace:
-        {enlace}
-        
-        Este enlace expira en 1 hora.
-        """
-        
-        return self._send_email(asunto, mensaje, [usuario.correo])
-
 
 class LoginViewSet(viewsets.ViewSet):
     """ViewSet para autenticación (RF-008, RF-011, RF-012)"""
@@ -253,23 +202,57 @@ class LoginViewSet(viewsets.ViewSet):
                     session_cart.delete()
         request.session.cycle_key()
 
-        # Generar tokens JWT
+        # Generar tokens JWT con token_version
         refresh = RefreshToken.for_user(usuario)
+        refresh['token_version'] = usuario.token_version
+        access_token = refresh.access_token
+        access_token['token_version'] = usuario.token_version
 
-        return Response({
+        response = Response({
             'mensaje': 'Login exitoso',
             'usuario': UsuarioSerializer(usuario).data,
-            'access': str(refresh.access_token),
+            'access': str(access_token),
             'refresh': str(refresh),
         }, status=status.HTTP_200_OK)
+
+        # Establecer cookies httpOnly para los tokens
+        secure = not settings.DEBUG
+        response.set_cookie(
+            'access_token', str(access_token),
+            max_age=900, httponly=True, secure=secure, samesite='Lax',
+            path='/'
+        )
+        response.set_cookie(
+            'refresh_token', str(refresh),
+            max_age=604800, httponly=True, secure=secure, samesite='Lax',
+            path='/api/token/refresh/'
+        )
+
+        return response
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def logout(self, request):
-        """Endpoint de logout (RF-012, RN-013)"""
+        """Endpoint de logout (RF-012, RN-013) - invalida token JWT"""
         request.session.cycle_key()
-        return Response({
+
+        # Blacklistear el refresh token si se envía en el body o cookie
+        refresh_token = request.data.get('refresh') or request.COOKIES.get('refresh_token')
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except (TokenError, AttributeError):
+                pass
+
+        response = Response({
             'mensaje': 'Sesión cerrada exitosamente'
         }, status=status.HTTP_200_OK)
+
+        # Eliminar cookies de tokens
+        response.delete_cookie('access_token', path='/')
+        response.delete_cookie('refresh_token', path='/api/token/refresh/')
+
+        return response
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):

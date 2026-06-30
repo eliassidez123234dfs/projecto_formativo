@@ -68,13 +68,17 @@ class Command(BaseCommand):
             ) from e
 
     def _create_users(self):
+        import os
         from apps.users.models import Usuario
+
+        admin_pass = os.environ.get('SEED_ADMIN_PASSWORD', 'Admin123!')
+        test_pass = os.environ.get('SEED_TEST_PASSWORD', 'Test123!')
 
         users_data = [
             {
                 'usuario': 'admin',
                 'correo': 'admin@redestampacion.com',
-                'contrasena': make_password('Admin123!'),
+                'contrasena': make_password(admin_pass),
                 'rol': 'Administrador',
                 'estado': 'Activo',
                 'email_verificado': True,
@@ -82,7 +86,7 @@ class Command(BaseCommand):
             {
                 'usuario': 'test',
                 'correo': 'test@example.com',
-                'contrasena': make_password('Test123!'),
+                'contrasena': make_password(test_pass),
                 'rol': 'Usuario',
                 'estado': 'Activo',
                 'email_verificado': True,
@@ -90,7 +94,7 @@ class Command(BaseCommand):
             {
                 'usuario': 'usuario',
                 'correo': 'usuario@example.com',
-                'contrasena': make_password('Test123!'),
+                'contrasena': make_password(test_pass),
                 'rol': 'Usuario',
                 'estado': 'Activo',
                 'email_verificado': True,

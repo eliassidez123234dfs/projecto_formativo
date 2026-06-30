@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchAuditLogs } from '../services/api'
 import MainLayout from '../components/MainLayout'
+import { getCurrentUser } from '../services/authService'
 
+// Admin audit log — read-only table of admin actions on users
 export default function AdminAudit() {
   const navigate = useNavigate()
   const [logs, setLogs] = useState([])
@@ -12,7 +14,7 @@ export default function AdminAudit() {
   const [pageSize] = useState(20)
 
   useEffect(() => {
-    const u = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+    const u = getCurrentUser()
     if (!u || u.rol !== 'Administrador') navigate('/login')
   }, [navigate])
 

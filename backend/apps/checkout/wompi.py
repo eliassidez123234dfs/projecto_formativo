@@ -13,28 +13,34 @@ logger = logging.getLogger(__name__)
 
 
 def _get_base_url() -> str:
+    """Return the Wompi API base URL from settings."""
     return settings.WOMPI_API_URL
 
 
 def _get_private_key() -> str:
-    return settings.WOMPRI_PRIVATE_KEY
+    """Return the Wompi private/secret key from settings."""
+    return settings.WOMPI_PRIVATE_KEY
 
 
 def _get_integrity_key() -> str:
+    """Return the Wompi integrity key for signature generation from settings."""
     return settings.WOMPI_INTEGRITY_KEY
 
 
 def get_public_key() -> str:
+    """Return the Wompi public key from settings."""
     return settings.WOMPI_PUBLIC_KEY
 
 
 def generate_signature(reference: str, amount_in_cents: int, currency: str = 'COP') -> str:
+    """Generate SHA-256 integrity signature for Wompi transaction."""
     integrity_key = _get_integrity_key()
     raw = f'{reference}{amount_in_cents}{currency}{integrity_key}'
     return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 
 def get_acceptance_token() -> str | None:
+    """Fetch the current acceptance token from Wompi merchant endpoint."""
     try:
         url = f'{_get_base_url()}/v1/merchants/{_get_public_key()}'
         resp = requests.get(url, timeout=10)
@@ -55,6 +61,7 @@ def create_transaction(
     customer_phone: str | None = None,
     currency: str = 'COP',
 ) -> dict | None:
+    """Create a payment transaction on Wompi and return the API response."""
     try:
         amount_in_cents = int(amount * 100)
         signature = generate_signature(reference, amount_in_cents, currency)
@@ -108,6 +115,7 @@ def create_transaction(
 
 
 def verify_webhook_signature(request_body: bytes, signature_header: str | None) -> bool:
+    """Verify HMAC-SHA256 signature of a Wompi webhook payload."""
     if not signature_header:
         logger.warning('Webhook sin firma, rechazando')
         return False
@@ -121,6 +129,7 @@ def verify_webhook_signature(request_body: bytes, signature_header: str | None) 
 
 
 def get_transaction(transaction_id: str) -> dict | None:
+    """Fetch transaction details from Wompi by transaction ID."""
     try:
         headers = {'Authorization': f'Bearer {_get_private_key()}'}
         url = f'{_get_base_url()}/v1/transactions/{transaction_id}'

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
+import { getAccessToken, getCurrentUser } from '../services/authService'
 import '../styles/UserProfile.scss'
 
+// Public user profile page with account info, inline edit, and password change form
 export default function UserProfile() {
   const navigate = useNavigate()
-  const [usuario, setUsuario] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null }
-  })
+  const [usuario, setUsuario] = useState(() => getCurrentUser())
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
@@ -25,7 +25,7 @@ export default function UserProfile() {
     setSaving(true)
     setMsg(null)
     try {
-      const token = localStorage.getItem('access_token')
+      const token = getAccessToken()
       const res = await fetch('/api/usuarios/actualizar_perfil/', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -37,7 +37,6 @@ export default function UserProfile() {
         return
       }
       const updated = data.usuario || { ...usuario, ...editData }
-      localStorage.setItem('usuario', JSON.stringify(updated))
       setUsuario(updated)
       setEditing(false)
       setMsg({ type: 'success', text: 'Perfil actualizado correctamente' })
@@ -58,7 +57,7 @@ export default function UserProfile() {
     setSavingPass(true)
     setMsg(null)
     try {
-      const token = localStorage.getItem('access_token')
+      const token = getAccessToken()
       const res = await fetch('/api/usuarios/cambiar_password/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

@@ -7,11 +7,13 @@ from .serializers import OrderSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
+    """ViewSet for order CRUD — accepts camelCase payload from frontend and maps to snake_case."""
+    queryset = Order.objects.select_related('user').prefetch_related('items__product', 'items__variant').all()
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
+        """Create a new order, mapping camelCase frontend fields to snake_case."""
         # Map camelCase payload (from frontend) to snake_case expected by serializer
         data = request.data.copy()
         if 'imageUrl' in data and 'image_url' not in data:

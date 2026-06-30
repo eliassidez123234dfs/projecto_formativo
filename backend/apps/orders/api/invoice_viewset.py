@@ -9,7 +9,7 @@ from apps.users.api.admin_viewset import AdminPermission
 
 
 class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Invoice.objects.all()
+    queryset = Invoice.objects.select_related('order').all()
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
 
@@ -20,7 +20,7 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Invoice.objects.all()
+        qs = Invoice.objects.select_related('order').all()
         if getattr(user, 'rol', '') != 'Administrador':
             qs = qs.filter(order__user=user)
         order_id = self.request.query_params.get('order')

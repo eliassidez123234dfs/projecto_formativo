@@ -1,0 +1,241 @@
+/* =========================================================================
+   Responsive Overrides — Red Estampación
+   Se importa al final de App.jsx para sobreescribir estilos según
+   el tamaño de pantalla. Soporta mobile-first (min-width).
+   ========================================================================= */
+
+/* ── Breakpoints ─────────────────────────────────────────────────────────── */
+/*   Mobile:  < 640px    (default, sin media query)                         */
+/*   Tablet:  640px – 1023px                                               */
+/*   Desktop: ≥ 1024px                                                     */
+/*   Wide:    ≥ 1440px                                                     */
+
+/* =========================================================================
+   Sidebar responsive
+   ========================================================================= */
+
+@media (max-width: 1023px) {
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    padding: 8px 12px !important;
+  }
+
+  .sidebar.collapsed {
+    width: 100% !important;
+  }
+
+  .sidebar-brand {
+    display: none !important;
+  }
+
+  .sidebar-nav {
+    flex-direction: row !important;
+    gap: 4px !important;
+  }
+
+  .sidebar-nav-item {
+    white-space: nowrap !important;
+    padding: 6px 12px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .sidebar-nav-item span {
+    display: inline !important;
+  }
+
+  .main-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .main-content {
+    padding: 12px !important;
+  }
+}
+
+/* =========================================================================
+   Tablas responsive (Admin)
+   ========================================================================= */
+
+@media (max-width: 767px) {
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    padding: 8px;
+    background: var(--color-bg-primary, #fff);
+  }
+
+  td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 1px solid var(--color-border-light, #eee);
+    font-size: 0.85rem;
+  }
+
+  td:last-child {
+    border-bottom: none;
+  }
+
+  td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    margin-right: 12px;
+    color: var(--color-text-secondary, #666);
+  }
+}
+
+/* =========================================================================
+   Grids responsive (catálogo, productos, cards)
+   ========================================================================= */
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .product-grid,
+  [class*="grid"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .product-grid,
+  [class*="grid"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .product-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .product-card img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 200px !important;
+    object-fit: contain !important;
+  }
+}
+
+/* =========================================================================
+   Formularios responsive
+   ========================================================================= */
+
+@media (max-width: 639px) {
+  form,
+  .form-row,
+  .form-group {
+    width: 100% !important;
+  }
+
+  input, select, textarea, button,
+  .btn, [class*="btn-"] {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .btn + .btn {
+    margin-left: 0 !important;
+    margin-top: 8px !important;
+  }
+}
+
+/* =========================================================================
+   Header responsive
+   ========================================================================= */
+
+@media (max-width: 639px) {
+  .header {
+    padding: 8px 12px !important;
+  }
+
+  .header-links {
+    gap: 8px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .header-links a {
+    padding: 4px 8px !important;
+  }
+}
+
+/* =========================================================================
+   Modal responsive
+   ========================================================================= */
+
+@media (max-width: 639px) {
+  .modal-content,
+  [class*="modal"] {
+    margin: 8px !important;
+    width: calc(100% - 16px) !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* =========================================================================
+   Auth page responsive
+   ========================================================================= */
+
+@media (max-width: 639px) {
+  .auth-container {
+    flex-direction: column !important;
+    padding: 16px !important;
+  }
+
+  .auth-form {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 16px !important;
+  }
+}
+
+/* =========================================================================
+   Checkout responsive
+   ========================================================================= */
+
+@media (max-width: 767px) {
+  .checkout-layout {
+    flex-direction: column !important;
+  }
+
+  .checkout-summary {
+    order: -1;
+    margin-bottom: 16px;
+  }
+}
+
+/* =========================================================================
+   Tipografía responsive
+   ========================================================================= */
+
+@media (max-width: 639px) {
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.25rem !important; }
+  h3 { font-size: 1.1rem !important; }
+  p, li { font-size: 0.9rem !important; }
+}
+
+/* =========================================================================
+   Contenedor principal responsive
+   ========================================================================= */
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+    padding: 0 24px !important;
+  }
+}

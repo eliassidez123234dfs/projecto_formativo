@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { buildApiUrl } from '../services/api'
+import { getAccessToken, setTokens } from '../services/authService'
 
 function passwordStrength(pw) {
   let score = 0
@@ -34,7 +35,7 @@ export const Auth = () => {
   useEffect(() => { setErrors({}); setFieldErrors({}); setSuccess(false); setAnimKey(k => k + 1); setShowConfirm(false); setPwTouched(false) }, [isLogin])
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
+    const token = getAccessToken()
     if (token) navigate('/dashboard')
   }, [navigate])
 
@@ -92,9 +93,7 @@ export const Auth = () => {
       if (!response.ok) {
         setErrors(typeof data === 'object' ? data : { general: data.error || 'Credenciales inválidas' })
       } else {
-        localStorage.setItem('access_token', data.access)
-        localStorage.setItem('refresh_token', data.refresh)
-        localStorage.setItem('usuario', JSON.stringify(data.usuario))
+        setTokens(data.access, data.refresh, data.usuario)
         const usr = data.usuario || {}
         navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
       }

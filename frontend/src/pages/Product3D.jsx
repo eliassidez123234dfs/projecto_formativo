@@ -1,74 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
-import { fetchProductDetail } from '../services/api';
-import { Header } from '../components/Header';
-import { Button } from '../components/Button';
-import { useCart } from '../context/CartContext';
+import { useState, useEffect } from 'react'
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
+import { fetchProductDetail } from '../services/api'
+import { Button, Card } from '../components/ui'
+import Product3DViewer from '../components/Product3DViewer'
 
+const EDITOR_URL = import.meta.env.VITE_3D_EDITOR_URL || 'http://localhost:5174'
+
+// 3D product viewer / editor page — embeds the Three.js viewer or full editor iframe from the microservice
 export const Product3D = () => {
-  const { id } = useParams();
-  const { search } = useLocation();
-  const params = new URLSearchParams(search);
-  const mode = params.get('mode') || 'view';
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const { cart } = useCart();
+  const { id } = useParams()
+  const { search } = useLocation()
+  const navigate = useNavigate()
+  const params = new URLSearchParams(search)
+  const mode = params.get('mode') || 'view'
+  const [product, setProduct] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [viewMode, setViewMode] = useState('3d')
 
   useEffect(() => {
-    const loadProduct = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchProductDetail(id);
-        setProduct(data);
-      } catch (err) {
-        console.error(err);
-        setError('No se pudo cargar el producto para el modelo 3D.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!id) { setLoading(false); return }
+    fetchProductDetail(id)
+      .then(setProduct)
+      .catch(() => setError('No se pudo cargar el producto'))
+      .finally(() => setLoading(false))
+  }, [id])
 
-    if (id) {
-      loadProduct();
-    }
-  }, [id]);
+  const editorUrl = `${EDITOR_URL}?mode=${mode}${id ? `&productId=${id}` : ''}`
+  const iframeUrl = `${EDITOR_URL}/preview?productId=${id}`
 
-  const openEditor = () => {
-    const base = 'http://localhost:5174/';
-    const url = `${base}?mode=${encodeURIComponent(mode)}${id ? `&productId=${encodeURIComponent(id)}` : ''}`;
-    window.open(url, '_blank');
-  };
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
+        <div className="spinner-border text-danger" />
+      </div>
+    )
+  }
 
   return (
-    <>
-      <Header cartCount={cart?.total_items || 0} />
-      <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-        <Link to={`/product/${id}`} style={{ color: 'var(--color-red)', textDecoration: 'none', display: 'inline-block', marginBottom: '1rem' }}>
-          ← Volver al producto
-        </Link>
-        <div style={{ padding: '2rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-gray-200)', backgroundColor: 'var(--color-white)' }}>
-          <h1 style={{ marginBottom: '0.75rem' }}>Vista 3D del producto</h1>
-          <p style={{ color: 'var(--color-gray-600)', marginBottom: '1.5rem' }}>
-            {product ? (
-              mode === 'edit' ? `Editando modelo 3D de ${product.name}.` : mode === 'new' ? `Crear nuevo modelo 3D pre-cargado con ${product.name}.` : `Trabajando con ${product.name}.`
-            ) : 'Cargando el producto...'}
-          </p>
-          {error && <p style={{ color: 'var(--color-red)', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ display: 'grid', gap: '1rem', maxWidth: '420px' }}>
-            <Button size="lg" onClick={openEditor}>
-              Abrir Editor 3D
-            </Button>
-            <Button size="lg" variant="outline" onClick={() => window.location.href = '/catalog'}>
-              Volver al catálogo
-            </Button>
-          </div>
-          <div style={{ marginTop: '1.75rem', color: 'var(--color-gray-600)', lineHeight: 1.7 }}>
-            <p>Este enlace abre el editor 3D existente. No se realizan modificaciones a las texturas del producto en este paso.</p>
-            <p>Si aún no ejecutas el microservicio 3D, levanta <code>npm run dev</code> dentro de <code>microservices/Tshirt3D</code> para tener acceso.</p>
-          </div>
+    <div className="container py-4">
+      <Link to={id ? `/product/${id}` : '/catalog'} className="text-decoration-none mb-3 d-inline-block" style={{ color: 'var(--color-red)' }}>
+        ← Volver
+      </Link>
+
+      <Card title={product ? `Vista 3D: ${product.name}` : 'Vista 3D'} className="mb-4">
+        <div className="d-flex gap-2 mb-3">
+          <Button variant={viewMode === '3d' ? 'danger' : 'outline-secondary'} size="sm" onClick={() => setViewMode('3d')}>
+            Vista 3D
+          </Button>
+          <Button variant={viewMode === 'editor' ? 'danger' : 'outline-secondary'} size="sm" onClick={() => setViewMode('editor')}>
+            Editor completo
+          </Button>
+          <Button variant="outline-danger" size="sm" onClick={() => window.open(editorUrl, '_blank')}>
+            Abrir en nueva pestaña
+          </Button>
         </div>
+
+        {error && <div className="alert alert-danger">{error}</div>}
+
+        {viewMode === '3d' ? (
+          <Product3DViewer height={480} />
+        ) : (
+          <div style={{ width: '100%', height: 600, borderRadius: 12, overflow: 'hidden', border: '1px solid #ddd' }}>
+            <iframe src={iframeUrl} title="Editor 3D" width="100%" height="100%" style={{ border: 'none' }} />
+          </div>
+        )}
+      </Card>
+
+      <div className="text-muted small">
+        <p className="mb-1">💡 El editor 3D completo debe ejecutarse en <code>microservices/Tshirt3D</code> con <code>npm run dev</code>.</p>
+        <p className="mb-0">🔧 Configura la URL en <code>VITE_3D_EDITOR_URL</code> (archivo <code>.env</code>).</p>
       </div>
-    </>
-  );
-};
+    </div>
+  )
+}

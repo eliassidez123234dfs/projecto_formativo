@@ -5,7 +5,9 @@ import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
 import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
+import { getCurrentUser } from '../services/authService';
 
+// Product detail page with variant selector (size/color), image gallery, reviews, and share links
 export const ProductDetail = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
@@ -23,7 +25,7 @@ export const ProductDetail = () => {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })();
+  const usuario = getCurrentUser();
 
   useEffect(() => {
     const loadProduct = async () => {

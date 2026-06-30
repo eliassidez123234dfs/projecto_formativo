@@ -1,3 +1,8 @@
+"""
+Modelos de datos para la app de modelos 3D.
+Define Model3D y Model3DImage para gestión de activos 3D en Cloudinary.
+"""
+
 from __future__ import annotations
 
 from django.db import models

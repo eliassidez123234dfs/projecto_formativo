@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { Header } from '../components/Header';
 
 export const Category = () => {
+  const navigate = useNavigate()
   const { id } = useParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +106,7 @@ export const Category = () => {
                     stock_total: product.stock_total || 0,
                     variants_summary: product.variants_summary || {},
                   }}
-                  onView={(id) => window.location.href = `/product/${id}`}
+                  onView={(id) => navigate(`/product/${id}`)}
                 />
               ))}
             </div>

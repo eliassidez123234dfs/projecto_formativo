@@ -1,17 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 
-const Header = ({ cartCount = 0, overlay = false }) => {
+const Header = ({ cartCount = 0, overlay = false, usuario = null, onLogout }) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef(null)
   const btnRef = useRef(null)
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
-  const loggedIn = Boolean(token)
-  let usuario = null
-  try {
-    usuario = typeof window !== 'undefined' && localStorage.getItem('usuario') ? JSON.parse(localStorage.getItem('usuario')) : null
-  } catch { /* ignore */ }
+  const loggedIn = Boolean(usuario)
 
   useEffect(() => {
     function handleClick(e) {
@@ -24,13 +19,9 @@ const Header = ({ cartCount = 0, overlay = false }) => {
   }, [])
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('usuario')
-    }
     setMenuOpen(false)
-    if (typeof window !== 'undefined') window.location.href = '/'
+    if (onLogout) onLogout()
+    else if (typeof window !== 'undefined') window.location.href = '/'
   }
 
   const initials = usuario?.usuario?.charAt(0).toUpperCase() || '?'

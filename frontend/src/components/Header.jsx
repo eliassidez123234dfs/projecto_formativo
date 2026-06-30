@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useContext } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CartContext } from '../context/CartContext'
+import { isAuthenticated, clearAuth, getCurrentUser } from '../services/authService'
 
+// Public/global header with catalog link, cart icon, auth buttons, and user dropdown menu
 export const Header = () => {
   const navigate = useNavigate()
   const { cart } = useContext(CartContext)
@@ -11,14 +13,8 @@ export const Header = () => {
   const menuRef = useRef(null)
   const btnRef = useRef(null)
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
-  const loggedIn = Boolean(token)
-  let usuario = null
-  try {
-    // usuario = localStorage.getItem('usuario') ? JSON.parse(localStorage.getItem('usuario')) : null
-    const raw = localStorage.getItem('usuario')
-    usuario = raw ? JSON.parse(raw) : null
-  } catch { /* ignore */ }
+  const loggedIn = isAuthenticated()
+  const usuario = getCurrentUser()
 
   useEffect(() => {
     function handleClick(e) {
@@ -31,9 +27,7 @@ export const Header = () => {
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('usuario')
+    clearAuth()
     setMenuOpen(false)
     navigate('/')
   }

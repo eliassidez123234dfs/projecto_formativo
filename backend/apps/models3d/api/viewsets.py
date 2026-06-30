@@ -16,15 +16,17 @@ class Model3DViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar modelos 3D
     """
-    queryset = Model3D.objects.all()
+    queryset = Model3D.objects.prefetch_related('preview_images').all()
     serializer_class = Model3DSerializer
     
     def get_serializer_class(self):
+        """Return create/update serializer for mutation, read serializer otherwise."""
         if self.action in ['create', 'update', 'partial_update']:
             return Model3DCreateUpdateSerializer
         return Model3DSerializer
     
     def get_permissions(self):
+        """Allow unauthenticated access for read/list actions; require auth for mutations."""
         if self.action in ['list', 'retrieve', 'create', 'active', 'approved', 'preview_images']:
             permission_classes = []
         else:
@@ -77,10 +79,11 @@ class Model3DImageViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar imágenes de modelos 3D
     """
-    queryset = Model3DImage.objects.all()
+    queryset = Model3DImage.objects.select_related('model_3d').all()
     serializer_class = Model3DImageSerializer
     
     def get_permissions(self):
+        """Allow unauthenticated access for read actions; require auth for mutations."""
         if self.action in ['list', 'retrieve']:
             permission_classes = []
         else:

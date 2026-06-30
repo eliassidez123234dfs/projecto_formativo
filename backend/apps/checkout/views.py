@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from apps.carts.models import Cart
 from apps.checkout.models import TransactionLog
 from apps.orders.models import Order, OrderItem
+from apps.users.mongo_service import log_event as mongo_log_event
 
 from .serializers import (
     CheckoutSummaryItemSerializer,
@@ -38,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_cart_from_session(request):
+    """Resolve cart for the current request — user cart if authenticated, session cart otherwise."""
     if request.user.is_authenticated:
         if request.session.session_key:
             session_cart = Cart.objects.filter(session_key=request.session.session_key).first()
@@ -54,6 +56,7 @@ def _get_cart_from_session(request):
 
 
 def _merge_into_user_cart(session_cart, user):
+    """Merge items from an anonymous session cart into a user cart, then delete session cart."""
     user_cart = Cart.objects.filter(user=user).first()
     if not user_cart:
         user_cart = Cart.objects.create(user=user)
@@ -72,6 +75,7 @@ def _merge_into_user_cart(session_cart, user):
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
 def checkout_summary(request):
+    """Return cart summary (items, totals) for the current session/user."""
     cart = _get_cart_from_session(request)
     items = cart.items.select_related('product', 'variant').all()
     serializer = CheckoutSummaryItemSerializer(items, many=True)
@@ -89,6 +93,7 @@ def checkout_summary(request):
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
 def checkout_init(request):
+    """Initialize checkout: validate stock, create Order + OrderItems, clear cart."""
     cart = _get_cart_from_session(request)
     items = list(cart.items.select_related('product', 'variant').all())
 
@@ -140,6 +145,18 @@ def checkout_init(request):
         cart.save(update_fields=['order'])
         cart.items.all().delete()
 
+    mongo_log_event(
+        action='checkout.order_created',
+        actor_id=getattr(request.user, 'id', None) if getattr(request, 'user', None) and request.user.is_authenticated else None,
+        target_type='order',
+        target_id=str(order.id),
+        metadata={
+            'order_number': order.order_number,
+            'total': str(order.total),
+        },
+        severity='info',
+    )
+
     return Response(
         {
             'order_id': order.id,
@@ -156,6 +173,7 @@ def checkout_init(request):
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
 def create_payment(request):
+    """Create a Wompi transaction for an existing order and return redirect URL."""
     serializer = PaymentInitSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -223,6 +241,7 @@ def create_payment(request):
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
 def payment_status(request):
+    """Query order/payment status by reference (order_number or payment_reference)."""
     serializer = PaymentStatusSerializer(data=request.query_params)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -275,6 +294,12 @@ def payment_status(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def wompi_webhook(request):
+    """Handle Wompi transaction webhook (CSRF-exempt).
+
+    SECURITY: Validates HMAC signature from X-Signature header before processing.
+    Processes APPROVED/DECLINED/REJECTED/ERROR/VOIDED events to update order status
+    and restore stock on rejection.
+    """
     try:
         raw_body = request.body
         try:
@@ -382,6 +407,19 @@ def wompi_webhook(request):
                 valor_pagado=valor_pagado,
                 evento=event,
                 raw_response=body,
+            )
+
+            mongo_log_event(
+                action=f'payment.{wompi_status.lower() if wompi_status else "updated"}',
+                target_type='order',
+                target_id=str(order.id),
+                metadata={
+                    'order_number': order.order_number,
+                    'transaction_id': transaction_id,
+                    'event': event,
+                    'amount': str(valor_pagado) if valor_pagado else None,
+                },
+                severity='info' if wompi_status == 'APPROVED' else 'warning',
             )
 
         return Response({'status': 'received'})
