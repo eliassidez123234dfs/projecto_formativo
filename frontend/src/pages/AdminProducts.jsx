@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchAdminStats } from '../services/api'
-import MainLayout from '../components/MainLayout'
+import AdminLayout from '../components/AdminLayout'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
 
@@ -56,7 +56,7 @@ export default function AdminProducts() {
   ]
 
   return (
-    <MainLayout
+    <AdminLayout
       title="Productos"
       subtitle="Administra el catálogo de productos de la plataforma"
     >
@@ -110,6 +110,6 @@ export default function AdminProducts() {
           }}
         />
       )}
-    </MainLayout>
+    </AdminLayout>
   )
 }

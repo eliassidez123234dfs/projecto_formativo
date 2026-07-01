@@ -1,26 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { fetchAdminCarts } from '../services/api'
-import MainLayout from '../components/MainLayout'
+import AdminLayout from '../components/AdminLayout'
+import Pagination from '../components/Pagination'
+import Spinner from '../components/Spinner'
 
 export default function AdminCart() {
-  const navigate = useNavigate()
   const [carts, setCarts] = useState({ results: [], count: 0 })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
   const pageSize = 20
-
-  useEffect(() => {
-    const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
-    if (!usuario || usuario.rol !== 'Administrador') navigate('/login')
-  }, [navigate])
 
   const loadCarts = useCallback(async () => {
     setLoading(true)
     try {
       const data = await fetchAdminCarts(page, pageSize)
       setCarts(data)
-    } catch { setCarts({ results: [], count: 0 }) }
+      setError(null)
+    } catch { setCarts({ results: [], count: 0 }); setError('Error al cargar los carritos. Intenta de nuevo.') }
     finally { setLoading(false) }
   }, [page])
 
@@ -29,10 +27,12 @@ export default function AdminCart() {
   const totalPages = Math.max(1, Math.ceil((carts.count || 0) / pageSize))
 
   return (
-    <MainLayout title="Carritos" subtitle="Todos los carritos del sistema">
+    <AdminLayout title="Carritos" subtitle="Todos los carritos del sistema">
       <div className="card">
         {loading ? (
-          <div className="empty-state"><p>Cargando carritos...</p></div>
+          <Spinner text="Cargando carritos..." />
+        ) : error ? (
+          <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadCarts}>Reintentar</button></div>
         ) : !carts.results || carts.results.length === 0 ? (
           <div className="empty-state"><p>No hay carritos registrados.</p></div>
         ) : (
@@ -65,18 +65,10 @@ export default function AdminCart() {
                 ))}
               </tbody>
             </table>
-            <div className="pagination">
-              <button className="btn btn-sm btn-secondary" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                ← Anterior
-              </button>
-              <span className="pagination-info">Página {page} de {totalPages} ({carts.count} carritos)</span>
-              <button className="btn btn-sm btn-secondary" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                Siguiente →
-              </button>
-            </div>
+            <Pagination page={page} totalPages={totalPages} count={carts.count} label="carritos" onPageChange={setPage} />
           </>
         )}
       </div>
-    </MainLayout>
+    </AdminLayout>
   )
 }

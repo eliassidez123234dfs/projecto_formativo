@@ -184,8 +184,8 @@ export const adminUserAction = async (userId, action, payload = {}) => {
   return response.data;
 };
 
-export const fetchContactMessages = async () => {
-  const response = await api.get('contacto/');
+export const fetchContactMessages = async (page = 1, pageSize = 20) => {
+  const response = await api.get('contacto/', { params: { page, page_size: pageSize } });
   return response.data;
 };
 
@@ -198,7 +198,17 @@ export const deleteContactMessage = async (id) => {
   await api.delete(`contacto/${id}/eliminar/`);
 };
 
-export const fetchAuditLogs = async (page = 1, pageSize = 20) => {
-  const response = await api.get('admin/usuarios/auditoria/', { params: { page, page_size: pageSize } });
+export const fetchAuditLogs = async (page = 1, pageSize = 20, filters = {}) => {
+  const response = await api.get('admin/usuarios/auditoria/', { params: { page, page_size: pageSize, ...filters } });
+  return response.data;
+};
+
+export const fetchAdminOrders = async (page = 1, pageSize = 20, filters = {}) => {
+  const response = await api.get('admin/orders/', { params: { page, page_size: pageSize, ...filters } });
+  return response.data;
+};
+
+export const fetchAdminOrderDetail = async (id) => {
+  const response = await api.get(`admin/orders/${id}/`);
   return response.data;
 };

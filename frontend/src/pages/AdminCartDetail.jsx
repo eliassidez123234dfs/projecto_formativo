@@ -1,18 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { fetchAdminCartDetail } from '../services/api'
-import MainLayout from '../components/MainLayout'
+import AdminLayout from '../components/AdminLayout'
 
 export default function AdminCartDetail() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const [cart, setCart] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
-    if (!usuario || usuario.rol !== 'Administrador') navigate('/login')
-  }, [navigate])
 
   useEffect(() => {
     let mounted = true
@@ -27,11 +21,11 @@ export default function AdminCartDetail() {
     return () => { mounted = false }
   }, [id])
 
-  if (loading) return <MainLayout><div className="card"><div className="empty-state"><p>Cargando...</p></div></div></MainLayout>
-  if (!cart) return <MainLayout><div className="card"><div className="empty-state"><p>Carrito no encontrado.</p></div></div></MainLayout>
+  if (loading) return <AdminLayout><div className="card"><div className="empty-state"><p>Cargando...</p></div></div></AdminLayout>
+  if (!cart) return <AdminLayout><div className="card"><div className="empty-state"><p>Carrito no encontrado.</p></div></div></AdminLayout>
 
   return (
-    <MainLayout
+    <AdminLayout
       title={`Carrito #${cart.id}`}
       subtitle={cart.user_name}
     >
@@ -91,6 +85,6 @@ export default function AdminCartDetail() {
           </tfoot>
         </table>
       </div>
-    </MainLayout>
+    </AdminLayout>
   )
 }

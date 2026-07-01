@@ -1,43 +1,127 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
 import { fetchAuditLogs } from '../services/api'
-import MainLayout from '../components/MainLayout'
+import AdminLayout from '../components/AdminLayout'
+import Pagination from '../components/Pagination'
+import Spinner from '../components/Spinner'
 
 export default function AdminAudit() {
-  const navigate = useNavigate()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
 
-  useEffect(() => {
-    const u = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
-    if (!u || u.rol !== 'Administrador') navigate('/login')
-  }, [navigate])
+  // Filtros
+  const [filters, setFilters] = useState({
+    usuario_admin: '',
+    usuario_afectado: '',
+    fecha_inicio: '',
+    fecha_fin: '',
+  })
+  const [appliedFilters, setAppliedFilters] = useState({})
 
-  useEffect(() => { loadLogs() }, [page])
-
-  async function loadLogs() {
+  const loadLogs = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await fetchAuditLogs(page, pageSize)
+      const params = {}
+      if (appliedFilters.usuario_admin) params.usuario_admin = appliedFilters.usuario_admin
+      if (appliedFilters.usuario_afectado) params.usuario_afectado = appliedFilters.usuario_afectado
+      if (appliedFilters.fecha_inicio) params.fecha_inicio = appliedFilters.fecha_inicio
+      if (appliedFilters.fecha_fin) params.fecha_fin = appliedFilters.fecha_fin
+
+      const data = await fetchAuditLogs(page, pageSize, params)
       const list = data.results || data
       setLogs(Array.isArray(list) ? list : [])
       setCount(data.count || list.length || 0)
-    } catch { setLogs([]) }
+      setError(null)
+    } catch { setLogs([]); setError('Error al cargar los registros de auditoría. Intenta de nuevo.') }
     finally { setLoading(false) }
+  }, [page, pageSize, appliedFilters])
+
+  useEffect(() => { loadLogs() }, [loadLogs])
+
+  useEffect(() => { setPage(1) }, [appliedFilters])
+
+  const handleApplyFilters = () => {
+    setAppliedFilters({
+      usuario_admin: filters.usuario_admin.trim(),
+      usuario_afectado: filters.usuario_afectado.trim(),
+      fecha_inicio: filters.fecha_inicio,
+      fecha_fin: filters.fecha_fin,
+    })
   }
+
+  const handleClearFilters = () => {
+    setFilters({ usuario_admin: '', usuario_afectado: '', fecha_inicio: '', fecha_fin: '' })
+    setAppliedFilters({})
+  }
+
+  const hasActiveFilters = Object.values(appliedFilters).some(v => v)
 
   const totalPages = Math.max(1, Math.ceil(count / pageSize))
 
   return (
-    <MainLayout title="Auditoría" subtitle="Registro de acciones de administradores sobre usuarios">
+    <AdminLayout title="Auditoría" subtitle="Registro de acciones de administradores sobre usuarios">
+      <div className="admin-toolbar">
+        <div className="admin-toolbar-left">
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>Admin ID</label>
+              <input
+                type="text"
+                placeholder="ID del admin"
+                value={filters.usuario_admin}
+                onChange={e => setFilters(f => ({ ...f, usuario_admin: e.target.value }))}
+                style={{ width: 100, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontSize: 13, background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>Usuario ID</label>
+              <input
+                type="text"
+                placeholder="ID del afectado"
+                value={filters.usuario_afectado}
+                onChange={e => setFilters(f => ({ ...f, usuario_afectado: e.target.value }))}
+                style={{ width: 100, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontSize: 13, background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>Desde</label>
+              <input
+                type="date"
+                value={filters.fecha_inicio}
+                onChange={e => setFilters(f => ({ ...f, fecha_inicio: e.target.value }))}
+                style={{ padding: '5px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontSize: 13, background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>Hasta</label>
+              <input
+                type="date"
+                value={filters.fecha_fin}
+                onChange={e => setFilters(f => ({ ...f, fecha_fin: e.target.value }))}
+                style={{ padding: '5px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', fontSize: 13, background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none' }}
+              />
+            </div>
+            <button className="btn btn-sm btn-primary" onClick={handleApplyFilters}>Buscar</button>
+            {hasActiveFilters && (
+              <button className="btn btn-sm btn-ghost" onClick={handleClearFilters}>Limpiar</button>
+            )}
+          </div>
+        </div>
+        <div className="admin-toolbar-right">
+          <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{count} registros</span>
+        </div>
+      </div>
+
       <div className="card">
         {loading ? (
-          <div className="empty-state"><p>Cargando registros...</p></div>
+          <Spinner text="Cargando registros..." />
+        ) : error ? (
+          <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadLogs}>Reintentar</button></div>
         ) : logs.length === 0 ? (
-          <div className="empty-state"><p>No hay registros de auditoría.</p></div>
+          <div className="empty-state"><p>{hasActiveFilters ? 'No hay registros con los filtros seleccionados.' : 'No hay registros de auditoría.'}</p></div>
         ) : (
           <>
             <table className="admin-table">
@@ -65,18 +149,10 @@ export default function AdminAudit() {
               </tbody>
             </table>
 
-            <div className="pagination">
-              <button className="btn btn-sm btn-secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                ← Anterior
-              </button>
-              <span className="pagination-info">Página {page} de {totalPages} — {count} registros</span>
-              <button className="btn btn-sm btn-secondary" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-                Siguiente →
-              </button>
-            </div>
+            <Pagination page={page} totalPages={totalPages} count={count} label="registros" onPageChange={setPage} />
           </>
         )}
       </div>
-    </MainLayout>
+    </AdminLayout>
   )
 }

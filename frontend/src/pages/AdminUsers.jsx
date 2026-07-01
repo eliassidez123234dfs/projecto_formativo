@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { fetchAdminStats, createAdminUser } from '../services/api'
-import MainLayout from '../components/MainLayout'
+import AdminLayout from '../components/AdminLayout'
 import UserFilters from '../components/UserFilters'
 import UserList from '../components/UserList'
 import FormModal from '../components/FormModal'
@@ -31,20 +30,12 @@ function useUserStats() {
 }
 
 export default function AdminUsers() {
-  const navigate = useNavigate()
   const [filters, setFilters] = useState({ page: 1, page_size: 20 })
   const [refreshKey, setRefreshKey] = useState(0)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState(null)
   const stats = useUserStats()
-
-  useEffect(() => {
-    try {
-      const usuario = JSON.parse(localStorage.getItem('usuario') || 'null')
-      if (!usuario || usuario.rol !== 'Administrador') navigate('/login')
-    } catch { navigate('/login') }
-  }, [navigate])
 
   const onFiltersChange = useCallback((next) => {
     setFilters(prev => ({ ...prev, ...next, page: 1 }))
@@ -87,7 +78,7 @@ export default function AdminUsers() {
   ]
 
   return (
-    <MainLayout title="Usuarios" subtitle="Administra los usuarios registrados en la plataforma">
+    <AdminLayout title="Usuarios" subtitle="Administra los usuarios registrados en la plataforma">
       <div className="admin-stats">
         {statCards.map((s, i) => (
           <div key={i} className="stat-card">
@@ -132,6 +123,6 @@ export default function AdminUsers() {
         loading={creating}
         error={createError}
       />
-    </MainLayout>
+    </AdminLayout>
   )
 }

@@ -88,6 +88,9 @@ urlpatterns = [
     # Admin carritos
     path('api/admin/carts/', include('apps.carts.api.admin_urls')),
 
+    # Admin órdenes
+    path('api/admin/orders/', include('apps.orders.api.admin_urls')),
+
     # Órdenes
     path('api/checkout/', include('apps.checkout.urls')),
     path('api/orders/', include('apps.orders.api.urls')),

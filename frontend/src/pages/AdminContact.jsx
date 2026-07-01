@@ -1,42 +1,42 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
 import { fetchContactMessages, markContactRead, deleteContactMessage } from '../services/api'
-import MainLayout from '../components/MainLayout'
+import AdminLayout from '../components/AdminLayout'
 import InfoModal from '../components/InfoModal'
+import Pagination from '../components/Pagination'
+import Spinner from '../components/Spinner'
 
 export default function AdminContact() {
-  const navigate = useNavigate()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [stats, setStats] = useState({ total: 0, unread: 0 })
   const [viewMsg, setViewMsg] = useState(null)
+  const [modal, setModal] = useState(null)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
-  useEffect(() => {
-    const u = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
-    if (!u || u.rol !== 'Administrador') navigate('/login')
-  }, [navigate])
-
-  useEffect(() => { loadMessages() }, [])
-
-  async function loadMessages() {
+  const loadMessages = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await fetchContactMessages()
+      const data = await fetchContactMessages(page)
       const list = data.results || data
       setMessages(Array.isArray(list) ? list : [])
+      setTotalPages(Math.max(1, Math.ceil((data.count || 0) / 20)))
       setStats({
         total: data.count || list.length || 0,
         unread: (Array.isArray(list) ? list : []).filter(m => !m.leido).length,
       })
-    } catch { setMessages([]) }
+    } catch { setMessages([]); setError('Error al cargar los mensajes. Intenta de nuevo.') }
     finally { setLoading(false) }
-  }
+  }, [page])
+
+  useEffect(() => { loadMessages() }, [loadMessages])
 
   async function marcarLeido(id) {
     try {
       await markContactRead(id)
       loadMessages()
-    } catch { /* ignore */ }
+    } catch { setModal({ type: 'error', title: 'Error', message: 'No se pudo marcar como leído.' }) }
   }
 
   async function eliminar(id) {
@@ -44,7 +44,7 @@ export default function AdminContact() {
     try {
       await deleteContactMessage(id)
       loadMessages()
-    } catch { /* ignore */ }
+    } catch { setModal({ type: 'error', title: 'Error', message: 'No se pudo eliminar el mensaje.' }) }
   }
 
   const statCards = [
@@ -54,7 +54,10 @@ export default function AdminContact() {
   ]
 
   return (
-    <MainLayout title="Contacto" subtitle="Mensajes recibidos del formulario de contacto">
+    <AdminLayout title="Contacto" subtitle="Mensajes recibidos del formulario de contacto">
+      {modal && (
+        <InfoModal type={modal.type} title={modal.title} message={modal.message} onClose={() => setModal(null)} />
+      )}
       {viewMsg && (
         <InfoModal
           type="info"
@@ -77,7 +80,9 @@ export default function AdminContact() {
 
       <div className="card">
         {loading ? (
-          <div className="empty-state"><p>Cargando mensajes...</p></div>
+          <Spinner text="Cargando mensajes..." />
+        ) : error ? (
+          <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadMessages}>Reintentar</button></div>
         ) : messages.length === 0 ? (
           <div className="empty-state"><p>No hay mensajes de contacto.</p></div>
         ) : (
@@ -124,9 +129,10 @@ export default function AdminContact() {
                 ))}
               </tbody>
             </table>
+            <Pagination page={page} totalPages={totalPages} count={stats.total} label="mensajes" onPageChange={setPage} />
           </>
         )}
       </div>
-    </MainLayout>
+    </AdminLayout>
   )
 }

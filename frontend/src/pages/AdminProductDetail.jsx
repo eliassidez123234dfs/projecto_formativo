@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ProductForm from '../components/ProductForm'
-import MainLayout from '../components/MainLayout'
+import AdminLayout from '../components/AdminLayout'
 
 function toText(value) {
   if (value === null || value === undefined) return '-'
@@ -75,22 +75,22 @@ export default function AdminProductDetail() {
 
   if (loading) {
     return (
-      <MainLayout title="Detalle de Producto">
+      <AdminLayout title="Detalle de Producto">
         <div className="card"><div className="empty-state"><p>Cargando detalle de producto...</p></div></div>
-      </MainLayout>
+      </AdminLayout>
     )
   }
 
   if (!product) {
     return (
-      <MainLayout title="Detalle de Producto">
+      <AdminLayout title="Detalle de Producto">
         <div className="card"><div className="empty-state"><p>Producto no encontrado</p></div></div>
-      </MainLayout>
+      </AdminLayout>
     )
   }
 
   return (
-    <MainLayout
+    <AdminLayout
       title={product.name}
       subtitle="Detalle y administración del producto"
     >
@@ -238,6 +238,6 @@ export default function AdminProductDetail() {
           onSaved={() => { setShowForm(false); loadProduct() }}
         />
       )}
-    </MainLayout>
+    </AdminLayout>
   )
 }

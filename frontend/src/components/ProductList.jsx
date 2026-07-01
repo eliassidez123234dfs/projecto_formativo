@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import InfoModal, { formatChecklist } from './InfoModal'
+import Pagination from './Pagination'
+import Spinner from './Spinner'
 
 async function safeJson(res) {
   try { return await res.json() } catch { return null }
@@ -11,11 +13,13 @@ function useProducts(refreshKey) {
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     let mounted = true
     async function load() {
       setLoading(true)
+      setError(null)
       const params = new URLSearchParams({ page, page_size: 20 })
       if (q) params.set('search', q)
       try {
@@ -23,14 +27,14 @@ function useProducts(refreshKey) {
         const json = await res.json()
         if (!mounted) return
         setData(json)
-      } catch { /* ignore */ }
+      } catch { setError('Error al cargar los productos. Intenta de nuevo.') }
       finally { if (mounted) setLoading(false) }
     }
     load()
     return () => { mounted = false }
   }, [page, q, refreshKey])
 
-  return { data, loading, page, setPage, q, setQ }
+  return { data, loading, page, setPage, q, setQ, error }
 }
 
 async function safeChecklist(productId, onResult) {
@@ -41,10 +45,11 @@ async function safeChecklist(productId, onResult) {
 }
 
 export default function ProductList({ refreshKey, onEdit, onToggle }) {
-  const { data, loading, page, setPage, q, setQ } = useProducts(refreshKey)
+  const { data, loading, page, setPage, q, setQ, error } = useProducts(refreshKey)
   const [publishing, setPublishing] = useState(null)
   const [modal, setModal] = useState(null)
   const [checklistModal, setChecklistModal] = useState(null)
+  const totalPages = Math.max(1, Math.ceil((data.count || 0) / 20))
 
   function handlePublish(productId) {
     if (!confirm('¿Publicar este producto? Se activará y aprobará automáticamente.')) return
@@ -90,7 +95,9 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
       </div>
 
       {loading ? (
-        <div className="empty-state"><p>Cargando productos...</p></div>
+        <Spinner text="Cargando productos..." />
+      ) : error ? (
+        <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={() => setPage(1)}>Reintentar</button></div>
       ) : data.results.length === 0 ? (
         <div className="empty-state"><p>No se encontraron productos.</p></div>
       ) : (
@@ -131,7 +138,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
                       <button className="btn btn-sm btn-ghost" type="button" onClick={() => onEdit?.(p.id)}>
                         Editar
                       </button>
-                      <button className="btn btn-sm btn-ghost" type="button" onClick={() => onToggle?.(p.id)}>
+                      <button className="btn btn-sm btn-ghost" type="button" onClick={() => { if (confirm(`¿${p.is_active ? 'Desactivar' : 'Activar'} el producto "${p.name}"?`)) onToggle?.(p.id) }}>
                         {p.is_active ? 'Desactivar' : 'Activar'}
                       </button>
                       <button className="btn btn-sm btn-ghost" type="button" onClick={() => safeChecklist(p.id, setChecklistModal)}>
@@ -154,17 +161,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
             </tbody>
           </table>
 
-          <div className="pagination">
-            <button className="btn btn-sm btn-secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              Anterior
-            </button>
-            <span className="pagination-info">
-              Página {page} — {data.count} productos
-            </span>
-            <button className="btn btn-sm btn-secondary" disabled={data.results.length === 0} onClick={() => setPage(page + 1)}>
-              Siguiente
-            </button>
-          </div>
+          <Pagination page={page} totalPages={totalPages} count={data.count} label="productos" onPageChange={setPage} />
         </>
       )}
     </>
