@@ -124,6 +124,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
   function validateLogin() {
     const errs = {}
     if (!loginData.correo.trim()) errs.correo = 'El usuario o correo es obligatorio'
+    if (!loginData.contrasena) errs.contrasena = 'La contraseña es obligatoria'
     setFieldErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -606,6 +607,46 @@ export default function AuthPage({ defaultMode = 'login' }) {
           .auth-tagline { font-size: 1.25rem; }
           .auth-benefits { align-items: center; }
           .auth-form-panel { padding: 2rem 1.25rem; }
+        }
+
+        [data-theme="dark"] .auth-form-panel {
+          background: var(--color-bg);
+        }
+        [data-theme="dark"] .auth-form-header h2 {
+          color: var(--color-text);
+        }
+        [data-theme="dark"] .auth-form-header p {
+          color: var(--color-text-secondary);
+        }
+        [data-theme="dark"] .auth-field label {
+          color: var(--color-text);
+        }
+        [data-theme="dark"] .auth-field input {
+          border-color: var(--color-border);
+          color: var(--color-text);
+          background: var(--color-bg);
+        }
+        [data-theme="dark"] .auth-alert--error {
+          background: var(--color-error-light);
+          color: #fca5a5;
+          border-color: rgba(239, 68, 68, 0.3);
+        }
+        [data-theme="dark"] .auth-alert--success {
+          background: var(--color-success-light);
+          color: #6ee7b7;
+          border-color: rgba(16, 185, 129, 0.3);
+        }
+        [data-theme="dark"] .auth-switch {
+          border-top-color: var(--color-border);
+        }
+        [data-theme="dark"] .auth-switch p {
+          color: var(--color-text-secondary);
+        }
+        [data-theme="dark"] .auth-switch button {
+          color: var(--color-primary);
+        }
+        [data-theme="dark"] .auth-curve {
+          background: var(--color-bg);
         }
       `}</style>
     </div>

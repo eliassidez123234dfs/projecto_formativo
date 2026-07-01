@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export default function ScrollToTop() {
   const [visible, setVisible] = useState(false)
@@ -11,14 +11,16 @@ export default function ScrollToTop() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  function scrollToTop() {
+  const scrollToTop = useCallback(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  }, [])
 
   return (
     <button
       onClick={scrollToTop}
       aria-label="Volver al inicio"
+      title="Volver arriba"
+      className="scroll-to-top"
       style={{
         position: 'fixed',
         bottom: 28,
@@ -39,9 +41,11 @@ export default function ScrollToTop() {
         opacity: visible ? 1 : 0,
         transform: visible ? 'scale(1) translateY(0)' : 'scale(0.6) translateY(12px)',
         pointerEvents: visible ? 'auto' : 'none',
+        willChange: 'transform, opacity',
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.transform = visible ? 'scale(1.08) translateY(-2px)' : 'scale(0.6) translateY(12px)'
+        if (!visible) return
+        e.currentTarget.style.transform = 'scale(1.08) translateY(-2px)'
         e.currentTarget.style.boxShadow = '0 6px 20px rgba(220,38,38,0.5)'
       }}
       onMouseLeave={e => {
@@ -49,10 +53,12 @@ export default function ScrollToTop() {
         e.currentTarget.style.boxShadow = '0 4px 14px rgba(220,38,38,0.35)'
       }}
       onMouseDown={e => {
-        e.currentTarget.style.transform = visible ? 'scale(0.92)' : 'scale(0.6) translateY(12px)'
+        if (!visible) return
+        e.currentTarget.style.transform = 'scale(0.92)'
       }}
       onMouseUp={e => {
-        e.currentTarget.style.transform = visible ? 'scale(1.08) translateY(-2px)' : 'scale(0.6) translateY(12px)'
+        if (!visible) return
+        e.currentTarget.style.transform = 'scale(1.08) translateY(-2px)'
       }}
     >
       <svg
@@ -64,9 +70,7 @@ export default function ScrollToTop() {
         strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{
-          transition: 'transform 0.3s ease',
-        }}
+        aria-hidden="true"
       >
         <polyline points="18 15 12 9 6 15" />
       </svg>

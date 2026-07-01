@@ -253,7 +253,7 @@ form,
   width: 100% !important;
 }
 
-input, select, textarea, button,
+input, select, textarea, button:not(.scroll-to-top),
 .btn, [class*="btn-"] {
   width: 100% !important;
   box-sizing: border-box !important;

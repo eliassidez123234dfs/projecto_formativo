@@ -155,18 +155,18 @@ def create_transaction(
 
 
 def verify_webhook_signature(request_body: bytes, signature_header: str | None) -> bool:
-    """Verifica la firma HMAC-SHA256 de un webhook de Wompi.
-    
-    Calcula SHA-256 del body crudo (bytes) y compara con el header
-    X-Signature usando hmac.compare_digest para prevenir
-    timing attacks. Retorna False si la firma no coincide o falta.
+    """Valida la firma HMAC-SHA256 de un webhook de Wompi.
+
+    Calcula HMAC-SHA256 del body crudo usando WOMPI_WEBHOOK_SECRET y
+    compara con el header X-Signature usando hmac.compare_digest para
+    prevenir timing attacks. Retorna False si la firma no coincide o falta.
     """
     if not signature_header:
         logger.warning('Webhook sin firma, rechazando')
         return False
     try:
-        raw = request_body.decode('utf-8')
-        expected = hashlib.sha256(raw.encode('utf-8')).hexdigest()
+        secret = settings.WOMPI_WEBHOOK_SECRET.encode('utf-8')
+        expected = hmac.new(secret, request_body, hashlib.sha256).hexdigest()
         return hmac.compare_digest(signature_header, expected)
     except Exception as exc:
         logger.error('Error verificando firma webhook: %s', exc)

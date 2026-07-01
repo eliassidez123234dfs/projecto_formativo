@@ -38,6 +38,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
+from django_ratelimit.decorators import ratelimit
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -328,27 +329,32 @@ class LoginViewSet(viewsets.ViewSet):
     # ────────────────────────────────────────────────────────
     # POST /api/login/login/   (RF-008, RF-011)
     # ────────────────────────────────────────────────────────
+    # POST /api/login/   (RF-012, RN-013)
     # Autenticación de usuarios con JWT.
     #
     # Flujo completo:
-    #   1. Valida credenciales con LoginSerializer.
-    #      1a. Verifica que el usuario existe y no está eliminado.
-    #      1b. Verifica estado Activo (rechaza Bloqueado o Inactivo).
-    #      1c. Verifica contraseña con check_password.
-    #      1d. Control de intentos fallidos: ≥5 → Bloqueado (RN-004).
-    #      1e. Reinicia intentos_fallidos y actualiza fecha_ultima_sesion.
-    #   2. Migra items del carrito anónimo (session_key) al carrito
+    #   1. Rate limiting: máximo 5 intentos/minuto por IP (previene
+    #      fuerza bruta distribuida, complementando RN-004 local).
+    #   2. Valida credenciales con LoginSerializer.
+    #      2a. Verifica que el usuario existe y no está eliminado.
+    #      2b. Verifica estado Activo (rechaza Bloqueado o Inactivo).
+    #      2c. Verifica contraseña con check_password.
+    #      2d. Control de intentos fallidos: ≥5 → Bloqueado (RN-004).
+    #      2e. Reinicia intentos_fallidos y actualiza fecha_ultima_sesion.
+    #   3. Migra items del carrito anónimo (session_key) al carrito
     #      del usuario autenticado (RF-011: persistencia del carrito).
-    #   3. cycle_key() — previene session fixation.
-    #   4. Genera tokens JWT inyectando token_version del usuario.
-    #   5. Establece httpOnly cookies (access: 15 min, refresh: 7 días).
+    #   4. cycle_key() — previene session fixation.
+    #   5. Genera tokens JWT inyectando token_version del usuario.
+    #   6. Establece httpOnly cookies (access: 15 min, refresh: 7 días).
     #
     # Seguridad:
+    #   - Rate limit por IP (5/min) + bloqueo local (5 intentos fallidos).
     #   - token_version: si el usuario es bloqueado/desactivado después del
     #     login, los JWT existentes quedan invalidados.
     #   - Cookies httpOnly + Secure + SameSite=Lax (protección XSS y CSRF).
     # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    @ratelimit(key='ip', rate='10/m', method='POST', block=True)
     def login(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -400,7 +406,7 @@ class LoginViewSet(viewsets.ViewSet):
         response.set_cookie(
             'refresh_token', str(refresh),
             max_age=604800, httponly=True, secure=secure, samesite='Lax',
-            path='/api/token/refresh/'
+            path='/'
         )
 
         return response

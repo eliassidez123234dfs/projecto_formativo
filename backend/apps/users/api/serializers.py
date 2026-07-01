@@ -28,6 +28,7 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 from django.db import IntegrityError
 from datetime import timedelta
+from ..validators import validate_password_strength, validate_passwords_match
 import re
 import secrets
 
@@ -36,7 +37,6 @@ from ..exceptions import (
     EmailAlreadyExistsException,
     UsernameAlreadyExistsException,
     InvalidEmailException,
-    InvalidPasswordFormatException,
     EmptyFieldException,
     DatabaseConstraintException,
 )
@@ -118,38 +118,19 @@ class RegistroSerializer(serializers.Serializer):
         return value
 
     # ── Validación de contraseña (RN-001) ──
-    # Requisitos mínimos de seguridad:
-    #   - Mínimo 8 caracteres.
-    #   - Al menos una letra mayúscula.
-    #   - Al menos un número.
-    #   - Al menos un carácter especial (!@#$%^&*(),.?":{}|<>).
-    # Si no cumple, lanza InvalidPasswordFormatException (REG-002).
+    # Delega en validators.validate_password_strength() para mantener DRY.
+    # La lógica concreta (≥8 chars, mayúscula, número, especial) vive en
+    # apps/users/validators.py como Strategy Pattern.
     def validate_contrasena(self, value):
-        if not value:
-            raise EmptyFieldException('contrasena', user_message='La contraseña es obligatoria.')
-        errors = []
-        if len(value) < 8:
-            errors.append('Mínimo 8 caracteres.')
-        if not re.search(r'[A-Z]', value):
-            errors.append('Debe incluir una mayúscula.')
-        if not re.search(r'\d', value):
-            errors.append('Debe incluir un número.')
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
-            errors.append('Debe incluir un carácter especial.')
-        if errors:
-            ex = InvalidPasswordFormatException(
-                ' | '.join(errors),
-                user_message=' | '.join(errors),
-                context={'field': 'contrasena'}
-            )
-            raise serializers.ValidationError(ex.user_message)
-        return value
+        return validate_password_strength(value)
 
     # ── Validación cruzada ──
-    # Verifica que contrasena == confirmar_contrasena.
+    # Delega en validators.validate_passwords_match() para mantener DRY.
     def validate(self, data):
-        if data.get('contrasena') != data.get('confirmar_contrasena'):
-            raise serializers.ValidationError('Las contraseñas no coinciden.')
+        validate_passwords_match(
+            data.get('contrasena'),
+            data.get('confirmar_contrasena')
+        )
         return data
 
     # ── Creación del usuario ──
@@ -384,26 +365,17 @@ class NuevaPasswordSerializer(serializers.Serializer):
         return value
 
     # ── Validación de la nueva contraseña (RN-001) ──
-    # Mismos requisitos que el registro: ≥8 caracteres, mayúscula, número, especial.
+    # Delega en validators.validate_password_strength() (DRY / Strategy Pattern).
     def validate_contrasena(self, value):
-        errors = []
-        if len(value) < 8:
-            errors.append('Mínimo 8 caracteres.')
-        if not re.search(r'[A-Z]', value):
-            errors.append('Debe incluir una mayúscula.')
-        if not re.search(r'\d', value):
-            errors.append('Debe incluir un número.')
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
-            errors.append('Debe incluir un carácter especial.')
-        if errors:
-            raise serializers.ValidationError(' | '.join(errors))
-        return value
+        return validate_password_strength(value)
 
     # ── Validación cruzada ──
-    # Verifica contrasena == confirmar_contrasena.
+    # Delega en validators.validate_passwords_match() (DRY).
     def validate(self, data):
-        if data['contrasena'] != data['confirmar_contrasena']:
-            raise serializers.ValidationError('Las contraseñas no coinciden.')
+        validate_passwords_match(
+            data.get('contrasena'),
+            data.get('confirmar_contrasena')
+        )
         return data
 
 
@@ -434,24 +406,17 @@ class CambioPasswordSerializer(serializers.Serializer):
         return value
 
     # ── Validación de la nueva contraseña (RN-001) ──
+    # Delega en validators.validate_password_strength() (DRY / Strategy Pattern).
     def validate_contrasena_nueva(self, value):
-        errors = []
-        if len(value) < 8:
-            errors.append('Mínimo 8 caracteres.')
-        if not re.search(r'[A-Z]', value):
-            errors.append('Debe incluir una mayúscula.')
-        if not re.search(r'\d', value):
-            errors.append('Debe incluir un número.')
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', value):
-            errors.append('Debe incluir un carácter especial.')
-        if errors:
-            raise serializers.ValidationError(' | '.join(errors))
-        return value
+        return validate_password_strength(value)
 
     # ── Validación cruzada ──
+    # Delega en validators.validate_passwords_match() (DRY).
     def validate(self, data):
-        if data['contrasena_nueva'] != data['confirmar_contrasena']:
-            raise serializers.ValidationError('Las contraseñas no coinciden.')
+        validate_passwords_match(
+            data.get('contrasena_nueva'),
+            data.get('confirmar_contrasena')
+        )
         return data
 
 

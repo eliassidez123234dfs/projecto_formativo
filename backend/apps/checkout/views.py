@@ -89,7 +89,6 @@ def _get_cart_from_session(request):
 
 def _merge_into_user_cart(session_cart, user):
     """Migra los items de un carrito anónimo al carrito del usuario autenticado.
-    
     Si el producto/variante ya existe en el carrito destino, suma las cantidades.
     Si no existe, reasigna el item al carrito del usuario.
     Finalmente elimina el carrito de sesión (session_cart).
@@ -106,6 +105,11 @@ def _merge_into_user_cart(session_cart, user):
             item.cart = user_cart
             item.save()
     session_cart.delete()
+    from apps.users.mongo_service import merge_carts as _mongo_merge_carts
+    try:
+        _mongo_merge_carts(user.id, session_cart.session_key)
+    except Exception:
+        pass
 
 
 # =============================================================================
@@ -375,6 +379,7 @@ def payment_status(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def wompi_webhook(request):
     """[RF-040] Webhook de Wompi (CSRF-exempt). Procesa notificaciones de pago.
     
@@ -470,7 +475,6 @@ def wompi_webhook(request):
             if wompi_status == 'APPROVED':
                 order.status = Order.STATUS_PAID
                 order.payment_wompi_status = 'APPROVED'
-                order.payment_confirmed_at = transaction_data.get('created_at', None)
                 from django.utils import timezone
                 order.payment_confirmed_at = timezone.now()
                 order.payment_rejection_reason = ''

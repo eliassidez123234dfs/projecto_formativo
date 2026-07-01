@@ -51,7 +51,7 @@ class Model3DViewSet(viewsets.ModelViewSet):
         - Acciones de lectura (list, retrieve, active, approved, preview_images): acceso público
         - Acciones de mutación (create, update, partial_update, add_preview_image): solo autenticados
         """
-        if self.action in ['list', 'retrieve', 'create', 'active', 'approved', 'preview_images']:
+        if self.action in ['list', 'retrieve', 'active', 'approved', 'preview_images']:
             permission_classes = []
         else:
             permission_classes = [IsAuthenticated]

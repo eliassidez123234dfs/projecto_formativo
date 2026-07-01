@@ -159,12 +159,54 @@ def verificar_email_directo(request):
         return redirect(f"{settings.FRONTEND_URL}/login?error=token-invalido")
 
 # =============================================================================
-#  Health Check
-#  Endpoint de monitoreo usado por Render y otros servicios para verificar
-#  que la aplicación responde correctamente.
+#  Health Check — Supervisión de Servicios
+#  Endpoint de monitoreo usado por Render, Docker, y otros orquestadores
+#  para verificar que la aplicación y sus dependencias responden.
+#  Retorna estado de: aplicación, base de datos PostgreSQL y MongoDB.
+#  Cumple con RN-019 (monitoreo de infraestructura).
 # =============================================================================
 def health_check(request):
-    return JsonResponse({'status': 'ok', 'timestamp': timezone.now().isoformat()})
+    # ── Estado de la Base de Datos PostgreSQL ──
+    db_status = 'ok'
+    db_error = None
+    try:
+        from django.db import connections
+        connections['default'].cursor().execute('SELECT 1')
+    except Exception as e:
+        db_status = 'error'
+        db_error = str(e)
+
+    # ── Estado de MongoDB (si está configurado) ──
+    mongo_status = 'not_configured'
+    try:
+        from pymongo import MongoClient
+        from django.conf import settings
+        if hasattr(settings, 'MONGO_URI') and settings.MONGO_URI:
+            client = MongoClient(settings.MONGO_URI, serverSelectionTimeoutMS=2000)
+            client.admin.command('ping')
+            mongo_status = 'ok'
+            client.close()
+    except Exception:
+        mongo_status = 'error'
+
+    overall_status = 'ok' if db_status == 'ok' else 'degraded'
+
+    data = {
+        'status': overall_status,
+        'timestamp': timezone.now().isoformat(),
+        'services': {
+            'application': 'ok',
+            'database': db_status,
+            'mongodb': mongo_status,
+        },
+        'version': getattr(settings, 'APP_VERSION', '1.0.0'),
+        'environment': 'production' if not settings.DEBUG else 'development',
+    }
+    if db_error:
+        data['services']['database_error'] = db_error
+
+    status_code = 200 if overall_status == 'ok' else 503
+    return JsonResponse(data, status=status_code)
 
 urlpatterns = [
     # -------------------------------------------------------------------

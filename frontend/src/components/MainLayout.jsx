@@ -181,16 +181,16 @@ export default function MainLayout({ children, title, subtitle }) {
       { label: 'Mis Diseños', href: '/mis-disenos', icon: Icons.Clipboard, admin: false },
     ]},
     { section: 'Administración', admin: true, items: [
-      { label: 'Resumen', href: '/admin', icon: Icons.Dashboard },
-      { label: 'Usuarios', href: '/admin-users', icon: Icons.Users },
-      { label: 'Productos', href: '/admin-products', icon: Icons.Products },
-      { label: 'Categorías', href: '/admin-categories', icon: Icons.Clipboard },
-      { label: 'Imágenes', href: '/admin-images', icon: Icons.Clipboard },
-      { label: 'Diseños 3D', href: '/admin-designs', icon: Icons.Clipboard },
-      { label: 'Pedidos', href: '/admin-orders', icon: Icons.Orders },
-      { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },
-      { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
-      { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard },
+      { label: 'Resumen', href: '/admin', icon: Icons.Dashboard, admin: true },
+      { label: 'Usuarios', href: '/admin-users', icon: Icons.Users, admin: true },
+      { label: 'Productos', href: '/admin-products', icon: Icons.Products, admin: true },
+      { label: 'Categorías', href: '/admin-categories', icon: Icons.Clipboard, admin: true },
+      { label: 'Imágenes', href: '/admin-images', icon: Icons.Clipboard, admin: true },
+      { label: 'Diseños 3D', href: '/admin-designs', icon: Icons.Clipboard, admin: true },
+      { label: 'Pedidos', href: '/admin-orders', icon: Icons.Orders, admin: true },
+      { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart, admin: true },
+      { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail, admin: true },
+      { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard, admin: true },
     ]},
   ]
 
@@ -217,7 +217,7 @@ export default function MainLayout({ children, title, subtitle }) {
   if (loadingUser) return null
 
   return (
-    <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '260px 1fr' : '60px 1fr' }}>
+    <div className={`main-layout ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-brand">
           <Link to="/" style={{ textDecoration: 'none' }}>

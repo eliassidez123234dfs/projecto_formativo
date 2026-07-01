@@ -44,6 +44,7 @@ const UserProfile = lazy(() => import('./pages/UserProfile'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const OrderConfirmation = lazy(() => import('./pages/OrderConfirmation'));
 const UIShowcase = lazy(() => import('./pages/UIShowcase'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function LoadingFallback() {
   return (
@@ -111,6 +112,9 @@ function App() {
                 {/* ─── CHECKOUT (requiere autenticación) ─── */}
                 <Route path="/checkout" element={<ProtectedRoute><PublicLayout><CheckoutPage /></PublicLayout></ProtectedRoute>} />
                 <Route path="/checkout/resultado" element={<ProtectedRoute><PublicLayout><OrderConfirmation /></PublicLayout></ProtectedRoute>} />
+
+                {/* ─── 404 CATCH-ALL ─── */}
+                <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
 
               </Routes>
             </Suspense>

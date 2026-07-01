@@ -220,7 +220,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  Pedidos creados: {created}')
 
     def _create_models3d(self):
-        from apps.models3d.models import Modelo3D
+        from apps.models3d.models import Model3D, Model3DImage
         cdn = self._get_cdn()
         models_data = [
             {

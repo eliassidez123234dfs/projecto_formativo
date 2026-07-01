@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { api } from '../services/api'
 import ProductForm from '../components/ProductForm'
 import MainLayout from '../components/MainLayout'
 
@@ -76,12 +77,10 @@ export default function AdminProductDetail() {
   const loadProduct = useCallback(async () => {
     setLoading(true)
     try {
-      const [productResponse, auditsResponse] = await Promise.all([
-        fetch(`/api/products/${productId}/`),
-        fetch(`/api/products/${productId}/audits/`),
+      const [productData, auditsData] = await Promise.all([
+        (await api.get(`products/${productId}/`)).data,
+        (await api.get(`products/${productId}/audits/`)).data,
       ])
-      const productData = await productResponse.json()
-      const auditsData = await auditsResponse.json()
       setProduct(productData)
       setAudits(Array.isArray(auditsData) ? auditsData : [])
     } catch { /* ignore */ }

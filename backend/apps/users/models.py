@@ -144,11 +144,23 @@ class Usuario(models.Model):
     def is_anonymous(self):
         return False
 
+    @property
+    def is_staff(self):
+        return self.is_superuser
+
     def check_password(self, raw_password):
         from django.contrib.auth.hashers import check_password
         return check_password(raw_password, self.contrasena)
 
     def save(self, *args, **kwargs):
+        # Auto-hashing de contraseña: si la contraseña no tiene formato
+        # de hash (no empieza por el prefijo de PBKDF2/bcrypt/etc), se
+        # aplica make_password automáticamente. Esto previene almacenar
+        # contraseñas en texto plano si se crea un Usuario fuera de los
+        # serializadores (shell, admin, scripts).
+        from django.contrib.auth.hashers import make_password, is_password_usable
+        if self.contrasena and not is_password_usable(self.contrasena):
+            self.contrasena = make_password(self.contrasena)
         self.full_clean()
         super().save(*args, **kwargs)
 

@@ -1,7 +1,12 @@
 .main-layout {
   display: grid;
+  grid-template-columns: 260px 1fr;
   min-height: 100vh;
   background: var(--color-bg-secondary);
+}
+
+.main-layout.sidebar-collapsed {
+  grid-template-columns: 60px 1fr;
 }
 
 .sidebar {

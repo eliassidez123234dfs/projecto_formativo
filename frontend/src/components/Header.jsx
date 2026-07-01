@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useContext } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { CartContext } from '../context/CartContext'
 import { useTheme } from '../context/ThemeContext'
-import { isAuthenticated, clearAuth, getCurrentUser } from '../services/authService'
+import { isAuthenticated, clearAuth, getCurrentUser, restoreSession, subscribe } from '../services/authService'
 
 export const Header = ({ floating }) => {
   const navigate = useNavigate()
@@ -16,6 +16,7 @@ export const Header = ({ floating }) => {
   const menuRef = useRef(null)
   const btnRef = useRef(null)
   const navRef = useRef(null)
+  const [, setTick] = useState(0)
   const loggedIn = isAuthenticated()
   const usuario = getCurrentUser()
 
@@ -43,6 +44,15 @@ export const Header = ({ floating }) => {
   useEffect(() => {
     setMobileOpen(false)
   }, [location])
+
+  useEffect(() => {
+    const unsub = subscribe(() => setTick(t => t + 1))
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    restoreSession()
+  }, [])
 
   const handleLogout = () => {
     clearAuth()

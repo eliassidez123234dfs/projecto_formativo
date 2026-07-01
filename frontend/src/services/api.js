@@ -459,6 +459,18 @@ export const fetchDesignDetail = async (id) => {
   return response.data;
 };
 
+/** Crea un nuevo diseño guardado. */
+export const createDesign = async (data) => {
+  const response = await api.post('designs/', data);
+  return response.data;
+};
+
+/** Actualiza un diseño guardado. */
+export const updateDesign = async (id, data) => {
+  const response = await api.patch(`designs/${id}/`, data);
+  return response.data;
+};
+
 /** Elimina un diseño guardado. */
 export const deleteDesign = async (id) => {
   await api.delete(`designs/${id}/`);

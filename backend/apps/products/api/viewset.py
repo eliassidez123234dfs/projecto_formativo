@@ -401,7 +401,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Priorizar carrito del usuario autenticado sobre el de sesión
         user = request.user
         if user.is_authenticated:
-            cart, _ = Cart.objects.get_or_create(usuario=user)
+            cart, _ = Cart.objects.get_or_create(user=user)
         else:
             session_key = request.session.session_key
             if not session_key:
