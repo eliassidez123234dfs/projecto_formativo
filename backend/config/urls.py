@@ -251,6 +251,7 @@ urlpatterns = [
     #  Catálogo — Navegación, filtros y búsqueda de productos
     # -------------------------------------------------------------------
     path('api/catalog/', include('apps.catalog.api.urls')),
+    path('api/categories/', include('apps.catalog.api.category_urls')),
 
     # -------------------------------------------------------------------
     #  Modelos 3D — Gestión de archivos .glb/.gltf y vistas previas
