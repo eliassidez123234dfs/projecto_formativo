@@ -10,13 +10,13 @@ from apps.products.models import Product, Variant
 
 
 class Cart(models.Model):
-	session_key = models.CharField(max_length=64, unique=True)
+	session_key = models.CharField(max_length=64, unique=True, null=True, blank=True)
 	user = models.ForeignKey('users.Usuario', null=True, blank=True, on_delete=models.SET_NULL, related_name='carts')
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 
 	def __str__(self) -> str:
-		return f'Cart {self.session_key}'
+		return f'Cart {self.session_key or "—"}'
 
 	@property
 	def total_items(self) -> int:

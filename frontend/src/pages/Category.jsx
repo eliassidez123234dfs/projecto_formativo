@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
@@ -43,12 +44,12 @@ export const Category = () => {
 
   const handleAddToCart = async (product) => {
     const variantId = product.variants?.[0]?.id;
-    if (!variantId) { alert('Este producto no tiene variantes disponibles'); return }
+    if (!variantId) { toast.error('Este producto no tiene variantes disponibles'); return }
     try {
       await addItem(product.id, variantId, 1);
-      alert('Producto agregado al carrito');
+      toast.success('Producto agregado al carrito');
     } catch (error) {
-      alert(error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito');
+      toast.error(error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito');
     }
   };
 

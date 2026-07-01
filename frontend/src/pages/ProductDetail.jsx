@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { fetchProductDetail } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
@@ -69,10 +70,10 @@ export const ProductDetail = () => {
     setAdding(true);
     try {
       await addItem(product.id, selectedVariant.id, quantity);
-      alert('Producto agregado al carrito');
+      toast.success('Producto agregado al carrito');
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.quantity || 'Error al agregar al carrito';
-      alert(msg);
+      toast.error(msg);
     } finally {
       setAdding(false);
     }

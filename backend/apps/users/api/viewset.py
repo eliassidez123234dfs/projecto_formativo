@@ -234,13 +234,14 @@ class LoginViewSet(viewsets.ViewSet):
             if serializer.is_valid():
                 usuario = serializer.validated_data['usuario']
                 
-                # Migrar carrito anónimo al usuario y ciclar sesión
-                if request.session.session_key:
-                    session_cart = Cart.objects.filter(session_key=request.session.session_key).first()
-                    if session_cart:
-                        user_cart = Cart.objects.filter(user=usuario).first()
-                        if not user_cart:
-                            user_cart = Cart.objects.create(user=usuario)
+                # Migrar carrito anónimo al usuario
+                session_key = request.session.session_key
+                session_cart = Cart.objects.filter(session_key=session_key).first() if session_key else None
+                user_cart = Cart.objects.filter(user=usuario).first()
+
+                if session_cart:
+                    if user_cart:
+                        # Fusionar carrito de sesión en carrito del usuario
                         for item in session_cart.items.all():
                             existing = user_cart.items.filter(product=item.product, variant=item.variant).first()
                             if existing:
@@ -249,8 +250,15 @@ class LoginViewSet(viewsets.ViewSet):
                             else:
                                 item.cart = user_cart
                                 item.save()
-                        if not session_cart.user or session_cart.user_id != usuario.id:
-                            session_cart.delete()
+                        session_cart.delete()
+                    else:
+                        # Asignar carrito de sesión al usuario
+                        session_cart.user = usuario
+                        session_cart.save()
+                        user_cart = session_cart
+                elif not user_cart:
+                    user_cart = Cart.objects.create(user=usuario, session_key=session_key)
+
                 request.session.cycle_key()
 
                 # Generar tokens JWT
@@ -264,10 +272,10 @@ class LoginViewSet(viewsets.ViewSet):
                 }, status=status.HTTP_200_OK)
             
             return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception as e:
-            logger.exception('Error en login: %s', e)
+        except Exception:
+            logger.exception('Error en login')
             return Response({
-                'error': f'Error interno: {str(e)}'
+                'error': 'Error interno del servidor. Intenta nuevamente.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
