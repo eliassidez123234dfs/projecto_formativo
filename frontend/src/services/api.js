@@ -398,28 +398,28 @@ export const fetchOrderInvoice = async (orderId) => {
   return response.data;
 };
 
-// ─────────── CATEGORIES (Catalog app) ───────────
+// ─────────── CATEGORIES (catalog app) ───────────
 /** Obtiene todas las categorías del catálogo. */
 export const fetchCategories = async () => {
-  const response = await publicApi.get('catalog/categories/');
+  const response = await publicApi.get('categories/');
   return response.data;
 };
 
 /** Crea una nueva categoría (admin). */
 export const createCategory = async (data) => {
-  const response = await api.post('catalog/categories/', data);
+  const response = await api.post('categories/', data);
   return response.data;
 };
 
 /** Actualiza una categoría (admin). */
 export const updateCategory = async (id, data) => {
-  const response = await api.patch(`catalog/categories/${id}/`, data);
+  const response = await api.patch(`categories/${id}/`, data);
   return response.data;
 };
 
 /** Elimina una categoría (admin). */
 export const deleteCategory = async (id) => {
-  await api.delete(`catalog/categories/${id}/`);
+  await api.delete(`categories/${id}/`);
 };
 
 // ─────────── 3D MODELS (models3d app) ───────────
