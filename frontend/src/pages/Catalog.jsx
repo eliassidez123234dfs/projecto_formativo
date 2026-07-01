@@ -1,23 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
-import { Header } from '../components/Header';
 
-// Product catalog page with search, filter chips, pagination, and skeleton loading states
+// ---------------------------------------------------------------
+// Catalog.jsx  —  Catálogo de productos con búsqueda y filtros (RF-052)
+// APIs consumidas: fetchCatalog (GET /api/catalogo/productos/)
+// Hooks: useState, useEffect, useNavigate, useCart
+// Estado global: CartContext (cart)
+// Flujo: carga productos al montar y al cambiar filtros;
+//        navega a /product/:id al hacer clic en un producto;
+//        los filtros (búsqueda, categoría, precio, orden) se pasan
+//        como query params a la API y resetean la paginación a página 1
+// ---------------------------------------------------------------
 export const Catalog = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     q: '', category: '', min_price: '', max_price: '', ordering: '', page: 1,
   });
   const [filtersData, setFiltersData] = useState({ categories: [], price_range: { min: 0, max: 0 } });
   const [pageInfo, setPageInfo] = useState(null);
+  const [loadMorePage, setLoadMorePage] = useState(2);
   const navigate = useNavigate();
   const { cart } = useCart();
 
+  // ---------------------------------------------------------------
+  // loadProducts — consume fetchCatalog con los filtros actuales
+  // Soporta paginación (data.next/previous/count) y filtros dinámicos
+  // ---------------------------------------------------------------
   const loadProducts = async () => {
     setLoading(true);
     setError(null);
@@ -26,6 +40,7 @@ export const Catalog = () => {
       setProducts(data.results || data);
       setPageInfo(data.next ? { next: data.next, previous: data.previous, count: data.count } : null);
       if (data.filters) setFiltersData(data.filters);
+      setLoadMorePage(2);
     } catch (err) {
       setError('Error al cargar productos');
       setProducts([]);
@@ -34,6 +49,26 @@ export const Catalog = () => {
     }
   };
 
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const data = await fetchCatalog({ ...filters, page: loadMorePage });
+      if (data.results && data.results.length > 0) {
+        setProducts(prev => [...prev, ...data.results]);
+        setLoadMorePage(prev => prev + 1);
+        if (!data.next) setPageInfo(null);
+        else setPageInfo({ next: data.next, previous: data.previous, count: data.count });
+      } else {
+        setPageInfo(null);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Recarga productos cada vez que cambia cualquier filtro
   useEffect(() => { loadProducts() }, [filters]);
 
   const handleFilterChange = (e) => {
@@ -47,7 +82,6 @@ export const Catalog = () => {
 
   return (
     <>
-      <Header cartCount={cart?.total_items || 0} />
       <div className="catalog-page">
         <div className="catalog-bg-shapes">
           <div className="shape shape-1" />
@@ -72,6 +106,9 @@ export const Catalog = () => {
           )}
         </div>
 
+        <Link to="/" style={{ color: 'var(--color-text-muted)', fontSize: 13, textDecoration: 'none', marginBottom: 16, display: 'inline-block' }}>← Volver al Inicio</Link>
+
+        {/* Chips de categorías — selección rápida; toggle on/off con reset a página 1 */}
         {filtersData.categories.length > 0 && (
           <div className="catalog-chips">
             {filtersData.categories.map((cat) => (
@@ -84,6 +121,7 @@ export const Catalog = () => {
           </div>
         )}
 
+        {/* Barra de filtros: búsqueda textual, orden, categoría, rango de precio */}
         <div className="catalog-filters">
           <div className="filter-item search-wrap">
             <svg className="search-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -162,11 +200,25 @@ export const Catalog = () => {
                     available_colors: product.available_colors || [],
                     stock_total: product.stock_total || 0,
                     variants_summary: product.variants_summary || {},
+                    average_rating: product.average_rating,
+                    total_reviews: product.total_reviews,
+                    description: product.description,
                   }}
                   onView={(id) => navigate(`/product/${id}`)}
                 />
               ))}
             </div>
+
+            {/* Load-more (carga incremental) y paginación */}
+            {pageInfo && products.length < (pageInfo.count || Infinity) && (
+              <div className="load-more-wrap">
+                <button type="button" className="shop-button load-more-btn" onClick={loadMore} disabled={loadingMore}
+                  style={{ minWidth: 200, padding: '10px 28px', borderRadius: 999, border: 0, background: '#111', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  {loadingMore ? 'Cargando...' : 'Cargar más productos'}
+                </button>
+                {loadingMore && <span className="load-more-spinner" style={{ width: 20, height: 20, border: '3px solid #E5E7EB', borderTopColor: '#DC2626', borderRadius: '50%', animation: 'lms-spin 0.7s linear infinite' }} />}
+              </div>
+            )}
 
             {pageInfo && (
               <div className="catalog-pagination">
@@ -461,13 +513,11 @@ export const Catalog = () => {
           position: relative;
           z-index: 1;
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
           gap: 1.5rem;
         }
 
-        @media (max-width: 1100px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 768px) { .product-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; } }
-        @media (max-width: 500px) { .product-grid { grid-template-columns: 1fr; } }
+        /* Grid responsivo manejado por responsive.css */
 
         .sk-card {
           border-radius: 16px;
@@ -569,6 +619,15 @@ export const Catalog = () => {
           font-size: 0.85rem;
           color: #9CA3AF;
           font-weight: 600;
+        }
+
+        .load-more-wrap {
+          display: flex; align-items: center; justify-content: center;
+          gap: 12px; padding: 32px 0; position: relative; z-index: 1;
+        }
+
+        @keyframes lms-spin {
+          to { transform: rotate(360deg); }
         }
 
         @media (max-width: 768px) {

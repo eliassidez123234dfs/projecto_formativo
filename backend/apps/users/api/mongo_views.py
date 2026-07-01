@@ -1,3 +1,18 @@
+# ==============================================================================
+# ViewSets MongoDB — Red Estampación
+# ==============================================================================
+# ViewSets para operaciones CRUD contra colecciones MongoDB.
+#
+# ViewSets:
+#   SavedDesignViewSet       → CRUD de diseños 3D guardados por usuario.
+#   AuditLogViewSet          → consulta de logs de auditoría (admin).
+#   CartSessionViewSet       → gestión de carritos de compra persistente.
+#   CommunityTemplateViewSet → exploración y contribución de plantillas
+#                              comunitarias.
+#
+# Cada ViewSet implementa verificación de propiedad (owner-only) para
+# operaciones de escritura sobre diseños guardados.
+# ==============================================================================
 import logging
 
 from rest_framework import status, viewsets
@@ -38,8 +53,25 @@ from .admin_viewset import AdminPermission
 logger = logging.getLogger(__name__)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ViewSet: SavedDesignViewSet
+# ─────────────────────────────────────────────────────────────────────────────
+# CRUD de diseños 3D guardados por el usuario en MongoDB.
+# Cada diseño almacena la configuración completa (logo, capas de texto,
+# colores, producto asociado).
+#
+# Autenticación requerida: JWT (UsuarioJWTAuthentication).
+# Permisos: IsAuthenticated.
+# Verificación de propiedad: las operaciones de lectura/escritura verifican
+# que design['user_id'] == request.user.id (owner-only).
+#
+# Acciones adicionales:
+#   publish → publica el diseño a la comunidad (visible para otros).
+#   like    → toggle de like.
+#   comment → agrega un comentario al diseño.
+# ─────────────────────────────────────────────────────────────────────────────
 class SavedDesignViewSet(viewsets.ViewSet):
-    """ViewSet for CRUD on user's saved 3D designs (MongoDB-backed)."""
+    """ViewSet para CRUD de diseños 3D guardados por el usuario (MongoDB). Requiere autenticación. Operaciones owner-only."""
     authentication_classes = [UsuarioJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -164,8 +196,20 @@ class SavedDesignViewSet(viewsets.ViewSet):
         return Response(updated)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ViewSet: AuditLogViewSet
+# ─────────────────────────────────────────────────────────────────────────────
+# Consulta de logs de auditoría almacenados en MongoDB.
+# Solo accesible por administradores (AdminPermission).
+#
+# Acciones:
+#   list   → consulta paginada con filtros (action, actor_id, target_type,
+#            target_id, severity, fechas).
+#   create → creación manual de un evento de auditoría.
+#   stats  → estadísticas agregadas de eventos (conteo por acción).
+# ─────────────────────────────────────────────────────────────────────────────
 class AuditLogViewSet(viewsets.ViewSet):
-    """ViewSet for querying audit logs stored in MongoDB (admin only)."""
+    """ViewSet para consulta de logs de auditoría en MongoDB (solo administradores)."""
     authentication_classes = [UsuarioJWTAuthentication]
     permission_classes = [AdminPermission]
 
@@ -209,8 +253,23 @@ class AuditLogViewSet(viewsets.ViewSet):
         return Response({'days': days, 'events': data})
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ViewSet: CartSessionViewSet
+# ─────────────────────────────────────────────────────────────────────────────
+# Gestión de carritos de compra en MongoDB.
+# Soporta tanto usuarios anónimos (session_key) como autenticados (user_id).
+#
+# Acceso público (AllowAny): el carrito anónimo no requiere autenticación.
+# Los usuarios autenticados pueden fusionar su carrito anónimo al autenticado
+# mediante la acción merge (post-login).
+#
+# Acciones:
+#   list  → obtiene el contenido del carrito actual.
+#   save  → guarda/actualiza items del carrito (upsert).
+#   merge → fusiona carrito anónimo → autenticado (post-login).
+# ─────────────────────────────────────────────────────────────────────────────
 class CartSessionViewSet(viewsets.ViewSet):
-    """ViewSet for managing cart sessions in MongoDB (anonymous and authenticated)."""
+    """ViewSet para gestión de carritos de compra en MongoDB (anónimos y autenticados, con merge post-login)."""
     authentication_classes = [UsuarioJWTAuthentication]
     permission_classes = [AllowAny]
 
@@ -261,8 +320,24 @@ class CartSessionViewSet(viewsets.ViewSet):
         return Response(result or {'items': []})
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ViewSet: CommunityTemplateViewSet
+# ─────────────────────────────────────────────────────────────────────────────
+# Exploración y contribución de plantillas de diseño compartidas por la
+# comunidad. Los usuarios pueden listar, crear y obtener plantillas, así
+# como dar likes.
+#
+# Autenticación requerida: JWT (UsuarioJWTAuthentication).
+# Permisos: IsAuthenticated.
+#
+# Acciones:
+#   list     → listado paginado con filtro por tag y orden (popular/fecha).
+#   create   → publicar una nueva plantilla en la comunidad.
+#   retrieve → obtener plantilla (incrementa view_count automáticamente).
+#   like     → toggle de like.
+# ─────────────────────────────────────────────────────────────────────────────
 class CommunityTemplateViewSet(viewsets.ViewSet):
-    """ViewSet for browsing and contributing community-shared design templates."""
+    """ViewSet para exploración y contribución de plantillas comunitarias (MongoDB). Requiere autenticación."""
     authentication_classes = [UsuarioJWTAuthentication]
     permission_classes = [IsAuthenticated]
 

@@ -1,3 +1,9 @@
+/**
+ * ErrorBoundary — Componente de límite de errores (Error Boundary) de React.
+ * Captura errores no controlados en el árbol de componentes hijos y muestra
+ * una pantalla de fallback con mensaje amigable y botón para recargar la página.
+ * Evita que la aplicación entera se caiga por errores de componentes aislados.
+ */
 import React from 'react'
 
 export default class ErrorBoundary extends React.Component {

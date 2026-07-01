@@ -1,31 +1,74 @@
+# =============================================================================
+#  ARCHIVO: settings.py
+#  PROPÓSITO: Configuración principal del proyecto Django "Red Estampación".
+#             Define todos los parámetros del framework: apps instaladas,
+#             middleware, bases de datos (SQLite/PostgreSQL + MongoDB),
+#             autenticación JWT, pasarela de pagos Wompi, almacenamiento
+#             Cloudinary, correo electrónico, CORS, seguridad HTTP, etc.
+#
+#  PATRÓN DE DISEÑO: Config Object / Strategy
+#  - La configuración se lee desde variables de entorno (django-environ),
+#    siguiendo el patrón de separación de configuración del código
+#    (Externalized Configuration — 12 Factor App).
+#  - Los valores cambian según el entorno (desarrollo/producción) sin
+#    modificar el código fuente (Strategy de entorno).
+#
+#  REQUERIMIENTOS CUBIERTOS:
+#  - RF-001: Registro de usuarios (config de auth, JWT)
+#  - RF-008: Inicio de sesión con JWT (SIMPLE_JWT config)
+#  - RF-039: Integración con Wompi (WOMPI_* variables)
+#  - RF-042: Almacenamiento Cloudinary (CLOUDINARY_STORAGE)
+#  - RN-013: Tokens JWT con rotación y blacklist
+#  - RN-014: Rate limiting en APIs (DRF throttling)
+#  - RN-015: CORS restringido a orígenes permitidos
+#  - RN-016: HTTPS forzado (HSTS) en producción
+#  - RN-017: Cabeceras de seguridad HTTP (CSP, XSS, Content-Type)
+#  - RI-001 a RI-030: Requisitos de información cubiertos por models y config
+# =============================================================================
+
 from pathlib import Path
 import os
 import sys
 
+# ── django-environ: lectura de variables de entorno ──
+# Patrón Externalized Configuration (12 Factor App).
+# Los secretos y valores específicos del entorno se inyectan desde .env,
+# evitando datos sensibles en el repositorio.
 import environ
 
-# Definir nuestras variables de ambiente
 env = environ.Env()
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Cargar .env desde la raíz del proyecto
 environ.Env.read_env(BASE_DIR.parent / '.env')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# =============================================================================
+#  NÚCLEO DE SEGURIDAD: SECRET_KEY, DEBUG, ALLOWED_HOSTS
+#  SECRET_KEY: Firma criptográfica de sesiones, CSRF, tokens (nunca exponer).
+#  DEBUG: False en producción por seguridad (nunca mostrar trazas).
+#  ALLOWED_HOSTS: Lista blanca de dominios que pueden servir la app.
+# =============================================================================
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DEBUG', default=False)
-
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
-# Application definition
+# =============================================================================
+#  APLICACIONES INSTALADAS — ARQUITECTURA MODULAR
+#  Organizadas en 4 grupos conceptuales:
+#  1. DJANGO_APPS — Núcleo del framework (admin, auth, sesiones, etc.)
+#  2. PROJECT_APPS — Módulos de negocio (usuarios, productos, carrito, etc.)
+#  3. THIRD_PARTY_APPS — Librerías externas (DRF, JWT, CORS)
+#  4. CLOUDINARY_APPS — Almacenamiento en la nube (condicional)
+#
+#  PATRÓN DE DISEÑO: Modular Monolith (Módulos con baja cohesión cruzada).
+#  Cada PROJECT_APP es un módulo independiente con sus propios modelos,
+#  vistas, serializadores y URLs. Las dependencias entre módulos se
+#  resuelven vía ForeignKeys y llamadas a servicios en apps.users (mongo_service).
+# =============================================================================
 
+# ── Módulo base de Django ──
+# Proporciona admin, autenticación, sesiones HTTP, mensajes flash,
+# content types (relaciones genéricas) y archivos estáticos.
 DJANGO_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -35,6 +78,17 @@ DJANGO_APPS = [
     'django.contrib.staticfiles',
 ]
 
+# ── Módulos del negocio ──
+# Cada app implementa un dominio específico con alta cohesión interna
+# y bajo acoplamiento externo:
+# - users:      Gestión de usuarios, autenticación JWT, auditoría, MongoDB
+# - products:   Catálogo de productos, variantes, imágenes, reseñas
+# - landing:    Formulario de contacto y página de aterrizaje
+# - orders:     Pedidos, facturación, ciclo de vida de órdenes
+# - carts:      Carrito de compras (sesión anónima y usuario autenticado)
+# - catalog:    Navegación, búsqueda, filtros, categorías
+# - checkout:   Proceso de pago e integración con Wompi
+# - models3d:   Modelos 3D (GLB/GLTF) almacenados en Cloudinary
 PROJECT_APPS = [
     'apps.users',
     'apps.products',
@@ -46,6 +100,19 @@ PROJECT_APPS = [
     'apps.models3d',
 ]
 
+# ── Dependencias externas ──
+# - corsheaders:   Middleware para CORS (Cross-Origin Resource Sharing).
+#                  Permite que el frontend React (otro origen) consuma la API.
+# - rest_framework: Django REST Framework. Capa de API REST sobre Django.
+#                   Proporciona ViewSets, Serializadores, Autenticación, etc.
+# - simplejwt:     Autenticación stateless basada en JSON Web Tokens (JWT).
+#                  token_blacklist: permite revocar tokens (logout, rotación).
+# 
+# PATRÓN DE DISEÑO: 
+# - DRF ViewSets implementan el patrón Resource/Endpoint (cada modelo =
+#   un conjunto de endpoints REST).
+# - SimpleJWT implementa el patrón Token Authentication (el servidor no
+#   mantiene sesión; el cliente presenta un token firmado).
 THIRD_PARTY_APPS = [
     'corsheaders',
     'rest_framework',
@@ -53,6 +120,9 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 ]
 
+# ── CKEditor (Editor de texto enriquecido) ──
+# Configuración del editor WYSIWYG para descripciones de productos
+# y contenido administrable desde el panel de admin de Django.
 CKEDITOR_CONFIGS = {
     'default': {
         'toolbar': 'Custom',
@@ -66,16 +136,32 @@ CKEDITOR_CONFIGS = {
     }
 }   
 
-CKEDITOR_UPLOAD_PATH = "/media/" # indican donde se van a guardar los archivos
+CKEDITOR_UPLOAD_PATH = "/media/"
 
+# ── Cloudinary (Almacenamiento en la Nube para Medios) ──
+# Agrupación separada porque solo se añade a INSTALLED_APPS cuando
+# las credenciales están presentes en el entorno.
+# Cloudinary reemplaza el almacenamiento local de imágenes y modelos 3D,
+# proporcionando CDN global, transformaciones de imagen y respaldo.
 CLOUDINARY_APPS = [
     'cloudinary_storage',
     'cloudinary',
 ]
 
+# Fusión final de todas las apps instaladas
 INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
 
-# Redis cache
+# =============================================================================
+#  CACHÉ — REDIS (PRODUCCIÓN) / MEMORIA LOCAL (DESARROLLO)
+#  En producción se usa Redis como caché distribuida. Esto acelera:
+#  - Consultas frecuentes a la base de datos (caché de querysets)
+#  - Sesiones de usuario (cached_db: Redis + PostgreSQL para persistencia)
+#  - Almacenamiento temporal de datos de sesión
+#  En desarrollo se usa LocMemCache (caché en memoria del proceso).
+#  IGNORE_EXCEPTIONS=True evita que fallos de Redis incapaciten la app.
+#
+#  RN-020: Tolerancia a fallos del sistema de caché.
+# =============================================================================
 if 'REDIS_URL' in env:
     INSTALLED_APPS += ['django_redis']
     CACHES = {
@@ -100,10 +186,33 @@ else:
     SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 
+# =============================================================================
+#  MIDDLEWARE — CADENA DE PROCESAMIENTO HTTP
+#  Cada middleware es un "filtro" por el que pasa toda petición/respuesta.
+#  El orden es CRUCIAL: las capas externas (seguridad, CORS, request ID)
+#  deben ejecutarse antes que las internas (sesión, auth, mensajes).
+#
+#  PATRÓN DE DISEÑO: Chain of Responsibility / Pipeline
+#  Cada middleware decide si procesa la request, la modifica, o la pasa
+#  al siguiente. La respuesta viaja en sentido inverso por la misma cadena.
+#
+#  Flujo (orden de ejecución):
+#  1. RequestIDMiddleware — Asigna UUID único a cada request (trazabilidad)
+#  2. CorsMiddleware — Cabeceras CORS para peticiones cross-origin
+#  3. SecurityMiddleware — HTTPS, HSTS, cabeceras de seguridad básicas
+#  4. SessionMiddleware — Restaura/crea sesión vía cookie
+#  5. CommonMiddleware — URL rewriting y redirects
+#  6. CsrfViewMiddleware — Protección CSRF en formularios POST
+#  7. AuthenticationMiddleware — Asocia request.user (sesión Django)
+#  8. MessageMiddleware — Mensajes flash entre requests
+#  9. XFrameOptionsMiddleware — Protección contra clickjacking (X-Frame-Options)
+#  10. ContentSecurityPolicyMiddleware — CSP personalizada (previene XSS)
+#  11. ExceptionLoggingMiddleware — Captura y logea excepciones no manejadas
+#
+#  RN-017: Seguridad HTTP (HSTS, CSP, XSS, Content-Type)
+# =============================================================================
 MIDDLEWARE = [
-    # Request ID (debe ir al inicio)
     'apps.users.middleware.RequestIDMiddleware',
-    # Configurar los middleware con cors-headers para hacer los llamados de la api se configura
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -112,9 +221,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # CSP middleware (Content-Security-Policy)
     'apps.users.middleware.ContentSecurityPolicyMiddleware',
-    # Logging de excepciones no manejadas
     'apps.users.middleware.ExceptionLoggingMiddleware',
 ]
 
@@ -123,7 +230,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'config/templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -139,10 +246,24 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 AUTH_USER_MODEL = 'users.Usuario'
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# =============================================================================
+#  BASE DE DATOS PRINCIPAL — PostgreSQL (PROD) / SQLite (DEV)
+#  Si DATABASE_URL está definida (ej: Neon en producción), se usa PostgreSQL
+#  con ATOMIC_REQUESTS=True (cada vista dentro de una transacción).
+#  En desarrollo local se usa SQLite por simplicidad (sin servidor externo).
+#
+#  REQUERIMIENTOS:
+#  - RI-001 a RI-019: Persistencia de usuarios, tokens, auditoría
+#  - RI-020 a RI-028: Persistencia de productos, pedidos, carritos
+#  - RI-030: Persistencia de formularios de contacto
+#  - RI-031: Persistencia de modelos 3D
+#
+#  PATRÓN DE DISEÑO: Repository (acceso a DB via ORM Django).
+#  Django ORM implementa el patrón Active Record: cada modelo =
+#  una tabla SQL, cada instancia = una fila, cada método save/delete =
+#  operaciones CRUD.
+# =============================================================================
 
-# Usar DATABASE_URL si existe (PostgreSQL en producción/Neon), si no SQLite local
 if env('DATABASE_URL', default=''):
     DATABASES = {
         'default': env.db('DATABASE_URL'),
@@ -156,8 +277,12 @@ else:
         }
     }
 
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+# =============================================================================
+#  Validadores de Contraseña
+#  Reglas de seguridad obligatorias: el usuario no puede usar atributos
+#  personales, la contraseña debe tener longitud mínima, no puede ser una
+#  contraseña común ni completamente numérica.
+# =============================================================================
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -199,7 +324,31 @@ MEDIA_URL = '/media/' # la imagen se guarda en una url
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Django REST Framework
+# =============================================================================
+#  DJANGO REST FRAMEWORK (DRF) — CAPA DE API REST
+#  Configuración global de todas las APIs HTTP del sistema.
+#
+#  PATRÓN DE DISEÑO: 
+#  - ViewSet/ModelViewSet: cada endpoint REST se asigna a métodos CRUD
+#    sobre un modelo (list, create, retrieve, update, destroy).
+#  - Serializer: traduce datos entre modelos Python y JSON/HTTP.
+#    Actúa como Translator (capa de presentación ↔ capa de dominio).
+#  - Authentication/ Permission: implementan Strategy de seguridad.
+#    Se puede cambiar el esquema de auth sin modificar las vistas.
+#
+#  COMPONENTES CONFIGURADOS:
+#  - EXCEPTION_HANDLER: Manejador personalizado que produce respuestas
+#    JSON uniformes con código de error, mensaje, severidad y requestId.
+#    Ver error_handler.py líneas 47-86.
+#  - DEFAULT_PERMISSION_CLASSES: AllowAny por defecto. El control de
+#    acceso se implementa por vista (IsAuthenticated, AdminPermission).
+#  - DEFAULT_AUTHENTICATION_CLASSES: JWT personalizado (con token_version)
+#    + sesión Django (para el admin / browsable API en desarrollo).
+#  - DEFAULT_PAGINATION_CLASS: PageNumberPagination, 20 ítems/página.
+#  - DEFAULT_THROTTLE_CLASSES: Rate limiting por usuario y anónimo.
+#    RN-014: Límites de 1000 req/h (anónimo) y 10000 req/h (autenticado).
+#  - DEFAULT_RENDERER_CLASSES: Solo JSON (sin navegador API HTML en prod).
+# =============================================================================
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'apps.users.error_handler.custom_exception_handler',
 
@@ -221,7 +370,7 @@ REST_FRAMEWORK = {
     ],
 
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '1000/hour', 
+        'anon': '1000/hour',
         'user': '10000/hour',
         'contact_form': '3/hour',
     },
@@ -231,7 +380,22 @@ REST_FRAMEWORK = {
     ],
 }
 
-# JWT Configuration (RN-013)
+# =============================================================================
+#  JWT (JSON WEB TOKENS) — RN-013, RF-008
+#  Autenticación stateless: el servidor NO guarda sesión; el cliente
+#  presenta un token JWT firmado que contiene la identidad del usuario.
+#
+#  PATRÓN DE DISEÑO: Token-Based Authentication (Stateless).
+#  - ACCESS_TOKEN_LIFETIME=15min: vida corta para minimizar daño si se filtra.
+#  - REFRESH_TOKEN_LIFETIME=7días: permite renovar sin pedir credenciales.
+#  - ROTATE_REFRESH_TOKENS=True: cada renovación genera un nuevo refresh.
+#  - BLACKLIST_AFTER_ROTATION=True: el refresh anterior se invalida (logout).
+#  - UPDATE_LAST_LOGIN: registra fecha_ultima_sesion en cada login.
+#  - ALGORITHM=HS256: HMAC con SHA-256, simétrico (firmado con SECRET_KEY).
+#  - token_version: campo personalizado en Usuario que permite invalidar
+#    TODOS los tokens de un usuario (cambio de estado, bloqueo).
+#    Ver auth_backend.py líneas 24-26.
+# =============================================================================
 from datetime import timedelta
 
 SIMPLE_JWT = {
@@ -253,7 +417,13 @@ SIMPLE_JWT = {
     'TOKEN_USER_CLASS': 'apps.users.Usuario',
 }
 
-# CORS configuration
+# =============================================================================
+#  CORS (CROSS-ORIGIN RESOURCE SHARING) — RN-015
+#  Permite que el frontend React (Vite en localhost, Vercel/Render en prod)
+#  consuma la API desde un ORIGEN diferente (cross-origin).
+#  Sin CORS, el navegador bloquearía las peticiones por política del mismo origen.
+#  CORS_ALLOW_CREDENTIALS=True habilita cookies httpOnly para JWT.
+# =============================================================================
 CORS_ALLOWED_ORIGINS = env.list(
     'CORS_ALLOWED_ORIGINS',
     default=[
@@ -264,13 +434,20 @@ CORS_ALLOWED_ORIGINS = env.list(
         'http://127.0.0.1:5173',
     ]
 )
-
-# En producción, agregar aquí los dominios del frontend (Vercel) y se pasan por variable de entorno
-# CORS_ALLOWED_ORIGINS=https://tu-app.vercel.app,https://tu-dominio-custom.com
-
 CORS_ALLOW_CREDENTIALS = True
 
-# HTTP Security Headers
+# =============================================================================
+#  SEGURIDAD HTTP — RN-016, RN-017
+#  Cabeceras que protegen contra ataques comunes:
+#  - HSTS (HTTP Strict Transport Security): fuerza HTTPS por 1 año en prod.
+#    SECURE_HSTS_PRELOAD: permite inclusión en lista preload de navegadores.
+#  - XSS Filter: activa el filtro de Cross-Site Scripting del navegador.
+#  - Content-Type NoSniff: evita MIME sniffing (ataques de polución).
+#  - Referrer Policy 'same-origin': solo envía Referer al mismo origen.
+#  - Cookies de sesión/CSRF:
+#    * Dev (HTTP): SameSite=Lax, Secure=False
+#    * Prod (HTTPS): SameSite=None, Secure=True (cookies entre dominios)
+# =============================================================================
 SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=0 if DEBUG else 31536000)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
@@ -290,11 +467,24 @@ else:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-# URLs para enlaces en emails
+# =============================================================================
+#  URLs del Frontend y Backend
+#  Se usan para construir enlaces en correos electrónicos (verificación,
+#  restablecimiento de contraseña) y redirecciones post-pago.
+# =============================================================================
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
 BACKEND_URL = env('BACKEND_URL', default='http://localhost:8000')
 
-# Email configuration
+# =============================================================================
+#  CORREO ELECTRÓNICO — EmailService
+#  En desarrollo (sin EMAIL_HOST_USER) los correos se imprimen en consola
+#  (EmailBackend=console). En producción se usa SMTP con TLS.
+#  Usado por EmailService (services/email_service.py) para:
+#  - Verificación de email al registrarse (RF-003)
+#  - Recuperación de contraseña (RF-009)
+#  - Notificaciones de administración (RF-018, RF-023)
+#  - Notificaciones de contacto (RF-031)
+# =============================================================================
 if DEBUG and not env('EMAIL_HOST_USER', default=''):
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
@@ -308,17 +498,46 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
 
-# MongoDB Configuration (NoSQL)
+# =============================================================================
+#  MONGODB — BASE DE DATOS NO RELACIONAL (POLYGLOT PERSISTENCE)
+#  Complementa a PostgreSQL para datos no estructurados o con esquema variable:
+#  - saved_designs:  Configuraciones completas de diseños 3D (JSON anidado).
+#  - audit_logs:     Logs de eventos del sistema (Event Sourcing).
+#  - cart_sessions:  Carritos de compra persistentes (multi-dispositivo).
+#  - community_templates: Plantillas 3D compartidas por la comunidad.
+#
+#  PATRÓN DE DISEÑO: Polyglot Persistence / CQRS parcial.
+#  - PostgreSQL: datos relacionales con integridad referencial (usuarios,
+#    productos, pedidos).
+#  - MongoDB: datos de alta volatilidad o estructura variable (diseños,
+#    carritos abandonados, logs masivos).
+#  - La conexión se maneja con patrón Singleton (mongodb.py líneas 18-57).
+# =============================================================================
 MONGODB_URI = env('MONGODB_URI', default='')
 MONGODB_NAME = env('MONGODB_NAME', default='projecto_formativo')
 
-# Password validation rules (RN-001)
+# =============================================================================
+#  REGLAS DE CONTRASEÑA — RN-001
+#  Validación adicional del lado del servidor que COMPLEMENTA los
+#  validadores nativos de Django. Se aplican en:
+#  - Registro de usuario (RegistroSerializer.validate_contrasena)
+#  - Cambio de contraseña (CambioPasswordSerializer)
+#  - Recuperación de contraseña (NuevaPasswordSerializer)
+#  - Creación de usuario por admin (AdminUsuarioViewSet.create)
+#  Requisitos: 8+ caracteres, mayúscula, número, carácter especial.
+# =============================================================================
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_REQUIRE_UPPERCASE = True
 PASSWORD_REQUIRE_NUMBER = True
 PASSWORD_REQUIRE_SPECIAL = True
 
-# Definir que dominios pueden hacer los request
+# =============================================================================
+#  CSRF TRUSTED ORIGINS — ORÍGENES CONFIABLES
+#  Lista de dominios permitidos para solicitudes POST con CSRF.
+#  Necesario cuando el frontend está en un puerto/dominio diferente.
+#  Sin esta configuración, Django rechazaría solicitudes POST del frontend
+#  con error 403 CSRF. Incluye IPs locales de desarrollo y puertos Vite/React.
+# =============================================================================
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
     default=[
@@ -329,8 +548,27 @@ CSRF_TRUSTED_ORIGINS = env.list(
     ]
 )
 
-
-# ─────────── Wompi Payment Gateway ───────────
+# =============================================================================
+#  WOMPI — PASARELA DE PAGOS (RF-039, RF-040, RF-041)
+#  Integración con Wompi, la pasarela de pagos colombiana.
+#  Maneja el ciclo de pago: creación de transacción → redirección al
+#  checkout de Wompi → webhook con resultado → actualización de orden.
+#
+#  FLUJO DE PAGO:
+#  1. Frontend → create_payment() [checkout/views.py:172-237]
+#     - Crea transacción en Wompi con monto, referencia, email.
+#     - Wompi devuelve URL de redirección para el checkout.
+#  2. Usuario → Paga en el checkout de Wompi (externo).
+#  3. Wompi → Webhook POST a /api/checkout/webhook/ [views.py:294-429]
+#     - Valida firma HMAC-SHA256 (verify_webhook_signature).
+#     - Si APPROVED: cambia orden a "pagado".
+#     - Si DECLINED/REJECTED: cambia orden a "cancelado", restaura stock.
+#  4. Frontend → Consulta payment-status [views.py:240-291].
+#
+#  WOMPI_API_URL: Sandbox (pruebas) o producción.
+#  WOMPI_INTEGRITY_KEY: Genera firma SHA-256 para integridad.
+#  WOMPI_WEBHOOK_SECRET: Secreto para HMAC de webhooks.
+# =============================================================================
 WOMPI_PUBLIC_KEY = env('WOMPI_PUBLIC_KEY', default='')
 WOMPI_PRIVATE_KEY = env('WOMPI_PRIVATE_KEY', default='')
 WOMPI_INTEGRITY_KEY = env('WOMPI_INTEGRITY_KEY', default='')
@@ -338,7 +576,22 @@ WOMPI_API_URL = env('WOMPI_API_URL', default='https://sandbox.wompi.co')
 WOMPI_WEBHOOK_SECRET = env('WOMPI_WEBHOOK_SECRET', default='')
 WOMPI_REDIRECT_URL = env('WOMPI_REDIRECT_URL', default=f'{FRONTEND_URL}/checkout/resultado')
 
-# ─────────── Cloudinary Configuration ───────────
+# =============================================================================
+#  CLOUDINARY — ALMACENAMIENTO MULTIMEDIA EN LA NUBE (RF-042)
+#  Reemplaza el almacenamiento local de archivos multimedia por Cloudinary:
+#  - Imágenes de productos (ProductImage)
+#  - Modelos 3D (Model3D) en formato GLB/GLTF
+#  - Imágenes de diseño capturadas desde el editor 3D
+#  
+#  Ventajas: CDN global, transformaciones de imagen (redimensionar, recortar),
+#  respaldo automático, URLs optimizadas para caché.
+#  
+#  Comportamiento condicional:
+#  - Si cloudinary está instalado y las credenciales son válidas:
+#    STORAGES["default"] = MediaCloudinaryStorage
+#  - Si no (falta de credenciales, entorno de test):
+#    Se usa el almacenamiento local (Django FileSystemStorage).
+# =============================================================================
 try:
     import cloudinary
     import cloudinary.uploader

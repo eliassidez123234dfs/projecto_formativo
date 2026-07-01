@@ -1,3 +1,25 @@
+/**
+ * Componente de encabezado/navegación principal del microservicio Tshirt3D.
+ *
+ * Muestra el logo "RED", enlaces de navegación (Catálogo), botones de
+ * autenticación (Iniciar Sesión / Registrarse) y menú de usuario con
+ * carrito, perfil y opciones de administrador.
+ *
+ * - Cuando el usuario está autenticado (props.usuario), muestra las
+ *   iniciales del nombre, un menú desplegable con opciones de perfil,
+ *   carrito y cierre de sesión.
+ * - Soporta modo `overlay` (position: absolute) para posicionarse sobre
+ *   el canvas 3D del editor sin ocupar espacio en el flujo del DOM.
+ * - Menú responsive para móviles (≤ 600px) con toggle hamburguesa.
+ * - Cierre del menú al hacer clic fuera (useEffect con mousedown).
+ *
+ * Este componente es parte del ecosistema Django + React: los enlaces
+ * (/catalog, /login, /register, /perfil, /cart, /dashboard) redirigen
+ * a rutas del backend Django (vistas HTML o endpoints API).
+ *
+ * RF-025: Proporciona navegación y contexto de autenticación para el
+ *         editor de camisetas 3D.
+ */
 import { useState, useEffect, useRef } from 'react'
 
 const Header = ({ cartCount = 0, overlay = false, usuario = null, onLogout }) => {

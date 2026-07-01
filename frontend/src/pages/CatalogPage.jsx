@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DEFAULT_IMAGE } from '../constants'
 import './shop.css'
 
 function StarRating({ rating, size = 14 }) {
@@ -32,7 +33,7 @@ function ProductCard({ product }) {
       {badge && <span className={`sc-stock-badge ${badge.cls}`}>{badge.label}</span>}
       <a href={`/products/${product.id}`} className="shop-card-link">
         <div className="shop-card-image-wrap">
-          {product.main_image ? <img src={product.main_image} alt={product.name} className="shop-card-image" /> : <div className="shop-card-placeholder">Sin imagen</div>}
+          {product.main_image ? <img src={product.main_image} alt={product.name} className="shop-card-image" onError={(e) => { e.target.src = DEFAULT_IMAGE; e.target.className = 'shop-card-image-fallback' }} /> : <div className="shop-card-placeholder">Sin imagen</div>}
         </div>
         <div className="shop-card-body">
           <h3>{product.name}</h3>

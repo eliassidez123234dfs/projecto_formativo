@@ -96,6 +96,13 @@ $RECYCLE.BIN/
 .goose/
 .kiro/
 .specify/
+.agents/*
+.auxly/*
+.claude/*
+.cursor/*
+.goose/*
+.kiro/*
+.specify/*
 skills-lock.json
 AGENTS.md
 AI_AGENTS_STRATEGY.md
@@ -171,3 +178,10 @@ coverage/
 *~
 *.pid
 *.seed
+
+.ejemplos_codigo/
+.ejemplos_codigo/*
+ejemplos_codigo/
+ejemplos_codigo/*
+ejemplos_codigo
+.aider*

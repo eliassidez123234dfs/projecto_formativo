@@ -1,9 +1,15 @@
+/**
+ * AdminCart — Listado de carritos de todos los usuarios del sistema.
+ * Muestra ID, usuario, cantidad de items, total, fecha de creación y estado
+ * de la orden asociada. Permite navegar al detalle de cada carrito.
+ */
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { fetchAdminCarts } from '../services/api'
 import MainLayout from '../components/MainLayout'
 import { getCurrentUser } from '../services/authService'
 
+/** Estilos de color para los estados de orden mostrados en la tabla. */
 const STATUS_STYLES = {
   pendiente: { bg: '#fef3c7', color: '#92400e' },
   pagado: { bg: '#dbeafe', color: '#1e40af' },
@@ -12,7 +18,11 @@ const STATUS_STYLES = {
   cancelado: { bg: '#fee2e2', color: '#991b1b' },
 }
 
-// Admin cart listing with user info, item counts, and status display
+/**
+ * Componente principal del listado de carritos.
+ * Redirige al login si no es administrador, carga carritos paginados
+ * y muestra una tabla con la información resumida de cada uno.
+ */
 export default function AdminCart() {
   const navigate = useNavigate()
   const [carts, setCarts] = useState({ results: [], count: 0 })

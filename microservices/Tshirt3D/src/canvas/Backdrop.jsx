@@ -1,3 +1,24 @@
+/**
+ * Componente de fondo/escenario 3D para la camiseta.
+ *
+ * Renderiza sombras acumulativas (AccumulativeShadows) y luces
+ * aleatorizadas (RandomizedLight) de @react-three/drei para crear
+ * un efecto de iluminación suave y realista detrás de la camiseta.
+ *
+ * - `AccumulativeShadows`: Genera sombras suaves mediante múltiples
+ *   muestras temporales (30 frames) para un resultado más natural
+ *   sin necesidad de configurar mapas de sombras complejos.
+ * - `RandomizedLight`: Simula luces con parámetros aleatorios (posición,
+ *   intensidad, radio) dentro de un rango para evitar sombras artificiales
+ *   y dar profundidad a la escena.
+ *
+ * Estos componentes son parte de @react-three/drei (utilidades para
+ * R3F/Three.js). drei abstrae configuraciones complejas de Three.js
+ * (como AccumulativeShadows, que usa THREE.WebGLRenderTarget internamente)
+ * en componentes JSX declarativos.
+ *
+ * RF-025: Contribuye a la escena 3D del editor interactivo.
+ */
 import React, { useRef } from "react";
 // import { easing } from "maath";
 // import { useFrame } from "@react-three/fiber";

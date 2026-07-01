@@ -1,4 +1,8 @@
-// frontend/src/components/FormInput.jsx
+/**
+ * FormInput — Componente reutilizable de campo de formulario.
+ * Renderiza un label, un input con tipo configurable y un mensaje de error
+ * opcional. Soporta todos los atributos estándar de un input HTML.
+ */
 export const FormInput = ({
   label,
   name,

@@ -1,3 +1,9 @@
+/**
+ * AdminUsers — Gestión de usuarios (RF-016 a RF-024).
+ * Lista, filtra, crea, edita, bloquea y elimina usuarios del sistema.
+ * Incluye estadísticas (totales, activos, administradores, bloqueados)
+ * y un modal para creación de nuevos usuarios.
+ */
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchAdminStats, createAdminUser } from '../services/api'
@@ -7,6 +13,10 @@ import UserList from '../components/UserList'
 import FormModal from '../components/FormModal'
 import { getCurrentUser } from '../services/authService'
 
+/**
+ * Hook personalizado que obtiene estadísticas de usuarios del dashboard.
+ * @returns {{ total: number, active: number, admin: number, blocked: number }}
+ */
 function useUserStats() {
   const [stats, setStats] = useState({ total: 0, active: 0, admin: 0, blocked: 0 })
 
@@ -31,7 +41,11 @@ function useUserStats() {
   return stats
 }
 
-// Admin user management page with stats, filtering, and create/edit modals
+/**
+ * Página principal de administración de usuarios.
+ * Valida que el usuario autenticado sea Administrador, muestra tarjetas
+ * de estadísticas, filtros y la tabla de usuarios con acciones CRUD.
+ */
 export default function AdminUsers() {
   const navigate = useNavigate()
   const [filters, setFilters] = useState({ page: 1, page_size: 20 })

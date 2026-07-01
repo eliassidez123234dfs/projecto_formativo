@@ -1,3 +1,26 @@
+# ==============================================================================
+# Manejador uniforme de errores — Red Estampación
+# ==============================================================================
+# Implementa un manejador de excepciones global (custom_exception_handler)
+# que reemplaza al default de Django REST Framework.
+#
+# Patrón: Estrategia de manejo de errores (Strategy).
+# - Convierte cualquier excepción en una respuesta JSON con formato uniforme.
+# - Clasifica errores por severidad (INFO/WARNING/ERROR/CRITICAL).
+# - Mapea severidad a código HTTP y nivel de log.
+#
+# Formato de respuesta uniforme:
+#   {
+#     "errorCode": "REG-001",
+#     "exception": "InvalidEmailException",
+#     "message": "Formato de correo inválido",
+#     "userMessage": "El correo ingresado no es válido.",
+#     "severity": "INFO",
+#     "context": { ... },
+#     "timestamp": "2026-06-30T12:00:00Z",
+#     "requestId": "a1b2c3d4"
+#   }
+# ==============================================================================
 import logging
 import traceback
 from datetime import datetime, timezone
@@ -11,6 +34,11 @@ from .middleware import get_current_request_id
 
 logger = logging.getLogger(__name__)
 
+# ── Mapeo de severidad → código HTTP ──
+# Determina el código de estado HTTP según la severidad del error.
+#   INFO/WARNING → 400 (error del cliente)
+#   ERROR        → 500 (error interno)
+#   CRITICAL     → 503 (servicio no disponible)
 SEVERITY_HTTP_STATUS = {
     'INFO': status.HTTP_400_BAD_REQUEST,
     'WARNING': status.HTTP_400_BAD_REQUEST,
@@ -18,6 +46,7 @@ SEVERITY_HTTP_STATUS = {
     'CRITICAL': status.HTTP_503_SERVICE_UNAVAILABLE,
 }
 
+# ── Mapeo de severidad → nivel de log ──
 SEVERITY_LOG_LEVEL = {
     'INFO': logging.INFO,
     'WARNING': logging.WARNING,
@@ -26,6 +55,19 @@ SEVERITY_LOG_LEVEL = {
 }
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Función auxiliar: _build_error_response
+# ─────────────────────────────────────────────────────────────────────────────
+# Construye una respuesta JSON con el formato de error uniforme.
+#
+# Si la excepción es una BaseAppException, usa su método to_dict() que
+# ya contiene toda la información estructurada (código, mensaje, severidad,
+# contexto, timestamp, requestId).
+#
+# Si es una excepción genérica no controlada, construye un objeto de error
+# con código APP-500, severidad CRITICAL y un mensaje genérico para el
+# usuario (sin filtrar información sensible).
+# ─────────────────────────────────────────────────────────────────────────────
 def _build_error_response(exc, http_status, request=None):
     if isinstance(exc, BaseAppException):
         error_data = exc.to_dict()
@@ -44,9 +86,32 @@ def _build_error_response(exc, http_status, request=None):
     return JsonResponse(error_data, status=http_status)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Manejador global de excepciones: custom_exception_handler
+# ─────────────────────────────────────────────────────────────────────────────
+# Reemplaza el exception_handler de DRF. Flujo de decisión:
+#
+# 1. ¿Es una BaseAppException?
+#    → Usa su severidad para determinar HTTP status y nivel de log.
+#    → Genera entrada de log estructurada (to_log).
+#    → Retorna respuesta JSON con to_dict().
+#
+# 2. ¿Es una excepción de DRF (ValidationError, etc.)?
+#    → Extrae el primer mensaje de error del serializador.
+#    → Mapea a formato uniforme con código DRF-{status_code}.
+#    → Severidad: WARNING si <500, ERROR si ≥500.
+#
+# 3. ¿Es una excepción completamente no manejada?
+#    → Log CRITICAL con traceback completo.
+#    → Retorna 500 Internal Server Error genérico.
+#
+# Patrón: Chain of Responsibility (cada handler intenta procesar o
+# delega al siguiente).
+# ─────────────────────────────────────────────────────────────────────────────
 def custom_exception_handler(exc, context):
     request = context.get('request') if isinstance(context, dict) else getattr(context, 'request', None)
 
+    # ── Caso 1: Excepción personalizada del sistema (BaseAppException) ──
     if isinstance(exc, BaseAppException):
         http_status = SEVERITY_HTTP_STATUS.get(exc.severity, status.HTTP_500_INTERNAL_SERVER_ERROR)
         log_level = SEVERITY_LOG_LEVEL.get(exc.severity, logging.ERROR)
@@ -56,6 +121,7 @@ def custom_exception_handler(exc, context):
 
         return _build_error_response(exc, http_status, request)
 
+    # ── Caso 2: Excepción de DRF (validación, permisos, etc.) ──
     response = drf_exception_handler(exc, context)
 
     if response is not None:
@@ -78,6 +144,7 @@ def custom_exception_handler(exc, context):
 
         return response
 
+    # ── Caso 3: Excepción no manejada (error crítico) ──
     logger.critical(
         'Unhandled exception | path=%s | exc=%s\n%s',
         request.path if request else 'unknown', exc, traceback.format_exc(),

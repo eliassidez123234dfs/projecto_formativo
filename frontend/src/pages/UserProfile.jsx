@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Header } from '../components/Header'
+import { Link, useNavigate } from 'react-router-dom'
 import { getAccessToken, getCurrentUser } from '../services/authService'
 import '../styles/UserProfile.scss'
 
-// Public user profile page with account info, inline edit, and password change form
+// ---------------------------------------------------------------
+// UserProfile.jsx  —  Perfil de usuario (RF-056)
+// APIs consumidas:
+//   PATCH /api/usuarios/actualizar_perfil/  — actualizar nombre/email
+//   POST  /api/usuarios/cambiar_password/   — cambiar contraseña
+// Hooks: useState, useEffect, useNavigate
+// Estado global: authService (getAccessToken, getCurrentUser)
+// Flujo: redirige a /login si no hay sesión; modo edición inline
+//        del perfil; formulario expandible de cambio de contraseña;
+//        muestra avatar con inicial, estado, fecha registro,
+//        verificación de email
+// ---------------------------------------------------------------
 export default function UserProfile() {
   const navigate = useNavigate()
   const [usuario, setUsuario] = useState(() => getCurrentUser())
@@ -20,6 +30,11 @@ export default function UserProfile() {
     if (!usuario) navigate('/login')
   }, [usuario, navigate])
 
+  // ---------------------------------------------------------------
+  // handleSaveProfile — PATCH a actualizar_perfil/ con datos editados
+  // Éxito: actualiza estado local usuario, muestra mensaje 3s
+  // Error: muestra error del backend o genérico
+  // ---------------------------------------------------------------
   async function handleSaveProfile(e) {
     e.preventDefault()
     setSaving(true)
@@ -48,6 +63,10 @@ export default function UserProfile() {
     }
   }
 
+  // ---------------------------------------------------------------
+  // handleChangePassword — POST a cambiar_password/ con validación
+  // cliente de coincidencia; usa token JWT en Authorization header
+  // ---------------------------------------------------------------
   async function handleChangePassword(e) {
     e.preventDefault()
     if (passData.nueva !== passData.confirmar) {
@@ -95,8 +114,8 @@ export default function UserProfile() {
 
   return (
     <div className="profile-page">
-      <Header />
 
+      <Link to="/dashboard" style={{ color: 'var(--color-text-muted)', fontSize: 13, textDecoration: 'none', marginBottom: 16, display: 'inline-block' }}>← Volver al Dashboard</Link>
       <div className="profile-content">
         {msg && (
           <div className={`profile-msg profile-msg--${msg.type}`}>

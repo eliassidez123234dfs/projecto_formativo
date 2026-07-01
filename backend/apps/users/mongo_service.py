@@ -1,3 +1,23 @@
+# ==============================================================================
+# Servicio MongoDB — Red Estampación
+# ==============================================================================
+# Capa de acceso a MongoDB (Repository Pattern) para datos no relacionales.
+# Proporciona funciones CRUD para las colecciones:
+#
+#   saved_designs        → Planos de configuración de diseño 3D guardados por
+#                          cada usuario (con soporte de likes, comentarios,
+#                          publicación a la comunidad).
+#   audit_logs           → Bitácora de eventos de auditoría (complementa el
+#                          Log_Auditoria en SQL para consultas agregadas).
+#   cart_sessions        → Carritos de compra persistentes multi-dispositivo
+#                          (anónimos y autenticados, con merge post-login).
+#   community_templates  → Catálogo de plantillas de diseño compartidas por
+#                          la comunidad (con likes, vistas, descargas).
+#
+# Patrón: Repository. Cada función encapsula operaciones atómicas contra
+# MongoDB, manejando la disponibilidad de la conexión (retorna None si
+# MongoDB no está conectado).
+# ==============================================================================
 import logging
 from datetime import datetime, timezone
 
@@ -9,9 +29,17 @@ from .mongodb import get_mongo_db, is_mongo_connected
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Indexes
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Índices de MongoDB
+# ===========================================================================
+# Definición centralizada de índices para todas las colecciones.
+# Se crean al iniciar el sistema vía ensure_indexes().
+# Cada colección tiene índices optimizados para sus consultas más frecuentes:
+#   - saved_designs:    user_id, is_published+created_at, tags, product_id.
+#   - audit_logs:      actor_id+created_at, target_type+target_id, action.
+#   - cart_sessions:   user_id (único+sparse), session_key (único+sparse).
+#   - community_templates: likes_count, tags, designer_id, is_featured+created_at.
+# ===========================================================================
 
 COLLECTION_INDEXES = {
     'saved_designs': [
@@ -58,9 +86,12 @@ def ensure_indexes():
             logger.error('Error creando índices para %s: %s', coll_name, exc)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Funciones auxiliares (helpers)
+# ===========================================================================
+# _now():      retorna el timestamp UTC actual.
+# _serialize(): convierte _id (ObjectId) a id (string) para JSON.
+# _serialize_many(): aplica _serialize a un cursor de documentos.
 
 def _now():
     """Return current UTC datetime."""
@@ -80,9 +111,23 @@ def _serialize_many(cursor):
     return [_serialize(doc) for doc in cursor]
 
 
-# ---------------------------------------------------------------------------
-# SAVED DESIGNS  (Plano de configuración del diseño 3D)
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# COLECCIÓN: saved_designs (Diseños guardados — configuración 3D)
+# ===========================================================================
+# Almacena el JSON completo de configuración de diseños 3D creados por
+# los usuarios. Cada diseño puede ser publicado a la comunidad y recibir
+# likes y comentarios.
+#
+# Funciones:
+#   create_design()     → inserta un nuevo diseño.
+#   get_design()        → obtiene un diseño por ObjectId.
+#   update_design()     → actualiza campos de un diseño.
+#   delete_design()     → elimina un diseño por ObjectId.
+#   list_user_designs() → lista paginada de diseños de un usuario.
+#   publish_design()    → marca un diseño como público.
+#   like_design()       → toggle de like por usuario.
+#   add_comment()       → agrega un comentario al diseño.
+# ===========================================================================
 
 def create_design(data):
     """Guarda el JSON completo de configuración de un diseño 3D."""
@@ -193,9 +238,18 @@ def add_comment(design_id, user_id, username, text):
     return get_design(design_id)
 
 
-# ---------------------------------------------------------------------------
-# AUDIT LOGS  (Event sourcing — bitácora masiva de eventos)
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# COLECCIÓN: audit_logs (Bitácora de auditoría)
+# ===========================================================================
+# Almacena eventos de auditoría como complemento a Log_Auditoria (SQL).
+# MongoDB permite consultas agregadas (group by action, stats, etc.) que
+# serían costosas en SQL.
+#
+# Funciones:
+#   log_event()       → registra un evento de auditoría.
+#   query_logs()      → consulta paginada con filtros opcionales.
+#   get_event_stats() → conteo agregado de eventos por acción (N días).
+# ===========================================================================
 
 def log_event(action, actor_id=None, target_type=None, target_id=None,
               metadata=None, ip_address=None, severity='info'):
@@ -254,9 +308,20 @@ def get_event_stats(days=7):
     return list(db.audit_logs.aggregate(pipeline))
 
 
-# ---------------------------------------------------------------------------
-# CART SESSIONS  (Carrito persistente multi-dispositivo y abandonados)
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# COLECCIÓN: cart_sessions (Carritos de compra)
+# ===========================================================================
+# Almacena carritos de compra persistentes tanto para usuarios anónimos
+# (identificados por session_key) como autenticados (identificados por
+# user_id). Soporta fusión (merge) del carrito anónimo al autenticado
+# después del login.
+#
+# Funciones:
+#   upsert_cart()          → crea o actualiza un carrito.
+#   get_cart()             → obtiene carrito por user_id o session_key.
+#   merge_carts()          → fusiona carrito anónimo → autenticado post-login.
+#   list_abandoned_carts() → carritos sin actividad por N horas.
+# ===========================================================================
 
 def upsert_cart(user_id=None, session_key=None, items=None):
     """Create or update a cart session (by user_id or session_key)."""
@@ -364,9 +429,19 @@ def list_abandoned_carts(hours=24):
     return _serialize_many(cursor)
 
 
-# ---------------------------------------------------------------------------
-# COMMUNITY TEMPLATES  (Catálogo de diseños compartidos por la comunidad)
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# COLECCIÓN: community_templates (Plantillas de la comunidad)
+# ===========================================================================
+# Catálogo de diseños 3D compartidos por los usuarios. Las plantillas
+# pueden recibir likes, incrementar su contador de vistas y descargas,
+# y ser marcadas como destacadas (is_featured) por los administradores.
+#
+# Funciones:
+#   create_template()  → crea una nueva plantilla comunitaria.
+#   list_templates()   → lista paginada con filtro por tag y orden.
+#   get_template()     → obtiene una plantilla (incrementa view_count).
+#   like_template()    → toggle de like por usuario.
+# ===========================================================================
 
 def create_template(data):
     """Create a new community template document."""

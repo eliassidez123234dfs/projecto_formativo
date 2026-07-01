@@ -1,10 +1,25 @@
+/**
+ * ProductForm — Formulario modal para crear y editar productos (admin).
+ * Incluye campos de nombre, descripción, precio base, estado activo,
+ * gestión de imágenes (principal y adicionales con reordenamiento),
+ * y variantes (talla, color, stock). Soporta modo creación y edición.
+ */
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 
+/**
+ * Intenta parsear la respuesta JSON de forma segura; retorna null si falla.
+ * @param {Response} res
+ * @returns {Promise<Object|null>}
+ */
 async function safeJson(res) {
   try { return await res.json() } catch { return null }
 }
 
+/**
+ * Fila de edición de una variante individual (talla, color, stock).
+ * @param {{ v: Object, onChange: Function, onRemove: Function }}
+ */
 function VariantRow({ v, onChange, onRemove }) {
   const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', 'Único']
 const COLORS = ['Rojo', 'Azul', 'Negro', 'Blanco', 'Gris', 'Verde', 'Amarillo', 'Naranja', 'Rosa', 'Morado', 'Marrón', 'Beige', 'Plateado', 'Dorado']
@@ -58,6 +73,10 @@ const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-second
   )
 }
 
+/**
+ * Componente principal del formulario de producto.
+ * @param {{ product?: Object, onClose: Function, onSaved: Function }}
+ */
 export default function ProductForm({ product, onClose, onSaved }) {
   const isEditing = Boolean(product)
 

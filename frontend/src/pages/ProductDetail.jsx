@@ -3,11 +3,22 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchProductDetail, fetchProductReviews, createReview, updateReview } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
-import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 import { getCurrentUser } from '../services/authService';
+import toast from 'react-hot-toast';
 
-// Product detail page with variant selector (size/color), image gallery, reviews, and share links
+// ---------------------------------------------------------------
+// ProductDetail.jsx  —  Detalle de producto con variantes (RF-053)
+// APIs consumidas:
+//   - fetchProductDetail(id)       GET /api/catalogo/productos/:id/
+//   - fetchProductReviews(id)      GET /api/productos/:id/resenas/
+//   - createReview(id, rating, comment) POST /api/productos/:id/resenas/
+//   - updateReview(id, rating, comment) PATCH /api/resenas/:id/
+// Hooks: useState, useEffect, useParams, useCart
+// Estado global: CartContext (cart, addItem), getCurrentUser (authService)
+// Flujo: carga producto y reseñas al montar; selecciona variante por
+//        talla/color; agrega al carrito vía CartContext; envía reseñas
+// ---------------------------------------------------------------
 export const ProductDetail = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
@@ -27,6 +38,10 @@ export const ProductDetail = () => {
 
   const usuario = getCurrentUser();
 
+  // ---------------------------------------------------------------
+  // Carga detalle del producto al montar o al cambiar el id de la URL
+  // Preselecciona la primera variante con stock y la primera imagen
+  // ---------------------------------------------------------------
   useEffect(() => {
     const loadProduct = async () => {
       try {
@@ -50,6 +65,9 @@ export const ProductDetail = () => {
     loadProduct();
   }, [id]);
 
+  // ---------------------------------------------------------------
+  // Carga las reseñas del producto de forma independiente
+  // ---------------------------------------------------------------
   useEffect(() => {
     if (!id) return;
     const loadReviews = async () => {
@@ -57,7 +75,7 @@ export const ProductDetail = () => {
         const data = await fetchProductReviews(id);
         setReviews(data);
       } catch {
-        // silently fail
+        // silently fail — las reseñas no bloquean la página
       } finally {
         setReviewLoading(false);
       }
@@ -72,6 +90,10 @@ export const ProductDetail = () => {
 
   const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor);
 
+  // ---------------------------------------------------------------
+  // Selectores de variante: al cambiar talla reinicia color disponible
+  // y cantidad a 1; al cambiar color solo reinicia cantidad
+  // ---------------------------------------------------------------
   function selectSize(size) {
     setSelectedSize(size);
     const firstColor = product?.variants?.find(v => v.size === size)?.color;
@@ -88,15 +110,19 @@ export const ProductDetail = () => {
     return product?.variants?.find(v => v.size === size && v.color === color)?.stock || 0;
   }
 
+  // ---------------------------------------------------------------
+  // handleAddToCart — agrega al carrito vía CartContext.addItem
+  // Muestra toast con confirmación o error del backend
+  // ---------------------------------------------------------------
   const handleAddToCart = async () => {
     if (!selectedVariant) return;
     setAdding(true);
     try {
       await addItem(product.id, selectedVariant.id, quantity);
-      alert('Producto agregado al carrito');
+      toast.success('Producto agregado al carrito');
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.quantity || 'Error al agregar al carrito';
-      alert(msg);
+      toast.error(msg);
     } finally {
       setAdding(false);
     }
@@ -173,7 +199,6 @@ export const ProductDetail = () => {
   if (loading) {
     return (
       <>
-        <Header cartCount={0} />
         <div className="container pd-skeleton">
           <div className="pd-sk-gallery" />
           <div className="pd-sk-info">
@@ -197,7 +222,6 @@ export const ProductDetail = () => {
   if (error || !product) {
     return (
       <>
-        <Header cartCount={0} />
         <div className="container" style={{ paddingTop: '3rem', textAlign: 'center' }}>
           <p style={{ color: r, marginBottom: 16 }}>{error || 'Producto no encontrado'}</p>
           <Link to="/catalog" className="btn btn-primary" style={{ textDecoration: 'none' }}>Volver al catálogo</Link>
@@ -208,7 +232,6 @@ export const ProductDetail = () => {
 
   return (
     <>
-      <Header cartCount={cart?.total_items || 0} />
       <div className="container" style={{ paddingTop: '1.5rem', paddingBottom: '4rem' }}>
         <Link to="/catalog" style={{ color: r, textDecoration: 'none', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>

@@ -115,6 +115,19 @@ class Command(BaseCommand):
                 self.stdout.write(f'  Usuario existente: {user.usuario} ({user.correo})')
             created_users.append(user)
 
+        passwords = {'admin': admin_pass, 'test': test_pass, 'usuario': test_pass}
+        self.stdout.write('')
+        self.stdout.write(self.style.WARNING('═' * 50))
+        self.stdout.write(self.style.WARNING('  CUENTAS DISPONIBLES:'))
+        self.stdout.write(self.style.WARNING('═' * 50))
+        for data in users_data:
+            self.stdout.write(f'  Usuario:    {data["usuario"]}')
+            self.stdout.write(f'  Correo:     {data["correo"]}')
+            self.stdout.write(f'  Contraseña: {passwords[data["usuario"]]}')
+            self.stdout.write(f'  Rol:        {"Administrador" if data["rol"] == "Administrador" else "Usuario"}')
+            self.stdout.write('')
+        self.stdout.write(self.style.WARNING('═' * 50))
+
         return created_users
 
     def _create_categories(self):

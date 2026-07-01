@@ -1,8 +1,18 @@
+/**
+ * AdminDashboard — Panel de control administrativo (RF-035).
+ * Muestra estadísticas resumidas de usuarios, productos y pedidos,
+ * junto con una tabla de usuarios recientes y accesos rápidos a la gestión.
+ */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import { fetchAdminStats, fetchAdminUsers } from '../services/api';
 
+/**
+ * Normaliza la respuesta de usuarios para asegurar que sea un arreglo.
+ * @param {any} data — Datos crudos del endpoint.
+ * @returns {Array} — Lista de usuarios o arreglo vacío.
+ */
 function normalizeUsers(data) {
   if (Array.isArray(data)) return data;
   return data?.results || [];

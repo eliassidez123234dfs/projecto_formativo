@@ -1,3 +1,24 @@
+# ==============================================================================
+# Servicio de Email — Red Estampación
+# ==============================================================================
+# Servicio centralizado para el envío de correos electrónicos. Todas las vistas
+# del sistema DEBEN usar este servicio en lugar de llamar a send_mail directamente.
+#
+# Patrón: Service Layer (capa de servicio).
+# - Encapsula la lógica de envío de emails en un único lugar.
+# - Elimina la duplicación de código que existía en viewset.py y admin_viewset.py.
+# - Proporciona una interfaz simple (métodos estáticos) para cada tipo de correo.
+# - Maneja errores de envío internamente (log + return False) sin propagar
+#   excepciones a las vistas.
+#
+# Métodos disponibles:
+#   _send()                     → método privado base para enviar emails.
+#   send_verification_email()   → verificación de cuenta (RF-003).
+#   send_password_reset_email() → restablecimiento de contraseña (RF-009).
+#   send_welcome_email()        → bienvenida al crear cuenta (RF-018).
+#   send_admin_reset_email()    → contraseña temporal por admin (RF-023).
+#   send_contact_notification() → notificación de formulario de contacto.
+# ==============================================================================
 """
 Servicio centralizado de envío de correos electrónicos.
 
@@ -21,8 +42,19 @@ logger = logging.getLogger(__name__)
 
 
 class EmailService:
-    """Servicio único para el envío de todos los correos del sistema."""
+    """
+    Servicio único para el envío de todos los correos del sistema.
+    
+    Patrón: Service Layer. Centraliza la lógica de email, maneja errores
+    internamente (log + return False) y provee métodos estáticos para
+    cada tipo de correo: verificación, recuperación, bienvenida, admin reset
+    y notificación de contacto.
+    """
 
+    # ── Método base privado ──
+    # Envía un correo usando Django send_mail. Maneja excepciones internamente
+    # y retorna True/False en lugar de propagar errores, permitiendo a las
+    # vistas decidir cómo manejar fallos de envío.
     @staticmethod
     def _send(subject, message, recipient_list, fail_silently=False):
         """
@@ -50,6 +82,9 @@ class EmailService:
             logger.exception('Error al enviar email a %s: %s', recipient_list, exc)
             return False
 
+    # ── Correo de verificación de cuenta (RF-003) ──
+    # Se envía después del registro. Incluye un enlace con el token
+    # de verificación para que el usuario active su cuenta.
     @staticmethod
     def send_verification_email(usuario, token):
         """
@@ -59,7 +94,7 @@ class EmailService:
             usuario: Instancia del modelo Usuario.
             token: Token de verificación (instancia de Token_Verificacion).
         """
-        enlace = f"{settings.FRONTEND_URL}/login?token={token.token}"
+        enlace = f"{settings.FRONTEND_URL}/verificar-email?token={token.token}"
         subject = 'Red Estampación — Verifica tu correo electrónico'
         message = (
             f'Hola {usuario.usuario},\n\n'
@@ -71,6 +106,9 @@ class EmailService:
         )
         return EmailService._send(subject, message, [usuario.correo])
 
+    # ── Correo de recuperación de contraseña (RF-009) ──
+    # Se envía cuando el usuario solicita restablecer su contraseña.
+    # Incluye un enlace con token de un solo uso que expira en 1 hora.
     @staticmethod
     def send_password_reset_email(usuario, token):
         """
@@ -93,6 +131,9 @@ class EmailService:
         )
         return EmailService._send(subject, message, [usuario.correo])
 
+    # ── Correo de bienvenida (RF-018) ──
+    # Se envía cuando un administrador crea manualmente un usuario.
+    # Incluye el nombre de usuario y un enlace para iniciar sesión.
     @staticmethod
     def send_welcome_email(usuario, temp_password=None):
         """
@@ -114,6 +155,9 @@ class EmailService:
         )
         return EmailService._send(subject, message, [usuario.correo])
 
+    # ── Correo de restablecimiento por admin (RF-023) ──
+    # Se envía cuando un administrador resetea la contraseña de un usuario.
+    # Incluye la contraseña temporal en texto plano (medida transicional).
     @staticmethod
     def send_admin_reset_email(usuario, temp_password):
         """
@@ -135,6 +179,9 @@ class EmailService:
         )
         return EmailService._send(subject, message, [usuario.correo])
 
+    # ── Notificación de contacto ──
+    # Notifica al administrador del sistema sobre un nuevo mensaje desde
+    # el formulario de contacto público.
     @staticmethod
     def send_contact_notification(contacto):
         """

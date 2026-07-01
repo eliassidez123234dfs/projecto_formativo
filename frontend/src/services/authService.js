@@ -1,4 +1,26 @@
-// In-memory auth state (tokens never stored in localStorage — only refresh token in sessionStorage)
+/**
+ * authService.js  —  Gestión de autenticación y tokens JWT
+ * ────────────────────────────────────────────────────────────────────────
+ * Maneja el ciclo de vida de los tokens JWT (access + refresh) y
+ * notifica a los suscriptores cuando cambia el estado de autenticación.
+ *
+ * ─── POLÍTICA DE ALMACENAMIENTO ───
+ * - accessToken   →  Solo en memoria (variable JS). Se pierde al recargar.
+ * - refreshToken  →  sessionStorage (persiste entre recargas de pestaña,
+ *                    pero no entre ventanas/dominios).
+ * - currentUser   →  Solo en memoria.
+ *
+ * ─── PATRÓN OBSERVER ───
+ * Los componentes se suscriben con subscribe() y reciben notificaciones
+ * cuando el usuario inicia/cierra sesión (setTokens / clearAuth).
+ * Retorna una función para cancelar la suscripción.
+ *
+ * ─── RESTAURACIÓN DE SESIÓN ───
+ * restoreSession() intenta renovar el access token usando el refresh
+ * token almacenado. Si falla, limpia la autenticación.
+ * Incluye deduplicación: si se llama múltiples veces en paralelo,
+ * solo ejecuta una petición de refresh.
+ */
 let accessToken = null
 let currentUser = null
 let _pendingRestore = null
@@ -9,23 +31,23 @@ function notify() {
   listeners.forEach(fn => fn(currentUser))
 }
 
-/** Subscribe to auth state changes. Returns unsubscribe fn. */
+/** Suscribe un callback a cambios en el estado de autenticación. Retorna función para desuscribirse. */
 export function subscribe(fn) {
   listeners.add(fn)
   return () => listeners.delete(fn)
 }
 
-/** Get the current JWT access token from memory. */
+/** Retorna el token JWT access actual desde memoria. */
 export function getAccessToken() {
   return accessToken
 }
 
-/** Get the currently authenticated user object. */
+/** Retorna el objeto del usuario autenticado actual. */
 export function getCurrentUser() {
   return currentUser
 }
 
-/** Persist tokens in memory and refresh token in sessionStorage. */
+/** Almacena los tokens en memoria (access) y sessionStorage (refresh) y notifica a los listeners. */
 export function setTokens(access, refresh, usuario) {
   accessToken = access
   currentUser = usuario || null
@@ -35,7 +57,7 @@ export function setTokens(access, refresh, usuario) {
   notify()
 }
 
-/** Clear all tokens and notify listeners. */
+/** Limpia todos los tokens y notifica a los listeners. */
 export function clearAuth() {
   accessToken = null
   currentUser = null
@@ -45,17 +67,17 @@ export function clearAuth() {
   notify()
 }
 
-/** Retrieve stored refresh token from sessionStorage (survives tab refresh). */
+/** Recupera el refresh token almacenado en sessionStorage. */
 export function getStoredRefreshToken() {
   try { return sessionStorage.getItem('refresh_token') } catch { return null }
 }
 
-/** Check if a valid token exists in memory or storage. */
+/** Verifica si existe un token válido (en memoria o almacenado). */
 export function isAuthenticated() {
   return !!accessToken || !!getStoredRefreshToken()
 }
 
-/** Attempt to restore the session by refreshing the access token. Deduplicates concurrent calls. */
+/** Intenta restaurar la sesión renovando el access token. Deduplica llamadas concurrentes. */
 export function restoreSession() {
   if (_pendingRestore) return _pendingRestore
   const refresh = getStoredRefreshToken()

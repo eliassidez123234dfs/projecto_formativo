@@ -1,3 +1,41 @@
+/**
+ * Página de personalización del editor 3D (Customizer).
+ *
+ * Panel de control principal del diseño de la camiseta. Proporciona
+ * las herramientas para modificar colores, logos, texturas y la
+ * iluminación de la escena 3D en tiempo real.
+ *
+ * Funcionalidades:
+ * - Selector de color (ColorPicker) con paleta predefinida.
+ * - Subida de imágenes (FilePicker) para logos y texturas completas.
+ * - Control de tamaño del logo (escala) con botones + / -.
+ * - Control deslizante de intensidad de luz.
+ * - Filtros para alternar entre logo y textura completa.
+ * - Botón de "Restaurar diseño original".
+ * - Subida a Cloudinary + guardado en Models3D (RF-027).
+ *
+ * La UI se compone de tres paneles animados con Framer Motion:
+ * - Panel izquierdo (slideAnimation "left"): pestañas del editor
+ *   (colorpicker, filepicker) que abren ColorPicker y FilePicker.
+ * - Panel derecho (fadeAnimation): controles de tamaño del logo y
+ *   deslizador de intensidad de luz (0-100).
+ * - Panel inferior (slideAnimation "up"): filtros (logoShirt/
+ *   stylishShirt), botón restaurar y botón de subida a Cloudinary.
+ *
+ * Comunicación con Valtio:
+ * - Todas las interacciones mutan directamente el proxy de estado:
+ *   state.color, state.logoScale, state.lightIntensity, etc.
+ * - El canvas 3D (Shirt.jsx) reacciona automáticamente mediante
+ *   useSnapshot para actualizar colores y texturas.
+ *
+ * RF-025: Interfaz del editor 3D interactivo.
+ * RF-026: Personalización completa del diseño (colores, logos, texto).
+ * RF-027: Los diseños pueden subirse a Cloudinary y compartirse como
+ *         plantillas comunitarias a través de Models3D.
+ *
+ * Patrón de diseño: Microservicio frontend — este componente es la
+ * UI de personalización, separada del canvas 3D y del store.
+ */
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSnapshot } from "valtio";
@@ -22,11 +60,9 @@ const Customizer = ({ onOrderCreated }) => {
   const [cloudinaryStatus, setCloudinaryStatus] = useState("");
   const [isUploadingToCloudinary, setIsUploadingToCloudinary] = useState(false);
 
-  // Función para cambiar tamaño
   const handleScale = (amount) => {
     state.logoScale = Math.max(0.05, Math.min(0.5, state.logoScale + amount));
   };
-
 
   const generateTabContent = () => {
     switch (activeEditorTab) {
@@ -73,7 +109,6 @@ const Customizer = ({ onOrderCreated }) => {
             </div>
           </motion.div>
 
-          {/* PANEL DERECHO: tamaño + luz (vertical, pegado al borde derecho) */}
           <motion.div className="absolute top-1/2 transform -translate-y-1/2 right-2 z-10 flex flex-col gap-4" {...fadeAnimation}>
             <div className="p-2 glassmorphism rounded-lg border-[2px] border-white flex flex-col items-center gap-3 w-14 h-40 justify-center">
               <p className="text-white text-[10px] font-black uppercase text-center">Tamaño</p>

@@ -1,8 +1,23 @@
+// ---------------------------------------------------------------
+// Auth.jsx  —  Página de login/registro con doble modo (RF-055)
+// APIs consumidas:
+//   POST /api/login/login/           — inicio de sesión (JWT)
+//   POST /api/auth/registro/         — registro de usuario
+// Hooks: useState, useEffect, useNavigate, useLocation
+// Estado global: authService (setTokens, getAccessToken)
+// Validaciones: email con regex, contraseña con fortaleza
+//               (mayúscula, minúscula, número, especial, >= 8)
+// Flujo login: validateLogin → POST login → setTokens → redirect
+// Flujo registro: validateRegister → POST registro → redirect a
+//                 /verificar-email-pendiente
+// ---------------------------------------------------------------
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { buildApiUrl } from '../services/api'
 import { getAccessToken, setTokens } from '../services/authService'
 
+// passwordStrength — evalúa seguridad de la contraseña (0-5)
+// Devuelve: score, label (Débil/Regular/Buena/Fuerte), color, pct
 function passwordStrength(pw) {
   let score = 0
   const checks = []
@@ -51,15 +66,23 @@ export const Auth = () => {
     return getError(errors, 'general') || getError(errors, 'non_field_errors') || getError(errors, 'detail') || getError(errors, 'error') || null
   }
 
+  // ---------------------------------------------------------------
+  // validateLogin — validación cliente del formulario de login
+  // Correo obligatorio con formato básico; contraseña obligatoria
+  // ---------------------------------------------------------------
   function validateLogin() {
     const errs = {}
-    if (!loginData.correo.trim()) errs.correo = 'El correo es obligatorio'
-    else if (!/\S+@\S+\.\S+/.test(loginData.correo)) errs.correo = 'Correo inválido'
+    if (!loginData.correo.trim()) errs.correo = 'El usuario o correo es obligatorio'
     if (!loginData.contrasena) errs.contrasena = 'La contraseña es obligatoria'
     setFieldErrors(errs)
     return Object.keys(errs).length === 0
   }
 
+  // ---------------------------------------------------------------
+  // validateRegister — validación cliente del formulario de registro
+  // Usuario >= 3 caracteres; correo con formato; contraseña con
+  // fortaleza (mayúscula, número, especial, >= 8); confirmación
+  // ---------------------------------------------------------------
   function validateRegister() {
     const errs = {}
     if (!registerData.usuario.trim()) errs.usuario = 'El usuario es obligatorio'
@@ -79,6 +102,11 @@ export const Auth = () => {
     return Object.keys(errs).length === 0
   }
 
+  // ---------------------------------------------------------------
+  // handleLoginSubmit — POST a login/login/ con credenciales
+  // Éxito: almacena tokens JWT vía setTokens y redirige según rol
+  // Error: muestra errores de campo o mensaje general (429, etc.)
+  // ---------------------------------------------------------------
   const handleLoginSubmit = async (e) => {
     e.preventDefault()
     if (!validateLogin()) return
@@ -95,12 +123,17 @@ export const Auth = () => {
       } else {
         setTokens(data.access, data.refresh, data.usuario)
         const usr = data.usuario || {}
-        navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
+        navigate('/dashboard')
       }
     } catch { setErrors({ general: 'Error al conectar con el servidor' }) }
     finally { setLoading(false) }
   }
 
+  // ---------------------------------------------------------------
+  // handleRegisterSubmit — POST a auth/registro/ con datos
+  // Éxito: muestra mensaje y redirige a verificar-email-pendiente
+  // Error: muestra errores de campo o mensaje general
+  // ---------------------------------------------------------------
   const handleRegisterSubmit = async (e) => {
     e.preventDefault()
     if (!validateRegister()) return
@@ -191,10 +224,10 @@ export const Auth = () => {
             {isLogin ? (
               <form onSubmit={handleLoginSubmit}>
                 <div style={{ marginBottom: 18 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: k, marginBottom: 6 }}>Correo electrónico</label>
-                  <input type="email" name="correo" value={loginData.correo}
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: k, marginBottom: 6 }}>Usuario o correo</label>
+                  <input type="text" name="correo" value={loginData.correo}
                     onChange={e => { setLoginData(p => ({ ...p, correo: e.target.value })); setFieldErrors(f => ({...f, correo: undefined})) }}
-                    placeholder="tu@email.com" required
+                    placeholder="usuario o correo" required
                     style={{
                       width: '100%', padding: '12px 14px', borderRadius: 8,
                       border: fieldErrors.correo ? '1px solid #dc2626' : '1px solid #d4d4d4',

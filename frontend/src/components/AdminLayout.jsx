@@ -1,6 +1,17 @@
+/**
+ * AdminLayout — Layout alternativo para el panel de administración.
+ * Renderiza una barra lateral con enlaces a todas las secciones admin
+ * (resumen, usuarios, productos, pedidos, carritos, contacto, auditoría)
+ * y un área de contenido principal. Usa estilos de admin.css.
+ */
 import { Link, useLocation } from 'react-router-dom';
 import '../pages/admin.css';
 
+/**
+ * Determina si la ruta actual coincide con el path dado (activo).
+ * @param {string} path
+ * @returns {boolean}
+ */
 export default function AdminLayout({ children }) {
   const location = useLocation();
   const isActive = (path) => (

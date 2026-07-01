@@ -1,8 +1,21 @@
+// ---------------------------------------------------------------
+// OrderConfirmation.jsx  —  Confirmación de orden post-pago
+// APIs consumidas:
+//   fetchPaymentStatus(ref)   GET /api/pagos/estado/?reference=...
+//   generateInvoice(orderId)  POST /api/pedidos/:id/generar_factura/
+//   fetchOrderInvoice(orderId) GET /api/pedidos/:id/facturas/
+// Hooks: useState, useEffect, useCallback, useSearchParams
+// Validaciones: referencia de pago desde query param ?reference=
+// Flujo al montar: 1) consulta estado del pago
+//                  2) si pagado → carga factura existente
+//                  3) usuario puede generar factura si no existe
+// Estados: loading, error (rechazado/cancelado/pendiente), success
+//          con detalle de productos, envío y factura
+// ---------------------------------------------------------------
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { fetchPaymentStatus, generateInvoice, fetchOrderInvoice } from '../services/api'
-import { Header } from '../components/Header'
 import './checkout.css'
 
 export default function OrderConfirmation() {
@@ -14,6 +27,11 @@ export default function OrderConfirmation() {
   const [invoice, setInvoice] = useState(null)
   const [generatingInvoice, setGeneratingInvoice] = useState(false)
 
+  // ---------------------------------------------------------------
+  // loadStatus — consulta estado del pago vía reference de URL
+  // Si cancelado/rechazado muestra error con motivo de rechazo;
+  // si no pagado aún muestra mensaje de pendiente
+  // ---------------------------------------------------------------
   const loadStatus = useCallback(async () => {
     if (!reference) {
       setError('No se encontró referencia de pago.')
@@ -38,6 +56,10 @@ export default function OrderConfirmation() {
     }
   }, [reference])
 
+  // ---------------------------------------------------------------
+  // loadInvoice — busca factura existente para la orden
+  // Si ya fue generada previamente, la muestra directamente
+  // ---------------------------------------------------------------
   const loadInvoice = useCallback(async (orderId) => {
     try {
       const result = await fetchOrderInvoice(orderId)
@@ -51,6 +73,10 @@ export default function OrderConfirmation() {
     if (data?.id) loadInvoice(data.id)
   }, [data, loadInvoice])
 
+  // ---------------------------------------------------------------
+  // handleGenerateInvoice — POST para generar factura si no existe
+  // Muestra toast de éxito/error con react-hot-toast
+  // ---------------------------------------------------------------
   const handleGenerateInvoice = async () => {
     if (!data?.id) return
     setGeneratingInvoice(true)
@@ -75,7 +101,7 @@ export default function OrderConfirmation() {
   if (loading) {
     return (
       <>
-        <Header cartCount={0} />
+        
         <div className="checkout-page">
           <div className="checkout-loading">Verificando estado del pago...</div>
         </div>
@@ -86,7 +112,7 @@ export default function OrderConfirmation() {
   if (!reference) {
     return (
       <>
-        <Header cartCount={0} />
+        
         <div className="checkout-page">
           <div className="checkout-empty">
             <h2>Referencia no encontrada</h2>
@@ -101,7 +127,7 @@ export default function OrderConfirmation() {
   if (error && (!data || data.status !== 'pagado')) {
     return (
       <>
-        <Header cartCount={0} />
+        
         <div className="confirmation-page">
           <div className="confirmation-card confirmation-error">
             <div className="confirmation-icon" style={{ background: 'var(--color-error)' }}>
@@ -127,7 +153,7 @@ export default function OrderConfirmation() {
   if (!data) {
     return (
       <>
-        <Header cartCount={0} />
+        
         <div className="checkout-page">
           <div className="checkout-empty">
             <h2>Sin información</h2>
@@ -143,7 +169,7 @@ export default function OrderConfirmation() {
 
   return (
     <>
-      <Header cartCount={0} />
+      
       <div className="confirmation-page">
         <div className="confirmation-card">
           <div className="confirmation-icon">

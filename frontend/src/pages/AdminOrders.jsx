@@ -1,9 +1,15 @@
+/**
+ * AdminOrders — Lista de pedidos para administración (RF-036).
+ * Muestra pedidos paginados con indicador de estado, nombre del cliente,
+ * total y fecha. Solo accesible por usuarios con rol Administrador.
+ */
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { fetchAdminOrders } from '../services/api'
 import MainLayout from '../components/MainLayout'
 import { getCurrentUser } from '../services/authService'
 
+/** Estilos predefinidos para cada estado del pedido. */
 const STATUS_STYLES = {
   pendiente: { bg: '#fef3c7', color: '#92400e', label: 'Pendiente' },
   pagado: { bg: '#dbeafe', color: '#1e40af', label: 'Pagado' },
@@ -24,7 +30,10 @@ function StatusBadge({ status }) {
   )
 }
 
-// Admin orders list with status badges, pagination, and detail links
+/**
+ * Componente principal de listado de pedidos con paginación y enlaces al detalle.
+ * Redirige al login si el usuario no es administrador.
+ */
 export default function AdminOrders() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState({ results: [], count: 0 })

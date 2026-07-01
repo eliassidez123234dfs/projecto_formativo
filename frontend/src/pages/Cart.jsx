@@ -1,10 +1,20 @@
+// ---------------------------------------------------------------
+// Cart.jsx  —  Carrito de compras (RF-054)
+// APIs consumidas: CartContext (get/update/remove/clear via apiService)
+// Hooks: useCart (cart, loading, toast, updateQuantity, removeItem,
+//        clearCartItems, dismissToast), useNavigate, Link
+// Estado global: CartContext
+// Flujo: muestra items en lista con controles +/-; botón eliminar;
+//        resumen de totales; navegación a catálogo o checkout;
+//        modal Toast para feedback de operaciones
+// ---------------------------------------------------------------
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
-import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 
+// Toast — modal de confirmación superpuesto con overlay semitransparente
 const Toast = ({ toast, onDismiss }) => {
   if (!toast) return null;
   return (
@@ -52,10 +62,10 @@ const Toast = ({ toast, onDismiss }) => {
 export const Cart = () => {
   const { cart, loading, toast, updateQuantity, removeItem, clearCartItems, dismissToast } = useCart();
 
+  // Estado: carga inicial del carrito (skeleton)
   if (loading) {
     return (
       <>
-        <Header cartCount={0} />
         <div className="container" style={{ paddingTop: '2rem' }}>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>Carrito de Compras</h1>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -86,7 +96,6 @@ export const Cart = () => {
     return (
       <>
         <Toast toast={toast} onDismiss={dismissToast} />
-        <Header cartCount={0} />
         <div className="container" style={{ paddingTop: '2rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>Carrito de Compras</h1>
           <div style={{ padding: '60px 20px' }}>
@@ -106,8 +115,8 @@ export const Cart = () => {
   return (
     <>
       <Toast toast={toast} onDismiss={dismissToast} />
-      <Header cartCount={totalItems} />
       <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
+        <Link to="/catalog" style={{ color: 'var(--color-text-muted)', fontSize: 13, textDecoration: 'none', marginBottom: 16, display: 'inline-block' }}>← Seguir Comprando</Link>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Carrito de Compras</h1>
         <p style={{ color: 'var(--color-text-muted)', marginBottom: 24, fontSize: 14 }}>
           {totalItems} producto{totalItems !== 1 ? 's' : ''} en tu carrito

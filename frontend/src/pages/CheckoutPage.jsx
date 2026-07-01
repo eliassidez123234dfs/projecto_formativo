@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchCheckoutSummary, initCheckout, createPayment } from '../services/api'
-import { Header } from '../components/Header'
 import { DEFAULT_IMAGE } from '../constants'
 import './checkout.css'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DOMAIN_REGEX = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/
 
+// ---------------------------------------------------------------
+// validateForm — validación cliente del formulario de envío
+// Reglas: nombre >= 3 caracteres; email con dominio válido;
+//         teléfono solo dígitos >= 7; dirección >= 5 caracteres;
+//         ciudad y código postal obligatorios
+// ---------------------------------------------------------------
 function validateForm(data) {
   const errors = {}
 
@@ -53,7 +58,18 @@ function validateForm(data) {
   return errors
 }
 
-// Checkout page with shipping form, cart summary, and Wompi payment integration
+// ---------------------------------------------------------------
+// CheckoutPage.jsx  —  Página de pago con formulario de envío (RF-055)
+// APIs consumidas:
+//   fetchCheckoutSummary()  GET /api/pedidos/checkout_summary/
+//   initCheckout(form)      POST /api/pedidos/iniciar/
+//   createPayment(orderId)  POST /api/pagos/crear/
+// Hooks: useState, useEffect, useCallback, useNavigate
+// Validaciones: formulario de envío (nombre, email, teléfono,
+//               dirección, ciudad, código postal) con regex
+// Flujo: 1) carga resumen del carrito 2) usuario completa datos
+//        3) initCheckout → createPayment → redirección a Wompi
+// ---------------------------------------------------------------
 export default function CheckoutPage() {
   const [summary, setSummary] = useState({ items: [], total_items: 0, total_amount: '0.00' })
   const [loading, setLoading] = useState(true)
@@ -94,6 +110,11 @@ export default function CheckoutPage() {
     }
   }
 
+  // ---------------------------------------------------------------
+  // handleSubmit — valida formulario, inicia pedido y redirige a Wompi
+  // Flujo: validateForm → initCheckout → createPayment → redirect
+  // Maneja errores de campo del backend y errores generales
+  // ---------------------------------------------------------------
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -149,7 +170,6 @@ export default function CheckoutPage() {
   if (loading) {
     return (
       <>
-        <Header cartCount={0} />
         <div className="checkout-page">
           <div className="checkout-loading">Cargando checkout...</div>
         </div>
@@ -160,7 +180,6 @@ export default function CheckoutPage() {
   if (summary.total_items === 0 && !loading) {
     return (
       <>
-        <Header cartCount={0} />
         <div className="checkout-page">
           <div className="checkout-empty">
             <h2>Tu carrito está vacío</h2>
@@ -174,7 +193,6 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <Header cartCount={summary.total_items} />
       <div className="checkout-page">
         <div className="checkout-header">
           <h1>Checkout</h1>

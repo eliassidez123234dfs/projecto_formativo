@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
+from django.conf import settings
 from datetime import timedelta
 from decimal import Decimal
 import random
@@ -43,6 +44,17 @@ class Command(BaseCommand):
             if was_created:
                 created += 1
         self.stdout.write(f'  Usuarios creados: {created}')
+        self.stdout.write('')
+        self.stdout.write(self.style.WARNING('═' * 50))
+        self.stdout.write(self.style.WARNING('  CUENTAS DISPONIBLES:'))
+        self.stdout.write(self.style.WARNING('═' * 50))
+        for data in users_data:
+            self.stdout.write(f'  Usuario:    {data["usuario"]}')
+            self.stdout.write(f'  Correo:     {data["correo"]}')
+            self.stdout.write(f'  Contraseña: {data["contrasena"]}')
+            self.stdout.write(f'  Rol:        {data["rol"]}')
+            self.stdout.write('')
+        self.stdout.write(self.style.WARNING('═' * 50))
 
     def _create_categories(self):
         from apps.catalog.models import Category
@@ -62,9 +74,15 @@ class Command(BaseCommand):
                 created += 1
         self.stdout.write(f'  Categorías creadas: {created}')
 
+    def _get_cdn(self):
+        cloud_name = getattr(settings, 'CLOUDINARY_STORAGE', {}).get('CLOUD_NAME', '')
+        if cloud_name:
+            return f'https://res.cloudinary.com/{cloud_name}/image/upload/v1/tshirtify'
+        return 'https://res.cloudinary.com/dpu8xwbbh/image/upload/v1/tshirtify'
+
     def _create_products(self):
         from apps.products.models import Product, ProductImage, Variant
-        cdn = 'https://res.cloudinary.com/dpu8xwbbh/image/upload/v1/tshirtify'
+        cdn = self._get_cdn()
         products_data = [
             {
                 'name': 'Camiseta Clásica Roja',
@@ -202,8 +220,8 @@ class Command(BaseCommand):
         self.stdout.write(f'  Pedidos creados: {created}')
 
     def _create_models3d(self):
-        from apps.models3d.models import Model3D, Model3DImage
-        cdn = 'https://res.cloudinary.com/dpu8xwbbh/image/upload/v1/tshirtify'
+        from apps.models3d.models import Modelo3D
+        cdn = self._get_cdn()
         models_data = [
             {
                 'name': 'Camiseta Base 3D',

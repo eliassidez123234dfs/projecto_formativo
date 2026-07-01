@@ -1,3 +1,30 @@
+/**
+ * Componente de canvas 3D principal.
+ *
+ * Configura la escena de Three.js usando @react-three/fiber y
+ * @react-three/drei.
+ *
+ * @react-three/fiber (R3F) es un renderer declarativo para React que
+ * convierte componentes JSX en código Three.js. Cada elemento JSX dentro
+ * de <Canvas> (como <ambientLight>, <mesh>, <group>) se traduce a su
+ * equivalente en Three.js (THREE.AmbientLight, THREE.Mesh, THREE.Group).
+ *
+ * @react-three/drei proporciona utilidades de alto nivel como Center
+ * (centra automáticamente el modelo), Decal (proyecta texturas sobre
+ * superficies 3D), AccumulativeShadows (sombras suaves), etc.
+ *
+ * - Cámara: posición inicial [0, 0, 0] con FOV 25°.
+ * - Luces: ambiental + direccional con sombras (shadow-mapSize 1024x1024).
+ * - Fondo: blanco sólido, excepto durante captura (alpha=true para PNG
+ *   transparente si `captureTransparent` está activo).
+ * - `preserveDrawingBuffer: true` permite capturar el canvas como imagen
+ *   mediante `canvas.toDataURL("image/png")`.
+ *
+ * El componente se suscribe al store de Valtio mediante `useSnapshot`
+ * para reaccionar a cambios de intensidad de luz y modo de captura.
+ *
+ * RF-025: Renderiza la escena 3D interactiva del editor de camisetas.
+ */
 import { Canvas } from "@react-three/fiber";
 import { Center } from "@react-three/drei";
 import { useSnapshot } from "valtio";

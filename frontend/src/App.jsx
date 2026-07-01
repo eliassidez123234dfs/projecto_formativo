@@ -8,8 +8,10 @@ import './styles/theme.css';
 import './styles/globals.css';
 import './styles/responsive.css';
 
-// All page components are lazy-loaded for code splitting
 import { lazy, Suspense } from 'react';
+import ProtectedRoute, { ROLES } from './components/ProtectedRoute';
+import { PublicLayout } from './components/PublicLayout';
+import MainLayout from './components/MainLayout';
 
 const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
@@ -33,6 +35,10 @@ const AdminOrders = lazy(() => import('./pages/AdminOrders'));
 const AdminOrderDetail = lazy(() => import('./pages/AdminOrderDetail'));
 const AdminContact = lazy(() => import('./pages/AdminContact'));
 const AdminAudit = lazy(() => import('./pages/AdminAudit'));
+const AdminCategories = lazy(() => import('./pages/AdminCategories').then(m => ({ default: m.AdminCategories })));
+const AdminImages = lazy(() => import('./pages/AdminImages').then(m => ({ default: m.AdminImages })));
+const AdminDesigns = lazy(() => import('./pages/AdminDesigns').then(m => ({ default: m.AdminDesigns })));
+const UserDesigns = lazy(() => import('./pages/UserDesigns').then(m => ({ default: m.UserDesigns })));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const OrderConfirmation = lazy(() => import('./pages/OrderConfirmation'));
@@ -49,7 +55,6 @@ function LoadingFallback() {
   );
 }
 
-// Root component: providers > router > error boundary > lazy routes
 function App() {
   return (
     <ThemeProvider>
@@ -59,43 +64,52 @@ function App() {
             <Toaster position="top-right" toastOptions={{ duration: 4000, style: { fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
-                {/* Public */}
-                <Route path="/" element={<Landing />} />
-                <Route path="/catalog" element={<Catalog />} />
-                <Route path="/category/:id" element={<Category />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
-                <Route path="/product/:id/3d" element={<Product3D />} />
-                {/* Auth */}
-                <Route path="/login" element={<AuthPage defaultMode="login" />} />
-                <Route path="/register" element={<AuthPage defaultMode="register" />} />
-                {/* User */}
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/perfil" element={<UserProfile />} />
-                {/* Email verification */}
-                <Route path="/email" element={<VerificarEmail />} />
-                <Route path="/verificar-email" element={<VerificarEmail />} />
-                <Route path="/verificar-email-pendiente" element={<VerificacionPendiente />} />
-                {/* Password recovery */}
-                <Route path="/password" element={<RecuperarPassword />} />
-                <Route path="/nueva-password" element={<NuevaPassword />} />
-                {/* Admin */}
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin-products" element={<AdminProducts />} />
-                <Route path="/admin-products/detail/:id" element={<AdminProductDetail />} />
-                <Route path="/admin-users" element={<AdminUsers />} />
-                <Route path="/admin-orders" element={<AdminOrders />} />
-                <Route path="/admin-orders/:id" element={<AdminOrderDetail />} />
-                <Route path="/admin-cart" element={<AdminCart />} />
-                <Route path="/admin-cart/:id" element={<AdminCartDetail />} />
-                <Route path="/admin-contact" element={<AdminContact />} />
-                <Route path="/admin-audit" element={<AdminAudit />} />
-                {/* Checkout */}
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/checkout/resultado" element={<OrderConfirmation />} />
-                {/* Dev / redirect */}
-                <Route path="/catalogo" element={<Catalog />} />
-                <Route path="/ui" element={<UIShowcase />} />
+
+                {/* ─── PÚBLICAS (Horizontal Header + Breadcrumbs) ─── */}
+                <Route path="/" element={<PublicLayout floating><Landing /></PublicLayout>} />
+                <Route path="/catalog" element={<PublicLayout><Catalog /></PublicLayout>} />
+                <Route path="/category/:id" element={<PublicLayout><Category /></PublicLayout>} />
+                <Route path="/cart" element={<PublicLayout><Cart /></PublicLayout>} />
+                <Route path="/product/:id" element={<PublicLayout><ProductDetail /></PublicLayout>} />
+                <Route path="/product/:id/3d" element={<PublicLayout><Product3D /></PublicLayout>} />
+                <Route path="/catalogo" element={<PublicLayout><Catalog /></PublicLayout>} />
+                <Route path="/ui" element={<PublicLayout><UIShowcase /></PublicLayout>} />
+
+                {/* ─── AUTENTICACIÓN (Horizontal Header) ─── */}
+                <Route path="/login" element={<PublicLayout><AuthPage key="login" defaultMode="login" /></PublicLayout>} />
+                <Route path="/register" element={<PublicLayout><AuthPage key="register" defaultMode="register" /></PublicLayout>} />
+
+                {/* ─── VERIFICACIÓN / PASSWORD (Horizontal Header) ─── */}
+                <Route path="/email" element={<PublicLayout><VerificarEmail /></PublicLayout>} />
+                <Route path="/verificar-email" element={<PublicLayout><VerificarEmail /></PublicLayout>} />
+                <Route path="/verificar-email-pendiente" element={<PublicLayout><VerificacionPendiente /></PublicLayout>} />
+                <Route path="/password" element={<PublicLayout><RecuperarPassword /></PublicLayout>} />
+                <Route path="/nueva-password" element={<PublicLayout><NuevaPassword /></PublicLayout>} />
+
+                {/* ─── USUARIO AUTENTICADO (Sidebar layout) ─── */}
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/perfil" element={<ProtectedRoute><MainLayout title="Mi Perfil"><UserProfile /></MainLayout></ProtectedRoute>} />
+                <Route path="/mis-disenos" element={<ProtectedRoute><MainLayout title="Mis Diseños 3D"><UserDesigns /></MainLayout></ProtectedRoute>} />
+
+                {/* ─── ADMIN (Sidebar layout, admin-only) ─── */}
+                <Route path="/admin" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin-products" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminProducts /></ProtectedRoute>} />
+                <Route path="/admin-products/detail/:id" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminProductDetail /></ProtectedRoute>} />
+                <Route path="/admin-users" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminUsers /></ProtectedRoute>} />
+                <Route path="/admin-categories" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminCategories /></ProtectedRoute>} />
+                <Route path="/admin-images" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminImages /></ProtectedRoute>} />
+                <Route path="/admin-designs" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminDesigns /></ProtectedRoute>} />
+                <Route path="/admin-orders" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminOrders /></ProtectedRoute>} />
+                <Route path="/admin-orders/:id" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminOrderDetail /></ProtectedRoute>} />
+                <Route path="/admin-cart" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminCart /></ProtectedRoute>} />
+                <Route path="/admin-cart/:id" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminCartDetail /></ProtectedRoute>} />
+                <Route path="/admin-contact" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminContact /></ProtectedRoute>} />
+                <Route path="/admin-audit" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminAudit /></ProtectedRoute>} />
+
+                {/* ─── CHECKOUT (requiere autenticación) ─── */}
+                <Route path="/checkout" element={<ProtectedRoute><PublicLayout><CheckoutPage /></PublicLayout></ProtectedRoute>} />
+                <Route path="/checkout/resultado" element={<ProtectedRoute><PublicLayout><OrderConfirmation /></PublicLayout></ProtectedRoute>} />
+
               </Routes>
             </Suspense>
           </ErrorBoundary>

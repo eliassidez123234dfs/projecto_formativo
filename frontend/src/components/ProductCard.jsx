@@ -1,10 +1,28 @@
+/**
+ * ProductCard — Tarjeta visual de producto en el catálogo.
+ * Muestra imagen, nombre, precio, indicador de stock y botones de acción
+ * (ver detalle, vista 3D, agregar al carrito). Al hacer clic en "Agregar"
+ * abre un modal con selección de talla, color y cantidad.
+ */
 import { useState, useEffect, useRef } from 'react';
 import { DEFAULT_IMAGE } from '../constants';
+import { getCurrentUser } from '../services/authService';
+import toast from 'react-hot-toast';
+
+const COLOR_HEX_MAP = {
+  rojo: '#DC2626', azul: '#2563EB', negro: '#111827', blanco: '#F9FAFB',
+  gris: '#6B7280', verde: '#16A34A', amarillo: '#EAB308', naranja: '#EA580C',
+  rosa: '#EC4899', morado: '#7C3AED', marrón: '#92400E', beige: '#D6BCA8',
+  plateado: '#9CA3AF', dorado: '#D4A843',
+}
 import { fetchProductDetail } from '../services/api';
 import { useCart } from '../context/CartContext';
 
+/**
+ * @param {{ product: Object, onView: (id: number) => void }}
+ */
 export const ProductCard = ({ product, onView }) => {
-  const { addItem, showToast } = useCart();
+  const { addItem } = useCart();
   const [showModal, setShowModal] = useState(false);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -12,6 +30,9 @@ export const ProductCard = ({ product, onView }) => {
   const [variants, setVariants] = useState([]);
   const [loadingVariant, setLoadingVariant] = useState(false);
   const modalRef = useRef(null);
+
+  const usuario = getCurrentUser();
+  const isAdmin = usuario?.rol === 'Administrador' || usuario?.is_superuser;
 
   const imgSrc = product.image || DEFAULT_IMAGE;
   const stock = product.stock_total ?? null;
@@ -85,11 +106,11 @@ export const ProductCard = ({ product, onView }) => {
     if (!selectedSize || !selectedColor || !matchedVariant) return;
     try {
       await addItem(product.id, matchedVariant.id, quantity);
-      showToast('Producto agregado al carrito');
+      toast.success('Producto agregado al carrito');
       closeModal();
     } catch (error) {
       const msg = error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
   }
 
@@ -97,13 +118,39 @@ export const ProductCard = ({ product, onView }) => {
     <div className="pc-wrap">
       <div className="pc-img-box">
         {product.badge && <span className="pc-badge">{product.badge}</span>}
-        {badge && <span className={`pc-stock-badge ${badge.cls}`}>{badge.label}</span>}
+        {badge && isAdmin && <span className={`pc-stock-badge ${badge.cls}`}>{badge.label}</span>}
         <img src={imgSrc} alt={product.name} onError={(e) => { e.target.src = DEFAULT_IMAGE }} className="pc-img" />
         <div className="pc-img-shine" />
       </div>
       <div className="pc-body">
         <p className="pc-name">{product.name}</p>
         <p className="pc-price">${product.price.toFixed(2)}</p>
+        {product.average_rating != null && (
+          <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {[1,2,3,4,5].map(s => (
+              <svg key={s} width="12" height="12" viewBox="0 0 24 24"
+                fill={s <= Math.round(product.average_rating) ? '#F59E0B' : 'none'}
+                stroke="#F59E0B" strokeWidth="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            ))}
+            {product.total_reviews > 0 && (
+              <span style={{ fontSize: '0.7rem', color: '#9CA3AF', marginLeft: 2 }}>({product.total_reviews})</span>
+            )}
+          </div>
+        )}
+        {product.available_colors && product.available_colors.length > 0 && (
+          <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
+            {product.available_colors.slice(0, 6).map(c => (
+              <span key={c} style={{
+                width: 16, height: 16, borderRadius: '50%',
+                display: 'inline-block',
+                background: COLOR_HEX_MAP[c.toLowerCase()] || '#ccc',
+                border: '2px solid #E5E7EB',
+              }} title={c} />
+            ))}
+          </div>
+        )}
         <div className="pc-actions">
           <button className="pc-act pc-act--view" onClick={() => onView(product.id)}>
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -180,7 +227,7 @@ export const ProductCard = ({ product, onView }) => {
                     </div>
 
                     {matchedVariant && (
-                      <p className="pc-modal-stock">Stock disponible: {matchedVariant.stock}</p>
+                      isAdmin && <p className="pc-modal-stock">Stock disponible: {matchedVariant.stock}</p>
                     )}
 
                     <button

@@ -4,7 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="RED - Plataforma de personalización de camisetas con edición 3D" />
     <title>RED</title>
+    <script>
+      (function() {
+        var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (conn) {
+          var isSlow = conn.saveData || ['slow-2g','2g','3g'].includes(conn.effectiveType) || (conn.downlink < 1);
+          document.documentElement.setAttribute('data-connection', isSlow ? 'slow' : 'fast');
+          conn.addEventListener('change', function() {
+            var slow = conn.saveData || ['slow-2g','2g','3g'].includes(conn.effectiveType) || (conn.downlink < 1);
+            document.documentElement.setAttribute('data-connection', slow ? 'slow' : 'fast');
+          });
+        } else {
+          document.documentElement.setAttribute('data-connection', 'fast');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,10 +1,20 @@
+/**
+ * AdminAudit — Logs de auditoría del sistema.
+ * Muestra en una tabla paginada y de solo lectura todas las acciones
+ * realizadas por administradores sobre usuarios: quién hizo qué,
+ * a quién afectó, cuándo y desde qué dirección IP.
+ */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchAuditLogs } from '../services/api'
 import MainLayout from '../components/MainLayout'
 import { getCurrentUser } from '../services/authService'
 
-// Admin audit log — read-only table of admin actions on users
+/**
+ * Componente principal de la página de auditoría.
+ * Valida autenticación y rol de administrador, carga los registros
+ * paginados y los presenta en una tabla de solo lectura.
+ */
 export default function AdminAudit() {
   const navigate = useNavigate()
   const [logs, setLogs] = useState([])

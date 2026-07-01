@@ -1,10 +1,38 @@
+/**
+ * api.js  —  Cliente HTTP centralizado
+ * ─────────────────────────────────────────────────────────────────────────
+ * Define tres clientes Axios con diferentes estrategias de autenticación
+ * y exporta todas las funciones de llamada a la API REST del backend.
+ *
+ * ─── CLIENTES ───
+ * 1. api         →  Autenticado con JWT (access token en memoria +
+ *                   refresh automático en 401). Usa withCredentials.
+ * 2. publicApi   →  Sin autenticación. Para catálogo, productos y
+ *                   contenido público.
+ * 3. sessionApi  →  Basado en cookies de sesión. Para operaciones de
+ *                   carrito anónimo y checkout.
+ *
+ * ─── INTERCEPTOR DE RESPUESTA (api) ───
+ * Cuando el backend responde 401, el interceptor:
+ * 1. Verifica si ya hay un refresh en curso (cola de espera).
+ * 2. Si no, intenta renovar el token con /token/refresh/.
+ * 3. Si el refresh falla → redirige a /login.
+ * 4. Si el refresh funciona → reintenta la petición original y
+ *    resuelve todas las peticiones encoladas.
+ *
+ * Este patrón evita que múltiples peticiones fallen simultáneamente
+ * por expiración del token y previene llamadas de refresh duplicadas.
+ */
 import axios from 'axios';
 import { getAccessToken, clearAuth, getStoredRefreshToken, setTokens, getCurrentUser } from './authService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/';
 export const buildApiUrl = (endpoint) => `${API_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
 
-// Token refresh queue — prevents multiple simultaneous refresh calls
+// ─── COLA DE REFRESH ───
+// Impide múltiples llamadas simultáneas a /token/refresh/.
+// isRefreshing actúa como semáforo; failedQueue almacena las
+// promesas pendientes hasta que se obtenga el nuevo token.
 let isRefreshing = false;
 let failedQueue = [];
 let refreshSubscribers = [];
@@ -33,25 +61,38 @@ function redirectLogin() {
   }
 }
 
-// Authenticated API client — auto-attaches JWT and handles 401 refresh
+/**
+ * Cliente autenticado con JWT.
+ * Incluye automáticamente el access token en cada petición
+ * y maneja la renovación silenciosa del token cuando expira.
+ */
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
-// Public client — no auth headers (catalog, products)
+/**
+ * Cliente público (sin autenticación).
+ * Se usa para consultas que no requieren sesión:
+ * catálogo, detalle de productos, reseñas públicas.
+ */
 const publicApi = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: false,
 });
 
-// Session client — uses cookies for anonymous cart operations
+/**
+ * Cliente de sesión (cookies).
+ * Se usa para operaciones de carrito anónimo y checkout,
+ * donde la identificación se mantiene mediante cookies de sesión
+ * en lugar de tokens JWT.
+ */
 const sessionApi = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
-// Attach JWT access token to every authenticated request
+// Adjunta el JWT access token a cada petición saliente del cliente api
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
@@ -60,13 +101,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Intercept 401 responses and attempt silent token refresh before retrying
+/**
+ * Interceptor de respuesta para el cliente api.
+ * Atrapa errores 401 e intenta renovar el token automáticamente
+ * antes de reintentar la petición original.
+ */
 api.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // If a refresh is already in-flight, queue this request
+      // Si ya hay un refresh en curso, encola esta petición
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -107,7 +152,7 @@ api.interceptors.response.use(
 );
 
 // ─────────── AUTH ───────────
-/** Fetch the currently authenticated user's profile. Returns null on failure. */
+/** Obtiene el perfil del usuario autenticado. Retorna null si falla. */
 export const fetchCurrentUser = async () => {
   try {
     const response = await api.get('usuarios/perfil/');
@@ -118,42 +163,43 @@ export const fetchCurrentUser = async () => {
 };
 
 // ─────────── CATALOG ───────────
-/** Fetch paginated catalog products with optional filter params. */
+/** Obtiene el catálogo paginado de productos con filtros opcionales. */
 export const fetchCatalog = async (params = {}) => {
   const response = await publicApi.get('catalog/', { params });
   return response.data;
 };
 
-/** Fetch available catalog filter options (categories, price ranges). */
+/** Obtiene las opciones de filtro del catálogo (categorías, rangos de precio). */
 export const fetchCatalogFilters = async () => {
   const response = await api.get('catalog/filters/');
   return response.data;
 };
 
-/** Fetch featured/promoted products for the landing page. */
+/** Obtiene productos destacados/promocionados para la página de inicio. */
 export const fetchFeaturedProducts = async () => {
   const response = await api.get('catalog/featured/');
   return response.data;
 };
 
-/** Fetch products belonging to a specific category. */
+/** Obtiene productos que pertenecen a una categoría específica. */
 export const fetchCategoryProducts = async (categoryId, params = {}) => {
   return fetchCatalog({ ...params, category: categoryId });
 };
 
 // ─────────── PRODUCTS ───────────
-/** Fetch full product detail including variants and images. */
+/** Obtiene el detalle completo del producto, incluyendo variantes e imágenes. */
 export const fetchProductDetail = async (productId) => {
   const response = await publicApi.get(`products/${productId}/`);
   return response.data;
 };
 
 // ─────────── CART (JWT si autenticado, sesión si anónimo) ───────────
+/** Selecciona el cliente HTTP según el estado de autenticación. */
 function cartClient() {
   return getAccessToken() ? api : sessionApi;
 }
 
-/** Fetch the current user's or anonymous session's cart. */
+/** Obtiene el carrito del usuario autenticado o de la sesión anónima. */
 export const fetchCart = async () => {
   try {
     const response = await cartClient().get('cart/');
@@ -166,7 +212,7 @@ export const fetchCart = async () => {
   }
 };
 
-/** Add a product variant to the cart. */
+/** Agrega una variante de producto al carrito. */
 export const addToCart = async (productId, variantId, quantity = 1) => {
   const response = await cartClient().post('cart/add/', {
     product_id: productId,
@@ -176,178 +222,256 @@ export const addToCart = async (productId, variantId, quantity = 1) => {
   return response.data;
 };
 
-/** Update the quantity of an item in the cart. */
+/** Actualiza la cantidad de un ítem en el carrito. */
 export const updateCartItemQuantity = async (itemId, quantity) => {
   const response = await cartClient().patch(`cart/items/${itemId}/quantity/`, { quantity });
   return response.data;
 };
 
-/** Remove a specific item from the cart. */
+/** Elimina un ítem específico del carrito. */
 export const removeCartItem = async (itemId) => {
   await cartClient().delete(`cart/items/${itemId}/remove/`);
 };
 
-/** Clear all items from the cart. */
+/** Vacía el carrito por completo. */
 export const clearCart = async () => {
   await cartClient().delete('cart/clear/');
 };
 
 // ─────────── ADMIN ───────────
-/** Fetch admin dashboard aggregate stats. */
+/** Obtiene estadísticas agregadas para el panel de administración. */
 export const fetchAdminStats = async () => {
   const response = await api.get('admin/stats/');
   return response.data;
 };
 
-/** Fetch paginated list of all carts (admin). */
+/** Obtiene la lista paginada de todos los carritos (admin). */
 export const fetchAdminCarts = async (page = 1, pageSize = 20) => {
   const response = await api.get('admin/carts/', { params: { page, page_size: pageSize } });
   return response.data;
 };
 
-/** Fetch detailed cart info by ID (admin). */
+/** Obtiene el detalle de un carrito por su ID (admin). */
 export const fetchAdminCartDetail = async (id) => {
   const response = await api.get(`admin/carts/${id}/`);
   return response.data;
 };
 
-/** Update a cart's status (admin). */
+/** Actualiza el estado de un carrito (admin). */
 export const updateCartStatus = async (cartId, status) => {
   const response = await api.patch(`admin/carts/${cartId}/status/`, { status });
   return response.data;
 };
 
-/** Fetch paginated user list (admin). */
+/** Obtiene la lista paginada de usuarios (admin). */
 export const fetchAdminUsers = async (params = {}) => {
   const response = await api.get('admin/usuarios/', { params });
   return response.data;
 };
 
-/** Create a new user from the admin panel. */
+/** Crea un nuevo usuario desde el panel de administración. */
 export const createAdminUser = async (data) => {
   const response = await api.post('admin/usuarios/', data);
   return response.data;
 };
 
-/** Update user details from the admin panel. */
+/** Actualiza los datos de un usuario desde el panel de administración. */
 export const updateAdminUser = async (id, data) => {
   const response = await api.patch(`admin/usuarios/${id}/`, data);
   return response.data;
 };
 
-/** Perform an admin action on a user (block, activate, etc.). */
+/** Ejecuta una acción administrativa sobre un usuario (bloquear, activar, etc.). */
 export const adminUserAction = async (userId, action, payload = {}) => {
   const response = await api.post(`admin/usuarios/${userId}/${action}/`, payload);
   return response.data;
 };
 
-/** Fetch all contact form submissions (admin). */
+/** Obtiene todos los mensajes del formulario de contacto (admin). */
 export const fetchContactMessages = async () => {
   const response = await api.get('contacto/');
   return response.data;
 };
 
-/** Mark a contact message as read (admin). */
+/** Marca un mensaje de contacto como leído (admin). */
 export const markContactRead = async (id) => {
   const response = await api.post(`contacto/${id}/marcar_leido/`);
   return response.data;
 };
 
-/** Delete a contact message (admin). */
+/** Elimina un mensaje de contacto (admin). */
 export const deleteContactMessage = async (id) => {
   await api.delete(`contacto/${id}/eliminar/`);
 };
 
-/** Fetch paginated admin audit logs. */
+/** Obtiene los registros de auditoría paginados (admin). */
 export const fetchAuditLogs = async (page = 1, pageSize = 20) => {
   const response = await api.get('admin/usuarios/auditoria/', { params: { page, page_size: pageSize } });
   return response.data;
 };
 
 // ─────────── ADMIN ORDERS ───────────
-/** Fetch paginated orders list (admin). */
+/** Obtiene la lista paginada de pedidos (admin). */
 export const fetchAdminOrders = async (page = 1, pageSize = 20) => {
   const response = await api.get('admin/orders/', { params: { page, page_size: pageSize } });
   return response.data;
 };
 
-/** Fetch detailed order info by ID (admin). */
+/** Obtiene el detalle de un pedido por su ID (admin). */
 export const fetchAdminOrderDetail = async (id) => {
   const response = await api.get(`admin/orders/${id}/`);
   return response.data;
 };
 
-/** Update the status of an order (admin). */
+/** Actualiza el estado de un pedido (admin). */
 export const updateOrderStatus = async (id, status) => {
   const response = await api.patch(`admin/orders/${id}/status/`, { status });
   return response.data;
 };
 
-/** Trigger reprocessing for a failed order (admin). */
+/** Reintenta el procesamiento de un pedido fallido (admin). */
 export const reprocessOrder = async (id) => {
   const response = await api.post(`admin/orders/${id}/reprocess/`);
   return response.data;
 };
 
 // ─────────── CHECKOUT / PAYMENT ───────────
-/** Fetch a summary of the current cart for the checkout page. */
+/** Obtiene un resumen del carrito actual para la página de checkout. */
 export const fetchCheckoutSummary = async () => {
   const response = await sessionApi.get('checkout/summary/');
   return response.data;
 };
 
-/** Initialize checkout with shipping data, returns an order. */
+/** Inicia el proceso de checkout con datos de envío y retorna una orden. */
 export const initCheckout = async (shippingData) => {
   const response = await sessionApi.post('checkout/init/', shippingData);
   return response.data;
 };
 
-/** Create a payment session for a given order (Wompi). */
+/** Crea una sesión de pago para una orden (Wompi). */
 export const createPayment = async (orderId) => {
   const response = await sessionApi.post('checkout/create-payment/', { order_id: orderId });
   return response.data;
 };
 
-/** Check payment status by payment gateway reference. */
+/** Consulta el estado del pago por su referencia de pasarela. */
 export const fetchPaymentStatus = async (reference) => {
   const response = await sessionApi.get('checkout/payment-status/', { params: { reference } });
   return response.data;
 };
 
 // ─────────── REVIEWS ───────────
-/** Fetch all reviews for a product. */
+/** Obtiene todas las reseñas de un producto. */
 export const fetchProductReviews = async (productId) => {
   const response = await publicApi.get('products/reviews/', { params: { product: productId } });
   return response.data;
 };
 
-/** Create a new product review (authenticated users only). */
+/** Crea una nueva reseña de producto (solo usuarios autenticados). */
 export const createReview = async (productId, rating, comment) => {
   const response = await api.post('products/reviews/', { product: productId, rating, comment });
   return response.data;
 };
 
-/** Update an existing product review. */
+/** Actualiza una reseña de producto existente. */
 export const updateReview = async (reviewId, rating, comment) => {
   const response = await api.patch(`products/reviews/${reviewId}/`, { rating, comment });
   return response.data;
 };
 
 // ─────────── INVOICES ───────────
-/** Generate an invoice for a completed order. */
+/** Genera una factura para una orden completada. */
 export const generateInvoice = async (orderId) => {
   const response = await api.post('orders/invoices/generate/', { order_id: orderId });
   return response.data;
 };
 
-/** Fetch a specific invoice by ID. */
+/** Obtiene una factura específica por su ID. */
 export const fetchInvoice = async (invoiceId) => {
   const response = await api.get(`orders/invoices/${invoiceId}/`);
   return response.data;
 };
 
-/** Fetch the invoice associated with a specific order. */
+/** Obtiene la factura asociada a una orden específica. */
 export const fetchOrderInvoice = async (orderId) => {
   const response = await api.get('orders/invoices/', { params: { order: orderId } });
   return response.data;
+};
+
+// ─────────── CATEGORIES (Catalog app) ───────────
+/** Obtiene todas las categorías del catálogo. */
+export const fetchCategories = async () => {
+  const response = await publicApi.get('catalog/categories/');
+  return response.data;
+};
+
+/** Crea una nueva categoría (admin). */
+export const createCategory = async (data) => {
+  const response = await api.post('catalog/categories/', data);
+  return response.data;
+};
+
+/** Actualiza una categoría (admin). */
+export const updateCategory = async (id, data) => {
+  const response = await api.patch(`catalog/categories/${id}/`, data);
+  return response.data;
+};
+
+/** Elimina una categoría (admin). */
+export const deleteCategory = async (id) => {
+  await api.delete(`catalog/categories/${id}/`);
+};
+
+// ─────────── 3D MODELS (models3d app) ───────────
+/** Obtiene todos los modelos 3D. */
+export const fetchModels3D = async (params = {}) => {
+  const response = await publicApi.get('models3d/models/', { params });
+  return response.data;
+};
+
+/** Crea un modelo 3D (admin). */
+export const createModel3D = async (data) => {
+  const response = await api.post('models3d/models/', data);
+  return response.data;
+};
+
+/** Actualiza un modelo 3D (admin). */
+export const updateModel3D = async (id, data) => {
+  const response = await api.patch(`models3d/models/${id}/`, data);
+  return response.data;
+};
+
+/** Elimina un modelo 3D (admin). */
+export const deleteModel3D = async (id) => {
+  await api.delete(`models3d/models/${id}/`);
+};
+
+// ─────────── SAVED DESIGNS (MongoDB, user designs) ───────────
+/** Obtiene diseños guardados del usuario actual o de todos (admin). */
+export const fetchDesigns = async (params = {}) => {
+  const response = await api.get('designs/', { params });
+  return response.data;
+};
+
+/** Obtiene un diseño guardado por ID. */
+export const fetchDesignDetail = async (id) => {
+  const response = await api.get(`designs/${id}/`);
+  return response.data;
+};
+
+/** Elimina un diseño guardado. */
+export const deleteDesign = async (id) => {
+  await api.delete(`designs/${id}/`);
+};
+
+// ─────────── PRODUCT IMAGES (Cloudinary) ───────────
+/** Obtiene todas las imágenes de productos. */
+export const fetchProductImages = async (params = {}) => {
+  const response = await api.get('products/images/', { params });
+  return response.data;
+};
+
+/** Elimina una imagen de producto. */
+export const deleteProductImage = async (id) => {
+  await api.delete(`products/images/${id}/`);
 };

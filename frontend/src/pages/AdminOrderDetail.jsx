@@ -1,3 +1,9 @@
+/**
+ * AdminOrderDetail — Detalle del pedido y gestión de estado (RF-037).
+ * Muestra la información completa de un pedido, permite cambiar el estado
+ * (pendiente → pagado → enviado → entregado), reprocesar pedidos cancelados,
+ * y generar/visualizar la factura asociada.
+ */
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -5,6 +11,7 @@ import { fetchAdminOrderDetail, updateOrderStatus, reprocessOrder, generateInvoi
 import MainLayout from '../components/MainLayout'
 import { getCurrentUser } from '../services/authService'
 
+/** Opciones de estado disponibles para un pedido. */
 const STATUS_OPTIONS = [
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'pagado', label: 'Pagado' },
@@ -13,6 +20,7 @@ const STATUS_OPTIONS = [
   { value: 'cancelado', label: 'Cancelado' },
 ]
 
+/** Estilos de colores para cada estado del pedido. */
 const STATUS_STYLES = {
   pendiente: { bg: '#fef3c7', color: '#92400e' },
   pagado: { bg: '#dbeafe', color: '#1e40af' },

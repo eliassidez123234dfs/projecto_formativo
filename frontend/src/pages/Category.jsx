@@ -3,7 +3,6 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
-import { Header } from '../components/Header';
 
 export const Category = () => {
   const navigate = useNavigate()
@@ -44,7 +43,6 @@ export const Category = () => {
 
   return (
     <>
-      <Header cartCount={cart?.total_items || 0} />
       <div className="container" style={{ paddingTop: '2rem', paddingBottom: '3rem' }}>
         <Link to="/catalog" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: 14, marginBottom: 16, display: 'inline-block' }}>
           ← Volver al catálogo

@@ -1,5 +1,13 @@
 import logging
 
+# =============================================================================
+# LANDING - ViewSets para el formulario de contacto (RF-030 a RF-032)
+# =============================================================================
+# RF-030: Formulario de contacto público
+# RF-031: Envío de mensaje (con rate limiting RN-031: 3/h por IP)
+# RF-032: Notificación por email al administrador (RN-032)
+# =============================================================================
+
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -19,13 +27,27 @@ from .serializers import (
 
 
 class ContactRateThrottle(AnonRateThrottle):
-    """Rate throttle for contact form — max 3 requests/hour per IP (RN-031)."""
+    """Límite de tasa para el formulario de contacto (RN-031).
+    
+    Máximo 3 envíos por hora por dirección IP para usuarios anónimos.
+    Previene abuso del formulario (spam, ataques de fuerza bruta).
+    """
     scope = 'contact_form'
     rate = '3/h'  # 3 requests per hour per IP
 
 
 class ContactoViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar formularios de contacto (RF-030 a RF-032)"""
+    """ViewSet para gestionar mensajes de contacto (RF-030, RF-031, RF-032).
+    
+    Acciones públicas:
+      - create:  Enviar nuevo mensaje (con rate limiting por IP)
+    
+    Acciones de administrador (requiere autenticación):
+      - list:         Listar todos los mensajes
+      - retrieve:     Ver detalle de un mensaje
+      - marcar_leido: Marcar como leído
+      - eliminar:     Eliminar mensaje
+    """
     queryset = Contacto.objects.all()
     permission_classes = [permissions.AllowAny]
     filterset_fields = ['leido']
@@ -34,7 +56,13 @@ class ContactoViewSet(viewsets.ModelViewSet):
     throttle_classes = [ContactRateThrottle]
     
     def get_serializer_class(self):
-        """Retornar serializer apropiado según la acción"""
+        """Retorna el serializer adecuado según la acción REST.
+        
+        - create  → ContactoCreateSerializer (solo campos de envío)
+        - list    → ContactoListSerializer (resumen sin mensaje)
+        - retrieve → ContactoDetailSerializer (incluye mensaje completo)
+        - default → ContactoSerializer
+        """
         if self.action == 'create':
             return ContactoCreateSerializer
         elif self.action == 'list': # Muestra todos los contactos
@@ -44,7 +72,11 @@ class ContactoViewSet(viewsets.ModelViewSet):
         return ContactoSerializer
     
     def get_queryset(self):
-        """Filtrar según permisos"""
+        """Filtra el queryset según permisos del usuario.
+        
+        Solo administradores pueden listar/ver mensajes.
+        Usuarios no autenticados reciben queryset vacío.
+        """
         if self.request.user and self.request.user.is_authenticated:
             # Admin puede ver todos
             if hasattr(self.request.user, 'rol') and self.request.user.rol == 'Administrador':

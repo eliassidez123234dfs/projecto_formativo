@@ -1,3 +1,8 @@
+/**
+ * AdminCartDetail — Detalle de un carrito de usuario en el panel admin.
+ * Muestra productos, variantes, cantidades y subtotales. Permite cambiar
+ * el estado de la orden asociada o reprocesarla si fue cancelada.
+ */
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -5,6 +10,7 @@ import { fetchAdminCartDetail, updateCartStatus, reprocessOrder } from '../servi
 import MainLayout from '../components/MainLayout'
 import { getCurrentUser } from '../services/authService'
 
+/** Opciones de estado para la orden vinculada al carrito. */
 const STATUS_OPTIONS = [
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'pagado', label: 'Pagado' },
@@ -13,6 +19,7 @@ const STATUS_OPTIONS = [
   { value: 'cancelado', label: 'Cancelado' },
 ]
 
+/** Estilos de color para cada estado del pedido en el detalle. */
 const STATUS_STYLES = {
   pendiente: { bg: '#fef3c7', color: '#92400e' },
   pagado: { bg: '#dbeafe', color: '#1e40af' },

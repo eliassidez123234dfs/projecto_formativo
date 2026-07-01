@@ -1,11 +1,20 @@
+/**
+ * MainLayout — Layout principal autenticado con sidebar, header y footer.
+ * Sirve como envoltura (shell) para todas las páginas internas del sistema.
+ * Valida autenticación, estado activo del usuario y permisos de administrador
+ * para rutas admin. Incluye navegación lateral colapsable, selector de tema
+ * (oscuro/claro) y botón de cierre de sesión.
+ */
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { getAccessToken, clearAuth, isAuthenticated, getCurrentUser } from '../services/authService'
 import useAppStore from '../store/appStore'
 import { fetchCurrentUser, buildApiUrl } from '../services/api'
+import { Breadcrumbs } from './Breadcrumbs'
 import '../styles/main-layout.css'
 
+/** Conjunto de iconos SVG reutilizables para la navegación y acciones del layout. */
 const Icons = {
   Dashboard: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -59,17 +68,17 @@ const Icons = {
     </svg>
   ),
   ChevronLeft: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
     </svg>
   ),
   ChevronRight: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9 18 15 12 9 6" />
     </svg>
   ),
   Sun: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="5" />
       <line x1="12" y1="1" x2="12" y2="3" />
       <line x1="12" y1="21" x2="12" y2="23" />
@@ -82,19 +91,19 @@ const Icons = {
     </svg>
   ),
   Moon: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   ),
   Menu: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="3" y1="6" x2="21" y2="6" />
       <line x1="3" y1="12" x2="21" y2="12" />
       <line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   ),
   LogOut: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
@@ -115,7 +124,11 @@ const Icons = {
   ),
 }
 
-// Authenticated admin/user shell with sidebar navigation, header, footer, and access control
+/**
+ * Componente principal del layout. Renderiza la estructura completa
+ * con sidebar, cabecera de contenido, área de hijos y footer.
+ * @param {{ children: ReactNode, title?: string, subtitle?: string }}
+ */
 export default function MainLayout({ children, title, subtitle }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -145,7 +158,7 @@ export default function MainLayout({ children, title, subtitle }) {
     }
   }, [navigate])
 
-  const isAdmin = usuario?.rol === 'Administrador'
+  const isAdmin = usuario?.rol === 'Administrador' || usuario?.is_superuser
   const isActive = usuario?.estado === 'Activo'
   const isAdminRoute = location.pathname.startsWith('/admin')
 
@@ -165,11 +178,15 @@ export default function MainLayout({ children, title, subtitle }) {
       { label: 'Dashboard', href: '/dashboard', icon: Icons.Dashboard, admin: false },
       { label: 'Catálogo', href: '/catalog', icon: Icons.CatalogIcon, admin: false },
       { label: 'Tienda', href: '/', icon: Icons.Store, admin: false },
+      { label: 'Mis Diseños', href: '/mis-disenos', icon: Icons.Clipboard, admin: false },
     ]},
     { section: 'Administración', admin: true, items: [
       { label: 'Resumen', href: '/admin', icon: Icons.Dashboard },
       { label: 'Usuarios', href: '/admin-users', icon: Icons.Users },
       { label: 'Productos', href: '/admin-products', icon: Icons.Products },
+      { label: 'Categorías', href: '/admin-categories', icon: Icons.Clipboard },
+      { label: 'Imágenes', href: '/admin-images', icon: Icons.Clipboard },
+      { label: 'Diseños 3D', href: '/admin-designs', icon: Icons.Clipboard },
       { label: 'Pedidos', href: '/admin-orders', icon: Icons.Orders },
       { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },
       { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
@@ -275,6 +292,7 @@ export default function MainLayout({ children, title, subtitle }) {
         </div>
 
         <div className="content-area">
+          <Breadcrumbs pageTitle={title} />
           {children}
         </div>
 

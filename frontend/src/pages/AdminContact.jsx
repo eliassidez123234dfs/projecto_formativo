@@ -1,3 +1,9 @@
+/**
+ * AdminContact — Bandeja de mensajes de contacto recibidos.
+ * Permite visualizar, marcar como leídos y eliminar mensajes enviados
+ * desde el formulario de contacto público. Muestra estadísticas de
+ * mensajes totales, leídos y no leídos.
+ */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchContactMessages, markContactRead, deleteContactMessage } from '../services/api'
@@ -5,7 +11,11 @@ import MainLayout from '../components/MainLayout'
 import { getCurrentUser } from '../services/authService'
 import InfoModal from '../components/InfoModal'
 
-// Admin contact messages inbox — read, mark as read, delete with stats summary
+/**
+ * Página principal de la bandeja de contacto administrativa.
+ * Valida rol de administrador, carga los mensajes y maneja
+ * las acciones de marcar como leído y eliminar.
+ */
 export default function AdminContact() {
   const navigate = useNavigate()
   const [messages, setMessages] = useState([])

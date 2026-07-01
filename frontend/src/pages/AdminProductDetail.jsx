@@ -1,14 +1,29 @@
+/**
+ * AdminProductDetail — Detalle y edición de un producto en el panel admin.
+ * Muestra información general, variantes, imágenes, un historial de auditoría
+ * con diferencias (diff) entre versiones, y permite editar el producto.
+ */
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ProductForm from '../components/ProductForm'
 import MainLayout from '../components/MainLayout'
 
+/**
+ * Convierte cualquier valor a texto plano para comparación en el diff de auditoría.
+ * @param {any} value
+ * @returns {string}
+ */
 function toText(value) {
   if (value === null || value === undefined) return '-'
   if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
 }
 
+/**
+ * Calcula las diferencias entre los datos antes/después de una entrada de auditoría.
+ * @param {Object} entry — Entrada de auditoría con before_data y after_data.
+ * @returns {Array<{key: string, before: string, after: string}>}
+ */
 function getAuditDiff(entry) {
   const before = entry.before_data || {}
   const after = entry.after_data || {}
@@ -18,6 +33,10 @@ function getAuditDiff(entry) {
     .map(key => ({ key, before: toText(before[key]), after: toText(after[key]) }))
 }
 
+/**
+ * Tarjeta reutilizable para mostrar una sección del detalle.
+ * @param {{ title: string, children: ReactNode, fullWidth?: boolean }}
+ */
 function DetailCard({ title, children, fullWidth }) {
   return (
     <div className="card" style={fullWidth ? { gridColumn: '1 / -1' } : {}}>
@@ -31,6 +50,10 @@ function DetailCard({ title, children, fullWidth }) {
   )
 }
 
+/**
+ * Fila de información con label a la izquierda y valor a la derecha.
+ * @param {{ label: string, value: string }}
+ */
 function InfoRow({ label, value }) {
   return (
     <div style={{

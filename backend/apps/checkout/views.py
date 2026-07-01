@@ -1,5 +1,24 @@
 ﻿from __future__ import annotations
 
+# =============================================================================
+# CHECKOUT - Vistas del proceso de pago (Red Estampación)
+# =============================================================================
+# Requisitos funcionales:
+#   RF-037  Resumen del carrito
+#   RF-038  Inicializar checkout (crear orden, descontar stock)
+#   RF-039  Crear transacción de pago en Wompi
+#   RF-040  Webhook de Wompi (notificación asíncrona)
+#   RF-041  Consultar estado del pago
+# =============================================================================
+# FLUJO COMPLETO DE PAGO:
+#   1. Frontend → GET checkout_summary     → muestra resumen del carrito
+#   2. Frontend → POST checkout_init        → crea Order + OrderItems, descuenta stock
+#   3. Frontend → POST create_payment       → crea transacción en Wompi, retorna redirect_url
+#   4. Usuario  → redirigido a pasarela Wompi → ingresa datos de pago
+#   5. Wompi    → POST wompi_webhook        → notifica resultado (APROBADO/RECHAZADO)
+#   6. Frontend → GET payment_status        → consulta estado final (polling o post-redirección)
+# =============================================================================
+
 import json
 import logging
 from decimal import Decimal
@@ -38,8 +57,21 @@ from .wompi import (
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# Funciones auxiliares
+# =============================================================================
+
 def _get_cart_from_session(request):
-    """Resolve cart for the current request — user cart if authenticated, session cart otherwise."""
+    """Resuelve el carrito de compras según el contexto de autenticación.
+    
+    Usuario autenticado:
+      - Busca carrito de sesión huérfano (misma session_key, distinto user_id)
+      - Si existe, migra sus items al carrito del usuario (_merge_into_user_cart)
+      - Retorna (o crea) el carrito vinculado al usuario
+    
+    Usuario anónimo:
+      - Retorna (o crea) carrito asociado a session_key de Django
+    """
     if request.user.is_authenticated:
         if request.session.session_key:
             session_cart = Cart.objects.filter(session_key=request.session.session_key).first()
@@ -56,7 +88,12 @@ def _get_cart_from_session(request):
 
 
 def _merge_into_user_cart(session_cart, user):
-    """Merge items from an anonymous session cart into a user cart, then delete session cart."""
+    """Migra los items de un carrito anónimo al carrito del usuario autenticado.
+    
+    Si el producto/variante ya existe en el carrito destino, suma las cantidades.
+    Si no existe, reasigna el item al carrito del usuario.
+    Finalmente elimina el carrito de sesión (session_cart).
+    """
     user_cart = Cart.objects.filter(user=user).first()
     if not user_cart:
         user_cart = Cart.objects.create(user=user)
@@ -71,11 +108,18 @@ def _merge_into_user_cart(session_cart, user):
     session_cart.delete()
 
 
+# =============================================================================
+# Endpoints de checkout (RF-037, RF-038)
+# =============================================================================
+
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
 def checkout_summary(request):
-    """Return cart summary (items, totals) for the current session/user."""
+    """[RF-037] Obtiene el resumen del carrito actual.
+    
+    Retorna items, total_items y total_amount para el carrito
+    del usuario autenticado o de la sesión anónima."""
     cart = _get_cart_from_session(request)
     items = cart.items.select_related('product', 'variant').all()
     serializer = CheckoutSummaryItemSerializer(items, many=True)
@@ -93,7 +137,21 @@ def checkout_summary(request):
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
 def checkout_init(request):
-    """Initialize checkout: validate stock, create Order + OrderItems, clear cart."""
+    """[RF-038] Inicializa el proceso de checkout.
+    
+    PATRÓN DE TRANSACCIÓN ATÓMICA (transaction.atomic):
+    Garantiza consistencia: si falla cualquier paso, no se crea la orden
+    ni se descuenta stock.
+    
+    FLUJO:
+    1. Valida que el carrito no esté vacío
+    2. Valida datos de envío (ShippingSerializer)
+    3. Verifica stock suficiente para cada item (cancela si no hay)
+    4. Crea Order con estado STATUS_PENDING
+    5. Crea OrderItems y descuenta stock del variante
+    6. Asocia la orden al carrito y elimina items del carrito
+    7. Registra evento en MongoDB (auditoría)
+    """
     cart = _get_cart_from_session(request)
     items = list(cart.items.select_related('product', 'variant').all())
 
@@ -169,11 +227,28 @@ def checkout_init(request):
     )
 
 
+# =============================================================================
+# Endpoints de pago Wompi (RF-039, RF-040, RF-041)
+# =============================================================================
+
 @api_view(['POST'])
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
 def create_payment(request):
-    """Create a Wompi transaction for an existing order and return redirect URL."""
+    """[RF-039] Crea una transacción de pago en Wompi y retorna URL de redirección.
+    
+    FLUJO DE PAGO (frontend → Wompi):
+    1. Valida order_id → la orden debe existir y estar en PENDING
+    2. Construye payload: amount_in_cents, reference, signature (SHA-256),
+       customer_email, redirect_url, acceptance_token
+    3. Obtiene acceptance_token desde GET /v1/merchants/{public_key}
+    4. Envía POST a /v1/transactions con Authorization: Bearer {private_key}
+    5. Guarda transaction_id, payment_reference y payment_wompi_status en Order
+    6. Retorna redirect_url → el frontend redirige al usuario a la pasarela Wompi
+    
+    SEGURIDAD: La firma de integridad (generate_signature) usa SHA-256
+    con reference + amount + currency + integrity_key para evitar manipulación.
+    """
     serializer = PaymentInitSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -241,7 +316,14 @@ def create_payment(request):
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
 def payment_status(request):
-    """Query order/payment status by reference (order_number or payment_reference)."""
+    """[RF-041] Consulta el estado de una orden/pago por referencia.
+    
+    Busca la orden por order_number o payment_reference.
+    Retorna datos completos: items, envío, estado del pago, transacción.
+    
+    USO: El frontend consulta este endpoint después de que el usuario
+    regresa de la pasarela Wompi (redirección) o mediante polling.
+    """
     serializer = PaymentStatusSerializer(data=request.query_params)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -294,11 +376,29 @@ def payment_status(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def wompi_webhook(request):
-    """Handle Wompi transaction webhook (CSRF-exempt).
-
-    SECURITY: Validates HMAC signature from X-Signature header before processing.
-    Processes APPROVED/DECLINED/REJECTED/ERROR/VOIDED events to update order status
-    and restore stock on rejection.
+    """[RF-040] Webhook de Wompi (CSRF-exempt). Procesa notificaciones de pago.
+    
+    ──────────────────────────────────────────────────────────────
+    SEGURIDAD
+    ──────────────────────────────────────────────────────────────
+    - Decorador @csrf_exempt (los webhooks no usan CSRF token)
+    - Valida HMAC-SHA256 del header X-Signature contra el body crudo
+    - Rechaza con 401 si la firma no es válida
+    - Registra cada evento en TransactionLog para auditoría forense
+    ──────────────────────────────────────────────────────────────
+    
+    ──────────────────────────────────────────────────────────────
+    FLUJO DE ESTADOS
+    ──────────────────────────────────────────────────────────────
+    APPROVED  → Order.status = PAID, payment_confirmed_at = now()
+    
+    DECLINED
+    REJECTED  → Order.status = CANCELLED
+    ERROR        + payment_rejection_reason = status_message
+    VOIDED       + RESTAURACIÓN DE STOCK (devuelve inventario)
+    
+    Otros     → Solo actualiza payment_wompi_status
+    ──────────────────────────────────────────────────────────────
     """
     try:
         raw_body = request.body
@@ -383,6 +483,12 @@ def wompi_webhook(request):
                 order.payment_rejection_reason = rejection or status_detail or 'Pago rechazado'
                 logger.info('Pago rechazado para orden %s: %s', order.order_number, order.payment_rejection_reason)
 
+                # ── REGLA DE NEGOCIO: Restauración de stock en cancelación ──
+                # Cuando un pago es rechazado/declinado/anulado, el stock que
+                # se descontó en checkout_init debe ser devuelto al inventario.
+                # Por cada OrderItem asociado a la orden, sumamos la cantidad
+                # de vuelta al campo stock del variante correspondiente.
+                # Esto evita pérdida de inventario por transacciones fallidas.
                 with transaction.atomic():
                     for item in order.items.select_related('variant').all():
                         item.variant.stock += item.quantity

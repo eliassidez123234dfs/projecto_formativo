@@ -1,4 +1,8 @@
-// frontend/src/components/Button.jsx
+/**
+ * Button — Componente reutilizable de botón con variantes de estilo.
+ * Soporta las variantes 'primary', 'secondary', etc., tamaños 'sm', 'md', 'lg',
+ * y la propiedad fullWidth para ocupar todo el ancho del contenedor.
+ */
 export const Button = ({
   children,
   variant = 'primary',

@@ -1,6 +1,19 @@
+// ---------------------------------------------------------------
+// CartPage.jsx  —  Carrito de compras (versión alternativa, RF-054)
+// APIs consumidas:
+//   GET  /api/cart/                    — listar items
+//   PATCH /api/cart/items/:id/quantity/ — actualizar cantidad
+//   DELETE /api/cart/items/:id/remove/  — eliminar item
+//   DELETE /api/cart/clear/             — vaciar carrito
+// Hooks: useState, useCallback, useEffect
+// Estado global: ninguno (llamadas fetch directas)
+// Flujo: carga carrito al montar; paginación local (5 items/página);
+//        botones de navegación a catálogo y checkout
+// ---------------------------------------------------------------
 import { useCallback, useEffect, useState } from 'react'
 import './shop.css'
 
+// CartRow — fila individual de producto en el carrito
 function CartRow({ item, onChangeQty, onRemove }) {
   return (
     <article className="cart-row">
@@ -30,6 +43,7 @@ export default function CartPage() {
   const [page, setPage] = useState(1)
   const pageSize = 5
 
+  // loadCart — fetch GET al backend para refrescar el carrito completo
   const loadCart = useCallback(async () => {
     setLoading(true)
     const response = await fetch('/api/cart/')

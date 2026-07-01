@@ -4,6 +4,7 @@
 @import './styles/Auth.css';
 @import './styles/Dashboard.css';
 @import './styles/Email.css';
+@import './styles/viewer3d.scss';
 
 /* =========================================
    VARIABLES GLOBALES (PALETA DE TIENDA + CORPORATIVA)
