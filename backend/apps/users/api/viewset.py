@@ -38,7 +38,29 @@ from django.utils import timezone
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
-from django_ratelimit.decorators import ratelimit
+from django_ratelimit.core import is_ratelimited as _is_ratelimited
+from functools import wraps
+
+def viewset_ratelimit(**kwargs):
+    """Wrapper de @ratelimit compatible con ViewSet methods.
+    DRF llama a method(self, request), pero django-ratelimit espera request como args[0].
+    Esta función extrae request correctamente."""
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(self, request, *args, **kwargs2):
+            ratelimited = _is_ratelimited(
+                request=request, group=kwargs.get('group'),
+                fn=fn, key=kwargs.get('key', 'ip'),
+                rate=kwargs.get('rate'), method=kwargs.get('method'),
+                increment=True
+            )
+            if ratelimited and kwargs.get('block', True):
+                from django.http import HttpResponseTooManyRequests
+                return HttpResponseTooManyRequests('Demasiadas solicitudes. Intenta de nuevo en un minuto.')
+            return fn(self, request, *args, **kwargs2)
+        return wrapper
+    return decorator
+
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -354,7 +376,7 @@ class LoginViewSet(viewsets.ViewSet):
     #   - Cookies httpOnly + Secure + SameSite=Lax (protección XSS y CSRF).
     # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
-    @ratelimit(key='ip', rate='10/m', method='POST', block=True)
+    @viewset_ratelimit(key='ip', rate='10/m', method='POST', block=True)
     def login(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
