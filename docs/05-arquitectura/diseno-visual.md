@@ -1,5 +1,7 @@
 # Guía de diseño del proyecto
 
+> Migrado desde `/DESIGN_GUIDE.md` (raíz) a la estructura oficial de documentación.
+
 Este documento describe los principios de diseño visual y los criterios de interfaz para el proyecto.
 
 ## Principios de diseño
@@ -94,7 +96,3 @@ Este documento describe los principios de diseño visual y los criterios de inte
 - Priorizar el contraste en botones y enlaces.
 - Evitar colores conflictivos.
 - Garantizar legibilidad en todas las resoluciones.
-
-## Documentación archivada
-
-Los documentos anteriores se han archivado en `docs/archive/` para mantener la documentación actual enfocada en el estado presente del proyecto.
