@@ -496,18 +496,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = ProductListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
-    def manage_images(self, request, pk=None):
-        product = self.get_object()
-        if request.method == 'GET':
-            serializer = ProductImageSerializer(product.images.all(), many=True, context={'request': request})
-            return Response(serializer.data)
-        serializer = ProductImageCreateSerializer(data=request.data, context={'product': product, 'request': request})
-        serializer.is_valid(raise_exception=True)
-        image = serializer.save()
-        return Response(ProductImageCreateSerializer(image, context={'product': product}).data, status=status.HTTP_201_CREATED)
-
-    @action(detail=True, methods=['post'], url_path='variants')
-
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet para reseñas de productos. Filtrable por product_id.

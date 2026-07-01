@@ -12,6 +12,7 @@ import { lazy, Suspense } from 'react';
 import ProtectedRoute, { ROLES } from './components/ProtectedRoute';
 import { PublicLayout } from './components/PublicLayout';
 import MainLayout from './components/MainLayout';
+import ScrollToTop from './components/ScrollToTop';
 
 const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
@@ -62,6 +63,7 @@ function App() {
         <BrowserRouter>
           <ErrorBoundary>
             <Toaster position="top-right" toastOptions={{ duration: 4000, style: { fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
+            <ScrollToTop />
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
 
