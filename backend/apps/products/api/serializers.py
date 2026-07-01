@@ -8,6 +8,7 @@ from __future__ import annotations
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.validators import UniqueValidator
 
 from apps.products.models import Product, ProductAudit, ProductImage, Variant
 
@@ -46,6 +47,17 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'name', 'description', 'base_price', 'is_active', 'is_approved', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        name_field = self.fields.get('name')
+        if name_field:
+            for i, validator in enumerate(name_field.validators):
+                if isinstance(validator, UniqueValidator):
+                    name_field.validators[i] = UniqueValidator(
+                        queryset=Product.objects.all(),
+                        message='Ya existe un producto con este nombre.'
+                    )
 
     def validate_name(self, value):
         value = value.strip()
@@ -138,20 +150,28 @@ class ProductImageCreateSerializer(serializers.ModelSerializer):
         
         if attrs.get('image'):
             value = attrs['image']
-            allowed_formats = ['.jpg', '.jpeg', '.png']
-            file_extension = value.name.lower().split('.')[-1]
-            if f'.{file_extension}' not in allowed_formats:
-                raise serializers.ValidationError({'image': 'Solo se permiten imágenes JPG o PNG.'})
-            if value.size > 2 * 1024 * 1024:
-                raise serializers.ValidationError({'image': 'La imagen no puede superar 2MB.'})
+            if not value.name:
+                raise serializers.ValidationError({'image': 'El archivo no tiene un nombre válido.'})
+            allowed_formats = ['.jpg', '.jpeg', '.png', '.webp']
+            parts = value.name.lower().rsplit('.', 1)
+            if len(parts) < 2 or f'.{parts[-1]}' not in allowed_formats:
+                raise serializers.ValidationError({'image': 'Solo se permiten imágenes JPG, PNG o WebP.'})
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError({'image': 'La imagen no puede superar 5MB.'})
             try:
-                from PIL import Image
-                image = Image.open(value)
+                from PIL import Image, UnidentifiedImageError
+                try:
+                    image = Image.open(value)
+                    image.load()
+                except UnidentifiedImageError:
+                    raise serializers.ValidationError({'image': 'El archivo no es una imagen válida. Usa JPG, PNG o WebP.'})
                 width, height = image.size
-                if width < 400 or height < 400:
-                    raise serializers.ValidationError({'image': 'La resolución mínima es 400x400 píxeles.'})
-            except Exception:
-                raise serializers.ValidationError({'image': 'No se pudo validar la imagen.'})
+                if width < 100 or height < 100:
+                    raise serializers.ValidationError({'image': 'La resolución mínima es 100x100 píxeles.'})
+            except serializers.ValidationError:
+                raise
+            except Exception as e:
+                raise serializers.ValidationError({'image': f'No se pudo procesar la imagen: {e}'})
         
         return attrs
 

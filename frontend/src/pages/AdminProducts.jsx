@@ -48,7 +48,7 @@ export default function AdminProducts() {
 
   async function openEdit(productId) {
     try {
-      const response = await api.get(`/api/products/${productId}/`)
+      const response = await api.get(`products/${productId}/`)
       setEditingProduct(response.data)
       setShowForm(true)
     } catch {
@@ -58,7 +58,7 @@ export default function AdminProducts() {
 
   async function toggleActive(productId) {
     try {
-      await api.patch(`/api/products/${productId}/toggle-active/`)
+      await api.patch(`products/${productId}/toggle-active/`)
       setRefreshKey(k => k + 1)
     } catch {
       toast.error('Error al cambiar estado del producto')

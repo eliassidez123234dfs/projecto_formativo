@@ -44,8 +44,11 @@ from .serializers import (
 
 class ProductViewSet(viewsets.ModelViewSet):
     """ViewSet principal de productos. Soporta CRUD con filtros, búsqueda,
+
     paginación, y acciones personalizadas para el ciclo de vida completo."""
+
     queryset = Product.objects.all().prefetch_related('images', 'variants', 'audit_entries')
+
     pagination_class = ProductPagination
 
     def get_queryset(self):
@@ -172,6 +175,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=['patch', 'delete'], url_path=r'images/(?P<image_id>\d+)')
+
     def manage_image(self, request, pk=None, image_id=None):
         """Endpoint unificado para actualizar o eliminar una imagen de producto.
         PATCH → actualiza order y/o is_main.
@@ -213,6 +217,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['patch'], url_path='images/reorder')
+
     def reorder_images(self, request, pk=None):
         """Reordena las imágenes de un producto usando transacción atómica.
         Patrón: primero suma 1000 a todos los órdenes (evita conflictos UNIQUE),
@@ -245,6 +250,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductImageSerializer(ordered_images, many=True, context={'request': request}).data)
 
     @action(detail=True, methods=['patch'], url_path='toggle-active')
+
     def toggle_active(self, request, pk=None):
         """Activa/desactiva la visibilidad del producto en tienda.
         No requiere pasar por el flujo de aprobación completo."""
@@ -254,6 +260,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=['get'], url_path='checklist')
+
     def checklist(self, request, pk=None):
         """Retorna el checklist de requisitos del producto para publicación.
         Útil para mostrar al vendedor/revisor qué falta."""
@@ -261,6 +268,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(product.checklist)
 
     @action(detail=True, methods=['post'], url_path='publish')
+
     def publish(self, request, pk=None):
         """Publica un producto: requiere cumplir can_be_published (imagen principal
         + variante con stock). Establece is_active=True e is_approved=True.
@@ -304,6 +312,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=['post'], url_path='disapprove')
+
     def disapprove(self, request, pk=None):
         """Desaprueba un producto: establece is_approved=False, guarda el motivo
         de rechazo (MotivoDesaprobacion), registra auditoría SQL y MongoDB.
@@ -343,7 +352,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
-    @action(detail=True, methods=['post'], url_path='images')
+    @action(detail=True, methods=['get', 'post'], url_path='images')
+
     def add_image(self, request, pk=None):
         """Agrega una imagen a un producto existente. Usa ProductImageCreateSerializer
         que valida el límite de 5 imágenes y los requisitos de formato/tamaño."""
@@ -354,6 +364,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductImageCreateSerializer(image, context={'product': product}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='variants')
+
     def add_variant(self, request, pk=None):
         """Agrega una variante (talla+color+stock) a un producto.
         Usa VariantCreateSerializer que valida los límites de 4 tallas y 10 colores."""
@@ -364,6 +375,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(VariantCreateSerializer(variant, context={'product': product}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['get'], url_path='audits')
+
     def audits(self, request, pk=None):
         """Retorna el historial completo de auditoría del producto
         (eventos created/updated/published/approved/disapproved)."""
@@ -372,6 +384,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path='add-to-cart')
+
     def add_to_cart(self, request):
         """Agrega un producto al carrito directamente desde el catálogo o editor 3D.
         Prioriza carrito del usuario autenticado; si no, usa la sesión anónima.
@@ -422,6 +435,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=False, methods=['get'], url_path='search')
+
     def search(self, request):
         """Búsqueda avanzada con filtros combinables (RF-052).
         Busca en nombre, descripción, talla y color. Filtros adicionales:
@@ -481,6 +495,18 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         serializer = ProductListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
+
+    def manage_images(self, request, pk=None):
+        product = self.get_object()
+        if request.method == 'GET':
+            serializer = ProductImageSerializer(product.images.all(), many=True, context={'request': request})
+            return Response(serializer.data)
+        serializer = ProductImageCreateSerializer(data=request.data, context={'product': product, 'request': request})
+        serializer.is_valid(raise_exception=True)
+        image = serializer.save()
+        return Response(ProductImageCreateSerializer(image, context={'product': product}).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='variants')
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
