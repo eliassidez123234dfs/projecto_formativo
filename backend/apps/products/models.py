@@ -98,11 +98,19 @@ class ProductImage(models.Model):
 		if not self.image:
 			raise ValidationError({'image': 'La imagen es obligatoria.'})
 
-		extension = Path(self.image.name).suffix.lower()
-		if extension not in {'.jpg', '.jpeg', '.png'}:
+		file_name = self.image.name
+		extension = Path(file_name).suffix.lower()
+		if not extension:
+			try:
+				file_name = self.image.file.name
+				extension = Path(file_name).suffix.lower()
+			except (AttributeError, TypeError):
+				pass
+		if extension and extension not in {'.jpg', '.jpeg', '.png'}:
 			raise ValidationError({'image': 'Solo se permiten imágenes JPG o PNG.'})
 
-		if getattr(self.image, 'size', 0) > 2 * 1024 * 1024:
+		file_size = getattr(self.image, 'size', 0) or getattr(self.image, 'file', None) and getattr(self.image.file, 'size', 0) or 0
+		if file_size > 2 * 1024 * 1024:
 			raise ValidationError({'image': 'La imagen no puede superar 2MB.'})
 
 		try:

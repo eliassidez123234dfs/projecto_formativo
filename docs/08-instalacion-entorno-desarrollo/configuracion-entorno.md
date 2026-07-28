@@ -21,6 +21,8 @@ pip install -r requirements.txt
 # Editar backend/.env con los valores correspondientes
 
 # 5. Ejecutar migraciones
+# python manage.py makemigrations
+# python manage.py showmigrations
 python manage.py migrate
 
 # 6. Crear superusuario (opcional)
@@ -180,3 +182,13 @@ python manage.py migrate
 | Puerto 8000 en uso | Usar `python manage.py runserver 0.0.0.0:8001` |
 | Token JWT invalido | Refrescar token en `/api/token/refresh/` o volver a iniciar sesion |
 | Error de migracion | `python manage.py migrate --run-syncdb` (solo en desarrollo) |
+
+```bash
+# Borra todas las tablas (datos, no estructura). Después corres seed_all de nuevo.
+python manage.py flush --noinput
+
+# Alternativa manual si quieres borrar todo + migrations:
+Remove-Item -Path db.sqlite3 -Force
+python manage.py migrate
+python manage.py seed_all
+```

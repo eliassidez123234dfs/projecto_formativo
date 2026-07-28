@@ -5,6 +5,8 @@ djangorestframework==3.16.1 # nos permite crea apis con django
 djangorestframework-simplejwt==5.4.0 ## autenticación JWT
 pillow==12.1.1 # nos permite trabajar con imagenes
 django-storages==1.14.6 ## poder guardar las imagenes en AWS o videos, cosas que pesen o se guardan en gran cantidad se guardan en un sdn 
+cloudinary==1.44.2
+django-cloudinary-storage==0.3.0 ## poder guardar las imagenes en AWS o videos, cosas que pesen o se guardan en gran cantidad se guardan en un sdn (con cloudinary)
 django-ckeditor==6.7.3 ## crear cosas de manera mas rica para que se vea mejor
 psycopg2-binary==2.9.12 ## esto es para poder trabajar con postgresql
 python-decouple==3.8 ## para manejar variables de entorno

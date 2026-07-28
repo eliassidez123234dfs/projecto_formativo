@@ -57,7 +57,7 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         return max(variant.stock * obj.base_price for variant in variants)
 
     def get_categories(self, obj):
-        return [cat.name for cat in obj.categories.all()]
+        return [pc.category.name for pc in obj.categories.all()]
 
 
 class SearchHistorySerializer(serializers.ModelSerializer):
