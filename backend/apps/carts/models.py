@@ -101,6 +101,6 @@ class CartItem(models.Model):
 		"""Congela el precio unitario desde el producto si no se especificó."""
 		if not self.unit_price:
 			self.unit_price = self.product.base_price
-		self.full_clean()
+		self.clean()
 		super().save(*args, **kwargs)
 
