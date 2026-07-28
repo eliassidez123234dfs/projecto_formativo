@@ -2,8 +2,9 @@
 # .gitignore unificado – Python, Django, Node, React, macOS, Linux, IDEs, IA
 # =============================================================================
 
-package-lock.json
-yarn.lock
+# Solo subir uno de estos dos al repositorio, dependiendo del gestor de paquetes que se use:
+# package-lock.json
+# yarn.lock
 
 ### Django ###
 *.log
