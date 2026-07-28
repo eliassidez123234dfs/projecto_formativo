@@ -1,32 +1,78 @@
-# Created by https://www.toptal.com/developers/gitignore/api/python,django,node,linux,react,visualstudiocode,macos
-# Edit at https://www.toptal.com/developers/gitignore?templates=python,django,node,linux,react,visualstudiocode,macos
+# =============================================================================
+# .gitignore unificado – Python, Django, Node, React, macOS, Linux, IDEs, IA
+# =============================================================================
 
-### Django ###
-*.log
-*.pot
-*.pyc
-__pycache__/
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media
+# =============================================================================
+# Sistemas operativos
+# =============================================================================
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
 
-# If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
-# in your Git repository. Update and uncomment the following line accordingly.
-# <django-project-name>/staticfiles/
+# macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+*.icloud
 
-# Environment files
-.env
+# Windows
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
-### Django.Python Stack ###
-# Byte-compiled / optimized / DLL files
+# =============================================================================
+# IDEs y editores
+# =============================================================================
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.idea/
+.idea/*
+.vs/
+*.swp
+*.swo
+*~
+*.code-workspace
+.history/
+.ntvs_analysis.dat
+*.sublime-workspace
+*.sublime-project
+
+# =============================================================================
+# Python / Django
+# =============================================================================
+# Byte‑compiled / optimizados / DLL
 *.py[cod]
 *$py.class
+__pycache__/
 
-# C extensions
+# Extensiones C
 *.so
 
-# Distribution / packaging
+# Empaquetado y distribución
 .Python
 build/
 develop-eggs/
@@ -47,16 +93,14 @@ share/python-wheels/
 MANIFEST
 
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
-# Installer logs
+# Logs de instalación
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# Informes de cobertura / tests
 htmlcov/
 .tox/
 .nox/
@@ -71,19 +115,41 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Translations
+# Traducciones
 *.mo
+*.pot
 
-# Django stuff:
+# Django
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+db.sqlite3.backup
+*.sql
+*.sql.gz
+*.dump
+media/
+staticfiles/
+static_root/
 
-# Flask stuff:
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Logs y archivos de proceso
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Flask
 instance/
 .webassets-cache
 
-# Scrapy stuff:
+# Scrapy
 .scrapy
 
-# Sphinx documentation
+# Sphinx
 docs/_build/
 
 # PyBuilder
@@ -97,132 +163,75 @@ target/
 profile_default/
 ipython_config.py
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
+# pyenv (comentado por defecto)
 # .python-version
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/#use-with-ide
+# Pipenv / Poetry / PDM (lockfiles comentados)
+# Pipfile.lock
+# poetry.lock
+poetry.toml
+# pdm.lock
 .pdm.toml
 
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+# PEP 582
 __pypackages__/
 
-# Celery stuff
+# Celery
 celerybeat-schedule
 celerybeat.pid
 
-# SageMath parsed files
+# SageMath
 *.sage.py
 
-# Environments
-.env
-.venv
-env/
+# Entornos virtuales
+.venv/
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
+.virtualenvs/
 
-# Spyder project settings
+# Spyder
 .spyderproject
 .spyproject
 
-# Rope project settings
+# Rope
 .ropeproject
 
-# mkdocs documentation
+# MkDocs
 /site
 
-# mypy
+# Mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# Pyre type checker
+# Pyre
 .pyre/
 
-# pytype static type analyzer
+# Pytype
 .pytype/
 
-# Cython debug symbols
+# Cython
 cython_debug/
 
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+# Ruff
+.ruff_cache/
 
-### Linux ###
-*~
+# LSP
+pyrightconfig.json
 
-# temporary files which can be created if a process still has a handle open of a deleted file
-.fuse_hidden*
+# Claves y certificados
+*.key
+*.pem
+*.cert
+*.crt
+.cache_ggshield
 
-# KDE directory preferences
-.directory
-
-# Linux trash folder which might appear on any partition or disk
-.Trash-*
-
-# .nfs files are created when an open file is removed but is still being accessed
-.nfs*
-
-### macOS ###
-# General
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Icon must end with two \r
-Icon
-
-
-# Thumbnails
-._*
-
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-
-# Directories potentially created on remote AFP share
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
-
-### macOS Patch ###
-# iCloud generated files
-*.icloud
-
-### Node ###
+# =============================================================================
+# Node.js / JavaScript / Frontend
+# =============================================================================
 # Logs
 logs
 npm-debug.log*
@@ -231,261 +240,217 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
+# Reportes de diagnóstico
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Runtime data
+# Datos en tiempo de ejecución
 pids
-*.pid
-*.seed
-*.pid.lock
 
-# Directory for instrumented libs generated by jscoverage/JSCover
+# Cobertura
 lib-cov
-
-# Coverage directory used by tools like istanbul
 coverage
 *.lcov
-
-# nyc test coverage
 .nyc_output
 
-# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+# Grunt
 .grunt
 
-# Bower dependency directory (https://bower.io/)
+# Bower
 bower_components
 
-# node-waf configuration
+# node-waf
 .lock-wscript
 
-# Compiled binary addons (https://nodejs.org/api/addons.html)
+# Addons compilados
 build/Release
 
-# Dependency directories
+# Directorios de dependencias
 node_modules/
 jspm_packages/
-
-# Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
-# TypeScript cache
+# TypeScript
 *.tsbuildinfo
 
-# Optional npm cache directory
+# Cachés de npm / ESLint / Stylelint
 .npm
-
-# Optional eslint cache
 .eslintcache
-
-# Optional stylelint cache
 .stylelintcache
 
-# Microbundle cache
+# Microbundle
 .rpt2_cache/
 .rts2_cache_cjs/
 .rts2_cache_es/
 .rts2_cache_umd/
 
-# Optional REPL history
+# Historial REPL
 .node_repl_history
 
-# Output of 'npm pack'
+# Paquetes npm
 *.tgz
 
-# Yarn Integrity file
+# Yarn
 .yarn-integrity
-
-# dotenv environment variable files
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-
-# parcel-bundler cache (https://parceljs.org/)
-.parcel-cache
-
-# Next.js build output
-.next
-out
-
-# Nuxt.js build / generate output
-.nuxt
-dist
-
-# Gatsby files
-.cache/
-# Comment in the public line in if your project uses Gatsby and not Next.js
-# https://nextjs.org/blog/next-9-1#public-directory-support
-# public
-
-# vuepress build output
-.vuepress/dist
-
-# vuepress v2.x temp and cache directory
-.temp
-
-# Docusaurus cache and generated files
-.docusaurus
-
-# Serverless directories
-.serverless/
-
-# FuseBox cache
-.fusebox/
-
-# DynamoDB Local files
-.dynamodb/
-
-# TernJS port file
-.tern-port
-
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
-
-# yarn v2
 .yarn/cache
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
 
-### Node Patch ###
-# Serverless Webpack directories
-.webpack/
+# Dotenv (específicos)
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
 
-# Optional stylelint cache
+# Parcel
+.parcel-cache
 
-# SvelteKit build / generate output
+# Next.js
+.next
+out
+
+# Nuxt
+.nuxt
+
+# Gatsby
+.cache/
+
+# Vuepress
+.vuepress/dist
+.temp
+
+# Docusaurus
+.docusaurus
+
+# Serverless
+.serverless/
+
+# FuseBox
+.fusebox/
+
+# DynamoDB
+.dynamodb/
+
+# Tern
+.tern-port
+
+# VSCode test
+.vscode-test
+
+# SvelteKit
 .svelte-kit
 
-### Python ###
-# Byte-compiled / optimized / DLL files
+# Webpack
+.webpack/
 
-# C extensions
-
-# Distribution / packaging
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-
-# Installer logs
-
-# Unit test / coverage reports
-
-# Translations
-
-# Django stuff:
-
-# Flask stuff:
-
-# Scrapy stuff:
-
-# Sphinx documentation
-
-# PyBuilder
-
-# Jupyter Notebook
-
-# IPython
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/#use-with-ide
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-
-# Celery stuff
-
-# SageMath parsed files
-
-# Environments
-
-# Spyder project settings
-
-# Rope project settings
-
-# mkdocs documentation
-
-# mypy
-
-# Pyre type checker
-
-# pytype static type analyzer
-
-# Cython debug symbols
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-
-### Python Patch ###
-# Poetry local configuration file - https://python-poetry.org/docs/configuration/#local-configuration
-poetry.toml
-
-# ruff
-.ruff_cache/
-
-# LSP config files
-pyrightconfig.json
-
-### react ###
+# React / específicos
 .DS_*
 **/*.backup.*
 **/*.back.*
-
-node_modules
-
 *.sublime*
-
 psd
 thumb
 sketch
 
-### VisualStudioCode ###
-.vscode/
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
+# Otros frontend
+.lh/
 
-# Local History for Visual Studio Code
-.history/
+# =============================================================================
+# Herramientas de IA y automatización
+# =============================================================================
+.agents/
+.agents/*
+.auxly/
+.claude/
+.cursor/
+.cursorrules
+.goose/
+.kiro/
+.opencode/
+.specify/
+.windsurf/
+.blackbox/
+.conductor/
+.conductor/*
+opencode.json
+AGENTS.md
+AI_AGENTS_STRATEGY.md
 
-# Built Visual Studio Code Extensions
-*.vsix
-
-### VisualStudioCode Patch ###
-# Ignore all local history of files
-.history
-.ionide
-
-# End of https://www.toptal.com/developers/gitignore/api/python,django,node,linux,react,visualstudiocode,macos
-venv/
-
+# GitHub Copilot y agentes
 .github/
 .github/*
+copilot-instructions.md
+
+# Aider
+.aider/
+.aider/*
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache.v4/
+.aider*
+!.aiderignore
+
+# Skills
+.skills-lock.json
+skills-lock.json
+
+# Conductor (gestión de proyecto)
+conductor/
+conductor/*
+
+# =============================================================================
+# Proyecto‑específico y archivos personales
+# =============================================================================
+Ficha Proyecto RED.md
+estructura_proyecto_completo.txt
+taiga.json
+COMPONENTS_EXAMPLES.jsx
+
+# Matriz de requerimientos (dump Excel)
+Matrix\ de\ requerimientos.xlsx/
+Matrix\ de\ requerimientos.xlsx.zip
+lista\ de\ chequeos/
+
+# Backend concreto
+backend/.coverage
+backend/htmlcov/
+backend/.pytest_cache/
+backend/*.db
+backend/media/
+backend/static/
+
+# Microservicios
+microservices/*/node_modules/
+microservices/*/.env
+microservices/*/.venv/
+microservices/*/venv/
+
+# Docker
+.docker/
+
+# Neon (base de datos)
+.neon*
+.neon/
+
+# Reportes de testing
+test-reports/
+allure-results/
+*.test.js.snap
+
+# Miscelánea
+*.bak
+*.orig
+*.tmp
+*.temp
+.ejemplos_codigo/
+.ejemplos_codigo/*
+ejemplos_codigo/
+ejemplos_codigo/*
+ejemplos_codigo
+
+# =============================================================================
+# Notas adicionales (comentarios de la versión original)
+# =============================================================================
+# Si usas collectstatic, descomenta la siguiente línea:
+<django-project-name>/staticfiles/
