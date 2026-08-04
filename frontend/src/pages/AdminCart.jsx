@@ -4,6 +4,8 @@ import { fetchAdminCarts } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
+import ErrorState from '../components/ErrorState'
+import { formatCOP } from '../utils/format'
 
 export default function AdminCart() {
   const [carts, setCarts] = useState({ results: [], count: 0 })
@@ -18,11 +20,16 @@ export default function AdminCart() {
       const data = await fetchAdminCarts(page, pageSize)
       setCarts(data)
       setError(null)
-    } catch { setCarts({ results: [], count: 0 }); setError('Error al cargar los carritos. Intenta de nuevo.') }
+    } catch (err) { setCarts({ results: [], count: 0 }); setError(err) }
     finally { setLoading(false) }
   }, [page])
 
-  useEffect(() => { loadCarts() }, [loadCarts])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadCarts();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadCarts])
 
   const totalPages = Math.max(1, Math.ceil((carts.count || 0) / pageSize))
 
@@ -32,7 +39,7 @@ export default function AdminCart() {
         {loading ? (
           <Spinner text="Cargando carritos..." />
         ) : error ? (
-          <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadCarts}>Reintentar</button></div>
+          <ErrorState error={error} module="carritos" onRetry={loadCarts} />
         ) : !carts.results || carts.results.length === 0 ? (
           <div className="empty-state"><p>No hay carritos registrados.</p></div>
         ) : (
@@ -54,7 +61,7 @@ export default function AdminCart() {
                     <td><code>{cart.id}</code></td>
                     <td>{cart.user_name}</td>
                     <td>{cart.items_count}</td>
-                    <td>${Number(cart.total_amount).toFixed(2)}</td>
+                    <td>{formatCOP(cart.total_amount)}</td>
                     <td>{new Date(cart.created_at).toLocaleDateString()}</td>
                     <td>
                       <Link to={`/admin-cart/${cart.id}`} className="btn btn-sm btn-secondary">

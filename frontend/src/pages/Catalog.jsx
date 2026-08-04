@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchCatalog, fetchProductDetail } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
+import ErrorState from '../components/ErrorState';
 import { useCart } from '../context/CartContext';
 import { Header } from '../components/Header';
 
@@ -11,54 +12,99 @@ export const Catalog = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
-    q: '', category: '', min_price: '', max_price: '', ordering: '', page: 1,
+    q: '', category: '', min_price: '', max_price: '', size: '', color: '', ordering: '',
   });
-  const [filtersData, setFiltersData] = useState({ categories: [], price_range: { min: 0, max: 0 } });
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [filtersData, setFiltersData] = useState({ categories: [], sizes: [], colors: [], price_range: { min: 0, max: 0 } });
   const [pageInfo, setPageInfo] = useState(null);
   const navigate = useNavigate();
   const { cart, addItem } = useCart();
+  const [pick, setPick] = useState(null);
+  const [pickSize, setPickSize] = useState('');
+  const [pickColor, setPickColor] = useState('');
+  const [pickQty, setPickQty] = useState(1);
+  const [addingPick, setAddingPick] = useState(false);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async (reset = true) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchCatalog(filters);
-      setProducts(data.results || data);
+      const targetPage = reset ? 1 : page + 1;
+      const data = await fetchCatalog({ ...filters, page: targetPage });
+      const results = data.results || data;
+      setProducts(prev => reset ? results : [...prev, ...results]);
+      setPage(targetPage);
+      setHasMore(Boolean(data.next));
       setPageInfo(data.next ? { next: data.next, previous: data.previous, count: data.count } : null);
       if (data.filters) setFiltersData(data.filters);
     } catch (err) {
-      setError('Error al cargar productos');
+      setError(err);
       setProducts([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, page]);
 
-  useEffect(() => { loadProducts() }, [filters]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadProducts(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadProducts]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
       ...prev,
       [name]: name === 'category' ? (value ? Number(value) : '') : value,
-      page: 1,
     }));
+  };
+
+  const clearFilters = () => {
+    setFilters({ q: '', category: '', min_price: '', max_price: '', size: '', color: '', ordering: '' });
   };
 
   const handleAddToCart = async (product) => {
     try {
       let prod = product;
       if (!prod.variants) prod = await fetchProductDetail(product.id);
-      const variantId = prod.variants?.find(v => v.stock > 0)?.id;
-      if (!variantId) {
+      const available = prod.variants?.filter(v => v.stock > 0) || [];
+      if (available.length === 0) {
         toast.error('Este producto no tiene variantes disponibles');
         return;
       }
-      await addItem(prod.id, variantId, 1);
-      toast.success('Producto agregado al carrito');
+      if (available.length === 1) {
+        await addItem(prod.id, available[0].id, 1);
+        toast.success('Producto agregado al carrito');
+        return;
+      }
+      setPick(prod);
+      setPickSize(available[0].size);
+      setPickColor(available[0].color);
+      setPickQty(1);
     } catch (error) {
       const msg = error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito';
       toast.error(msg);
+    }
+  };
+
+  const pickSizes = [...new Set((pick?.variants || []).filter(v => v.stock > 0).map(v => v.size))];
+  const pickColors = [...new Set((pick?.variants || []).filter(v => v.size === pickSize && v.stock > 0).map(v => v.color))];
+
+  const confirmPick = async () => {
+    const variant = pick?.variants?.find(v => v.size === pickSize && v.color === pickColor);
+    if (!variant) { toast.error('Selecciona talla y color'); return; }
+    setAddingPick(true);
+    try {
+      await addItem(pick.id, variant.id, pickQty);
+      toast.success('Producto agregado al carrito');
+      setPick(null);
+    } catch (error) {
+      const msg = error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito';
+      toast.error(msg);
+    } finally {
+      setAddingPick(false);
     }
   };
 
@@ -94,7 +140,7 @@ export const Catalog = () => {
             {filtersData.categories.map((cat) => (
               <button key={cat.id} type="button"
                 className={`chip ${filters.category === cat.id ? 'chip--active' : ''}`}
-                onClick={() => setFilters(p => ({ ...p, category: p.category === cat.id ? '' : Number(cat.id), page: 1 }))}>
+                onClick={() => setFilters(p => ({ ...p, category: p.category === cat.id ? '' : Number(cat.id) }))}>
                 {cat.name}
               </button>
             ))}
@@ -113,6 +159,7 @@ export const Catalog = () => {
               <option value="-name">Nombre Z-A</option>
               <option value="base_price">Precio: menor a mayor</option>
               <option value="-base_price">Precio: mayor a menor</option>
+              <option value="popularity">Más vendidos</option>
             </select>
           </div>
           <div className="filter-item">
@@ -120,6 +167,22 @@ export const Catalog = () => {
               <option value="">Todas las categorías</option>
               {filtersData.categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-item">
+            <select name="size" value={filters.size} onChange={handleFilterChange} className="filter-select">
+              <option value="">Todas las tallas</option>
+              {filtersData.sizes.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-item">
+            <select name="color" value={filters.color} onChange={handleFilterChange} className="filter-select">
+              <option value="">Todos los colores</option>
+              {filtersData.colors.map((c) => (
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
           </div>
@@ -150,15 +213,12 @@ export const Catalog = () => {
             ))}
           </div>
         ) : error ? (
-          <div className="catalog-state">
-            <p className="state-text">{error}</p>
-            <button className="btn btn-primary" onClick={loadProducts}>Reintentar</button>
-          </div>
+          <ErrorState error={error} module="catálogo de productos" onRetry={() => loadProducts()} />
         ) : products.length === 0 ? (
           <div className="catalog-state">
             <h3 className="state-title">No hay productos disponibles</h3>
             <p className="state-text">Intenta con otros filtros o categorías.</p>
-            <button className="btn btn-primary" onClick={() => setFilters({ q: '', category: '', min_price: '', max_price: '', ordering: '', page: 1 })}>
+            <button className="btn btn-primary" onClick={clearFilters}>
               Limpiar filtros
             </button>
           </div>
@@ -171,7 +231,12 @@ export const Catalog = () => {
                   product={{
                     id: product.id,
                     name: product.name,
-                    price: Number(product.base_price) || 0,
+                    base_price: Number(product.base_price ?? 0),
+                    price: Number(product.min_price ?? product.base_price ?? 0),
+                    min_price: product.min_price,
+                    max_price: product.max_price,
+                    total_stock: product.total_stock,
+                    color_hexes: product.color_hexes || {},
                     badge: product.is_new ? 'Nuevo' : null,
                     image: product.main_image || null,
                   }}
@@ -181,19 +246,13 @@ export const Catalog = () => {
               ))}
             </div>
 
-            {pageInfo && (
+            {pageInfo && hasMore && (
               <div className="catalog-pagination">
-                <button className="page-btn" disabled={!pageInfo.previous}
-                  onClick={() => setFilters(p => ({ ...p, page: p.page - 1 }))}>
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-                  Anterior
+                <button className="page-btn" disabled={loading} onClick={() => loadProducts(false)}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  {loading ? 'Cargando...' : 'Cargar más'}
                 </button>
-                <span className="page-info">Página {filters.page}</span>
-                <button className="page-btn" disabled={!pageInfo.next}
-                  onClick={() => setFilters(p => ({ ...p, page: p.page + 1 }))}>
-                  Siguiente
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
+                <span className="page-info">Mostrando {products.length} de {pageInfo.count} producto{pageInfo.count !== 1 ? 's' : ''}</span>
               </div>
             )}
           </>
@@ -592,6 +651,102 @@ export const Catalog = () => {
           .filter-select { width: 100%; }
           .price-group { justify-content: center; }
           .filter-btn { width: 100%; justify-content: center; }
+        }
+      `}</style>
+
+      {pick && (
+        <div className="vm-backdrop" onClick={() => setPick(null)}>
+          <div className="vm-card" onClick={e => e.stopPropagation()}>
+            <div className="vm-head">
+              <h3>{pick.name}</h3>
+              <button className="vm-close" onClick={() => setPick(null)}>✕</button>
+            </div>
+            <div className="vm-body">
+              <div className="vm-group">
+                <label>Talla:</label>
+                <div className="vm-chips">
+                  {pickSizes.map(size => (
+                    <button key={size} type="button"
+                      className={`vm-chip ${pickSize === size ? 'vm-chip--active' : ''}`}
+                      onClick={() => {
+                        setPickSize(size);
+                        const firstColor = pick.variants.find(v => v.size === size && v.stock > 0)?.color;
+                        setPickColor(firstColor || '');
+                      }}>
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="vm-group">
+                <label>Color:</label>
+                <div className="vm-chips">
+                  {pickColors.map(color => {
+                    const variant = pick.variants.find(v => v.size === pickSize && v.color === color);
+                    return (
+                      <button key={color} type="button"
+                        className={`vm-chip ${pickColor === color ? 'vm-chip--active' : ''}`}
+                        onClick={() => setPickColor(color)}>
+                        <span className="vm-swatch" style={{ background: variant?.color_hex || '#6B7280' }} />
+                        {color}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="vm-group">
+                <label>Cantidad:</label>
+                <div className="vm-qty">
+                  <button type="button" className="btn btn-sm btn-outline" disabled={pickQty <= 1} onClick={() => setPickQty(q => q - 1)}>−</button>
+                  <span>{pickQty}</span>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setPickQty(q => q + 1)}>+</button>
+                </div>
+              </div>
+            </div>
+            <div className="vm-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setPick(null)}>Cancelar</button>
+              <button type="button" className="btn btn-primary" disabled={!pickColor || addingPick} onClick={confirmPick}>
+                {addingPick ? 'Agregando...' : 'Agregar al carrito'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .vm-backdrop {
+          position: fixed; inset: 0; z-index: 1000;
+          background: rgba(17,24,39,0.5);
+          display: flex; align-items: center; justify-content: center;
+          padding: 1rem;
+        }
+        .vm-card {
+          width: min(440px, 95vw);
+          background: white; border-radius: 16px; overflow: hidden;
+          box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+        }
+        .vm-head {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 16px 20px; border-bottom: 1px solid #F3F4F6;
+        }
+        .vm-head h3 { margin: 0; font-size: 1rem; font-weight: 700; color: #111827; }
+        .vm-close { border: none; background: none; font-size: 1rem; color: #9CA3AF; cursor: pointer; }
+        .vm-body { padding: 16px 20px; }
+        .vm-group { margin-bottom: 14px; }
+        .vm-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #6B7280; margin-bottom: 6px; }
+        .vm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .vm-chip {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 6px 12px; border: 2px solid #E5E7EB; border-radius: 8px;
+          background: white; color: #374151; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+        }
+        .vm-chip--active { border-color: #DC2626; background: #DC2626; color: white; }
+        .vm-swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
+        .vm-qty { display: flex; align-items: center; gap: 10px; }
+        .vm-qty span { font-weight: 700; min-width: 20px; text-align: center; }
+        .vm-foot {
+          display: flex; justify-content: flex-end; gap: 8px;
+          padding: 14px 20px; border-top: 1px solid #F3F4F6;
         }
       `}</style>
     </>

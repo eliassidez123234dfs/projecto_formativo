@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { fetchAdminCartDetail } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
+import ErrorState from '../components/ErrorState'
+import { formatCOP } from '../utils/format'
 
 export default function AdminCartDetail() {
   const { id } = useParams()
   const [cart, setCart] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     let mounted = true
@@ -14,7 +17,7 @@ export default function AdminCartDetail() {
       try {
         const data = await fetchAdminCartDetail(id)
         if (mounted) setCart(data)
-      } catch { if (mounted) setCart(null) }
+      } catch (err) { if (mounted) { setCart(null); setError(err) } }
       finally { if (mounted) setLoading(false) }
     }
     load()
@@ -22,7 +25,7 @@ export default function AdminCartDetail() {
   }, [id])
 
   if (loading) return <AdminLayout><div className="card"><div className="empty-state"><p>Cargando...</p></div></div></AdminLayout>
-  if (!cart) return <AdminLayout><div className="card"><div className="empty-state"><p>Carrito no encontrado.</p></div></div></AdminLayout>
+  if (!cart) return <AdminLayout><ErrorState status={error ? undefined : 404} error={error} module="detalle de carrito" /></AdminLayout>
 
   return (
     <AdminLayout
@@ -37,7 +40,7 @@ export default function AdminCartDetail() {
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 24, fontSize: 14 }}>
           <div><strong>Usuario:</strong> {cart.user_name}</div>
           <div><strong>Items:</strong> {cart.total_items}</div>
-          <div><strong>Total:</strong> ${Number(cart.total_amount).toFixed(2)}</div>
+          <div><strong>Total:</strong> {formatCOP(cart.total_amount)}</div>
           <div><strong>Creado:</strong> {new Date(cart.created_at).toLocaleDateString()}</div>
         </div>
 
@@ -72,15 +75,15 @@ export default function AdminCartDetail() {
                   </span>
                 </td>
                 <td>{item.quantity}</td>
-                <td>${Number(item.unit_price).toFixed(2)}</td>
-                <td style={{ fontWeight: 600 }}>${Number(item.subtotal).toFixed(2)}</td>
+                <td>{formatCOP(item.unit_price)}</td>
+                <td style={{ fontWeight: 600 }}>{formatCOP(item.subtotal)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr style={{ borderTop: '2px solid var(--color-border)' }}>
               <td colSpan="4" style={{ textAlign: 'right', fontWeight: 700, padding: '12px 16px' }}>Total</td>
-              <td style={{ fontWeight: 700, padding: '12px 16px' }}>${Number(cart.total_amount).toFixed(2)}</td>
+              <td style={{ fontWeight: 700, padding: '12px 16px' }}>{formatCOP(cart.total_amount)}</td>
             </tr>
           </tfoot>
         </table>

@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
 import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
+import { formatCOP } from '../utils/format';
 
 export const Cart = () => {
   const { cart, loading, updateQuantity, removeItem, clearCartItems } = useCart();
@@ -95,8 +96,15 @@ export const Cart = () => {
                   {item.variant_label || ''}
                 </p>
                 <p style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 15 }}>
-                  ${Number(item.unit_price).toFixed(2)}
+                  {formatCOP(item.unit_price)}
                 </p>
+                {item.variant_stock != null && (
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    Stock disponible: {item.variant_stock} {item.variant_hex ? (
+                      <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: item.variant_hex, border: '1px solid rgba(0,0,0,0.1)', marginLeft: 4, verticalAlign: 'middle' }} />
+                    ) : null}
+                  </p>
+                )}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -107,6 +115,7 @@ export const Cart = () => {
                 </button>
                 <span style={{ fontWeight: 600, minWidth: 24, textAlign: 'center', fontSize: 14 }}>{item.quantity}</span>
                 <button className="btn btn-sm btn-outline"
+                  disabled={item.variant_stock != null && item.quantity >= item.variant_stock}
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   style={{ width: 32, height: 32, padding: 0, borderRadius: 8, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   +
@@ -114,7 +123,7 @@ export const Cart = () => {
               </div>
 
               <div style={{ minWidth: 80, textAlign: 'right' }}>
-                <p style={{ fontWeight: 700, fontSize: 16 }}>${Number(item.subtotal).toFixed(2)}</p>
+                <p style={{ fontWeight: 700, fontSize: 16 }}>{formatCOP(item.subtotal)}</p>
               </div>
 
               <button className="btn btn-sm btn-ghost" onClick={() => removeItem(item.id)}
@@ -138,7 +147,7 @@ export const Cart = () => {
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-              ${Number(cart?.total_amount || 0).toFixed(2)}
+              {formatCOP(cart?.total_amount || 0)}
             </p>
           </div>
         </div>

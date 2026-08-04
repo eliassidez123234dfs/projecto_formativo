@@ -12,16 +12,18 @@ class CartItemSerializer(serializers.ModelSerializer):
     variant_label = serializers.SerializerMethodField()
     variant_size = serializers.CharField(source='variant.size', read_only=True)
     variant_color = serializers.CharField(source='variant.color', read_only=True)
+    variant_stock = serializers.IntegerField(source='variant.stock', read_only=True)
+    variant_hex = serializers.CharField(source='variant.color_hex', read_only=True)
     subtotal = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
         fields = [
             'id', 'product', 'product_name', 'product_image', 'variant', 'variant_label',
-            'variant_size', 'variant_color',
+            'variant_size', 'variant_color', 'variant_stock', 'variant_hex',
             'quantity', 'unit_price', 'subtotal', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'product_name', 'product_image', 'variant_label', 'variant_size', 'variant_color', 'subtotal', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'product_name', 'product_image', 'variant_label', 'variant_size', 'variant_color', 'variant_stock', 'variant_hex', 'subtotal', 'created_at', 'updated_at']
 
     def get_product_image(self, obj):
         image = obj.product.main_image

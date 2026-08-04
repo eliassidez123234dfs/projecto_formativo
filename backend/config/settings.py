@@ -43,6 +43,7 @@ PROJECT_APPS = [
     'apps.catalog',
     'apps.checkout',
     'apps.models3d',
+    'apps.monitoring',
 ]
 
 THIRD_PARTY_APPS = [
@@ -216,6 +217,7 @@ REST_FRAMEWORK = {
         'anon': '1000/hour', 
         'user': '10000/hour',
         'contact_form': '3/hour',
+        'client_errors': '30/minute',
     }
 }
 
@@ -321,3 +323,82 @@ if not DEBUG and env('DATABASE_URL', default=''):
         'default': env.db('DATABASE_URL'),
     }
     DATABASES['default']['ATOMIC_REQUESTS'] = True
+
+# -------------------- Logging / Monitoreo de errores --------------------
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} | {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'app_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'app.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 3,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+        'errors_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'errors.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+        'requests_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'requests.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 3,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+        'client_errors_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'client_errors.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'app_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['errors_file', 'requests_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': ['requests_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'client_errors': {
+            'handlers': ['client_errors_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        '': {
+            'handlers': ['console', 'app_file'],
+            'level': 'INFO',
+        },
+    },
+}

@@ -14,14 +14,15 @@ source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate   # Windows
 
 # 3. Actualizar pip e instalar dependencias
-pip install --upgrade pip
+python -m pip install --upgrade pip 
+# pip install --upgrade pip
 pip install -r requirements.txt
 
 # 4. Configurar variables de entorno
 # Editar backend/.env con los valores correspondientes
 
 # 5. Ejecutar migraciones
-# python manage.py makemigrations
+# python manage.py makemigrations # solo la primera vez
 # python manage.py showmigrations
 python manage.py migrate
 

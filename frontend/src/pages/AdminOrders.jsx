@@ -4,6 +4,8 @@ import { fetchAdminOrders } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
+import ErrorState from '../components/ErrorState'
+import { formatCOP } from '../utils/format'
 
 const STATUS_LABELS = {
   pending: 'Pendiente',
@@ -38,7 +40,7 @@ export default function AdminOrders() {
       const data = await fetchAdminOrders(page, pageSize, filters)
       setOrders(data)
       setError(null)
-    } catch { setOrders({ results: [], count: 0 }); setError('Error al cargar las órdenes. Intenta de nuevo.') }
+    } catch (err) { setOrders({ results: [], count: 0 }); setError(err) }
     finally { setLoading(false) }
   }, [page, statusFilter])
 
@@ -91,7 +93,7 @@ export default function AdminOrders() {
         {loading ? (
           <Spinner text="Cargando órdenes..." />
         ) : error ? (
-          <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadOrders}>Reintentar</button></div>
+          <ErrorState error={error} module="órdenes" onRetry={loadOrders} />
         ) : !orders.results || orders.results.length === 0 ? (
           <div className="empty-state"><p>No hay órdenes registradas.</p></div>
         ) : (
@@ -120,7 +122,7 @@ export default function AdminOrders() {
                         {STATUS_LABELS[order.status] || order.status}
                       </span>
                     </td>
-                    <td>${Number(order.total).toFixed(2)}</td>
+                    <td>{formatCOP(order.total)}</td>
                     <td>{order.items?.length || 0}</td>
                     <td>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</td>
                     <td>

@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import { fetchAdminOrderDetail } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import Spinner from '../components/Spinner'
+import ErrorState from '../components/ErrorState'
+import { formatCOP } from '../utils/format'
 
 const STATUS_LABELS = {
   pending: 'Pendiente',
@@ -53,14 +55,14 @@ export default function AdminOrderDetail() {
     try {
       const data = await fetchAdminOrderDetail(id)
       setOrder(data)
-    } catch { setError('Error al cargar la orden. Intenta de nuevo.') }
+    } catch (err) { setError(err) }
     finally { setLoading(false) }
   }, [id])
 
   useEffect(() => { loadOrder() }, [loadOrder])
 
   if (loading) return <AdminLayout><Spinner text="Cargando orden..." /></AdminLayout>
-  if (error) return <AdminLayout><div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadOrder}>Reintentar</button></div></AdminLayout>
+  if (error) return <AdminLayout><ErrorState error={error} module="detalle de orden" onRetry={loadOrder} /></AdminLayout>
   if (!order) return <AdminLayout><div className="card"><div className="empty-state"><p>Orden no encontrada.</p></div></div></AdminLayout>
 
   return (
@@ -77,7 +79,7 @@ export default function AdminOrderDetail() {
               {STATUS_LABELS[order.status] || order.status}
             </span>
           } />
-          <InfoRow label="Total" value={`$${Number(order.total).toFixed(2)}`} />
+          <InfoRow label="Total" value={formatCOP(order.total)} />
           <InfoRow label="Creada" value={order.created_at ? new Date(order.created_at).toLocaleString() : '—'} />
           <InfoRow label="Actualizada" value={order.updated_at ? new Date(order.updated_at).toLocaleString() : '—'} />
         </DetailCard>
@@ -126,7 +128,7 @@ export default function AdminOrderDetail() {
                       </span>
                     </td>
                     <td>{item.quantity}</td>
-                    <td>${Number(item.unit_price).toFixed(2)}</td>
+                    <td>{formatCOP(item.unit_price)}</td>
                   </tr>
                 ))}
               </tbody>

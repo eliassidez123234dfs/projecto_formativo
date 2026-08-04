@@ -4,6 +4,7 @@ import AdminLayout from '../components/AdminLayout'
 import InfoModal from '../components/InfoModal'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
+import ErrorState from '../components/ErrorState'
 
 export default function AdminContact() {
   const [messages, setMessages] = useState([])
@@ -26,7 +27,7 @@ export default function AdminContact() {
         total: data.count || list.length || 0,
         unread: (Array.isArray(list) ? list : []).filter(m => !m.leido).length,
       })
-    } catch { setMessages([]); setError('Error al cargar los mensajes. Intenta de nuevo.') }
+    } catch (err) { setMessages([]); setError(err) }
     finally { setLoading(false) }
   }, [page])
 
@@ -82,7 +83,7 @@ export default function AdminContact() {
         {loading ? (
           <Spinner text="Cargando mensajes..." />
         ) : error ? (
-          <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadMessages}>Reintentar</button></div>
+          <ErrorState error={error} module="mensajes de contacto" onRetry={loadMessages} />
         ) : messages.length === 0 ? (
           <div className="empty-state"><p>No hay mensajes de contacto.</p></div>
         ) : (

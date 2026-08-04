@@ -67,11 +67,16 @@ class CartViewSet(viewsets.ViewSet):
         variant = serializer.validated_data['variant']
         quantity = serializer.validated_data['quantity']
 
+        if quantity < 1:
+            return Response({'quantity': 'La cantidad mínima permitida es 1.'}, status=status.HTTP_400_BAD_REQUEST)
+        if quantity > variant.stock:
+            return Response({'quantity': 'La cantidad no puede superar el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
+
         item, created = CartItem.objects.get_or_create(
             cart=cart,
             product=product,
             variant=variant,
-            defaults={'quantity': quantity, 'unit_price': product.base_price},
+            defaults={'quantity': quantity, 'unit_price': variant.effective_price},
         )
 
         if not created:

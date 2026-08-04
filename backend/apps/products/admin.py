@@ -12,7 +12,7 @@ class ProductImageInline(admin.TabularInline):
 class VariantInline(admin.TabularInline):
 	model = Variant
 	extra = 0
-	fields = ('size', 'color', 'stock')
+	fields = ('size', 'color', 'color_hex', 'color_nombre', 'price_variant', 'stock')
 
 
 class ProductAuditInline(admin.TabularInline):
@@ -25,9 +25,10 @@ class ProductAuditInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-	list_display = ('name', 'base_price', 'is_active', 'is_approved', 'created_at', 'updated_at')
+	list_display = ('name', 'base_price', 'total_stock', 'is_active', 'is_approved', 'creator', 'created_at', 'updated_at')
 	list_filter = ('is_active', 'is_approved', 'created_at')
 	search_fields = ('name', 'description')
+	readonly_fields = ('creator', 'approved_by', 'approved_at')
 	inlines = [ProductImageInline, VariantInline, ProductAuditInline]
 
 	def save_model(self, request, obj, form, change):

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import './shop.css'
+import { formatCOP } from '../utils/format'
 
 function CartRow({ item, onChangeQty, onRemove }) {
   return (
@@ -8,7 +9,7 @@ function CartRow({ item, onChangeQty, onRemove }) {
       <div>
         <h3>{item.product_name}</h3>
         <p>{item.variant_label}</p>
-        <strong>${Number(item.unit_price).toFixed(2)}</strong>
+        <strong>{formatCOP(item.unit_price)}</strong>
       </div>
       <div className="cart-qty-actions">
         <button type="button" onClick={() => onChangeQty(item.id, Math.max(1, item.quantity - 1))}>-</button>
@@ -16,7 +17,7 @@ function CartRow({ item, onChangeQty, onRemove }) {
         <button type="button" onClick={() => onChangeQty(item.id, item.quantity + 1)}>+</button>
       </div>
       <div className="cart-row-right">
-        <strong>${Number(item.subtotal).toFixed(2)}</strong>
+        <strong>{formatCOP(item.subtotal)}</strong>
         <button type="button" className="shop-button secondary" onClick={() => onRemove(item.id)}>Eliminar</button>
       </div>
     </article>
@@ -120,7 +121,7 @@ export default function CartPage() {
           <aside className="cart-summary">
             <h2>Resumen</h2>
             <p>Productos: {cart.total_items}</p>
-            <p>Total: <strong>${Number(cart.total_amount).toFixed(2)}</strong></p>
+            <p>Total: <strong>{formatCOP(cart.total_amount)}</strong></p>
           </aside>
         </section>
       )}

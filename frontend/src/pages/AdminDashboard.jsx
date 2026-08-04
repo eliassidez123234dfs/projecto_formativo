@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { fetchAdminStats } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import Spinner from '../components/Spinner'
+import ErrorState from '../components/ErrorState'
 
 const quickLinks = [
   { label: 'Productos', href: '/admin-products', desc: 'Gestiona el catálogo', color: 'primary' },
@@ -53,11 +54,16 @@ export default function AdminDashboard() {
     try {
       const data = await fetchAdminStats()
       setStats(data)
-    } catch { setError('Error al cargar las estadísticas. Intenta de nuevo.') }
+    } catch (err) { setError(err) }
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { loadStats() }, [loadStats])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadStats();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadStats])
 
   const statCards = stats ? [
     { value: stats.productos?.total ?? '—', label: 'Productos', icon: Icons.Package, color: 'primary' },
@@ -71,7 +77,7 @@ export default function AdminDashboard() {
       {loading ? (
         <Spinner text="Cargando estadísticas..." />
       ) : error ? (
-        <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadStats}>Reintentar</button></div>
+        <ErrorState error={error} module="estadísticas del panel" onRetry={loadStats} />
       ) : (
         <>
           <div className="admin-stats">

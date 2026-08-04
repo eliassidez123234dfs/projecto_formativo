@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
+import ErrorState from '../components/ErrorState';
 import { useCart } from '../context/CartContext';
 import { Header } from '../components/Header';
 
@@ -16,7 +17,7 @@ export const Category = () => {
   const [categoryName, setCategoryName] = useState('Categoría');
   const { cart, addItem } = useCart();
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -27,15 +28,18 @@ export const Category = () => {
         const selected = data.filters.categories.find((c) => c.id === Number(id));
         setCategoryName(selected?.name || 'Categoría');
       }
-    } catch {
-      setError('No se pudo cargar la categoría.');
+    } catch (err) {
+      setError(err);
       setProducts([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, id]);
 
-  useEffect(() => { loadProducts() }, [filters, id]);
+  useEffect(() => {
+    const t = setTimeout(() => { loadProducts() }, 0);
+    return () => clearTimeout(t);
+  }, [loadProducts]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -90,10 +94,7 @@ export const Category = () => {
             ))}
           </div>
         ) : error ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>
-            <p style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</p>
-            <button className="btn btn-primary" onClick={loadProducts}>Reintentar</button>
-          </div>
+          <ErrorState error={error} module="categoría" onRetry={loadProducts} />
         ) : products.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 60 }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>No hay productos en esta categoría</h3>
@@ -108,6 +109,10 @@ export const Category = () => {
                   product={{
                     id: product.id, name: product.name,
                     price: Number(product.base_price) || 0,
+                    min_price: product.min_price,
+                    max_price: product.max_price,
+                    total_stock: product.total_stock,
+                    color_hexes: product.color_hexes || {},
                     badge: product.is_new ? 'Nuevo' : null,
                     image: product.main_image || null,
                   }}

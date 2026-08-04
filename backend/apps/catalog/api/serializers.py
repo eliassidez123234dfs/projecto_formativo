@@ -20,16 +20,19 @@ class CatalogProductSerializer(serializers.ModelSerializer):
     main_image = serializers.SerializerMethodField()
     available_sizes = serializers.SerializerMethodField()
     available_colors = serializers.SerializerMethodField()
+    color_hexes = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
     min_price = serializers.SerializerMethodField()
     max_price = serializers.SerializerMethodField()
+    total_stock = serializers.SerializerMethodField()
     categories = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'description', 'base_price', 'is_active', 'is_approved',
-            'main_image', 'available_sizes', 'available_colors', 'min_price', 'max_price',
-            'categories', 'created_at', 'updated_at'
+            'main_image', 'available_sizes', 'available_colors', 'color_hexes', 'variants',
+            'min_price', 'max_price', 'total_stock', 'categories', 'created_at', 'updated_at'
         ]
 
     def get_main_image(self, obj):
@@ -44,17 +47,35 @@ class CatalogProductSerializer(serializers.ModelSerializer):
     def get_available_colors(self, obj):
         return list(obj.variants.filter(stock__gt=0).values_list('color', flat=True).distinct())
 
+    def get_color_hexes(self, obj):
+        return dict(obj.variants.filter(stock__gt=0).values_list('color', 'color_hex').distinct())
+
+    def get_variants(self, obj):
+        return [
+            {
+                'id': variant.id,
+                'size': variant.size,
+                'color': variant.color,
+                'color_hex': variant.color_hex,
+                'stock': variant.stock,
+            }
+            for variant in obj.variants.all().order_by('size', 'color')
+        ]
+
     def get_min_price(self, obj):
-        variants = obj.variants.filter(stock__gt=0)
-        if not variants.exists():
+        variants = list(obj.variants.filter(stock__gt=0))
+        if not variants:
             return obj.base_price
-        return min(variant.stock * obj.base_price for variant in variants)
+        return min(variant.effective_price for variant in variants)
 
     def get_max_price(self, obj):
-        variants = obj.variants.filter(stock__gt=0)
-        if not variants.exists():
+        variants = list(obj.variants.filter(stock__gt=0))
+        if not variants:
             return obj.base_price
-        return max(variant.stock * obj.base_price for variant in variants)
+        return max(variant.effective_price for variant in variants)
+
+    def get_total_stock(self, obj):
+        return obj.total_stock
 
     def get_categories(self, obj):
         return [pc.category.name for pc in obj.categories.all()]

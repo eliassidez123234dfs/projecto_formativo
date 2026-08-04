@@ -1,7 +1,20 @@
 import axios from 'axios';
+import { logClientError } from '../utils/logger';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/';
 export const buildApiUrl = (endpoint) => `${API_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
+
+function logHttpError(error) {
+  const status = error?.response?.status;
+  if (status && status !== 401) {
+    logClientError({
+      name: 'HTTP',
+      message: error?.message || 'Error de red',
+      response: { status },
+      config: { url: error?.config?.url },
+    });
+  }
+}
 
 let isRefreshing = false;
 let failedQueue = [];
@@ -83,6 +96,23 @@ api.interceptors.response.use(
         isRefreshing = false;
       }
     }
+    logHttpError(error);
+    return Promise.reject(error);
+  }
+);
+
+publicApi.interceptors.response.use(
+  response => response,
+  error => {
+    logHttpError(error);
+    return Promise.reject(error);
+  }
+);
+
+sessionApi.interceptors.response.use(
+  response => response,
+  error => {
+    logHttpError(error);
     return Promise.reject(error);
   }
 );

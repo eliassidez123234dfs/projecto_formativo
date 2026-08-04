@@ -3,6 +3,8 @@ import AdminLayout from '../components/AdminLayout'
 import InfoModal from '../components/InfoModal'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
+import ErrorState from '../components/ErrorState'
+import { formatCOP } from '../utils/format'
 
 const CHECKLIST_LABELS = {
   name: 'Nombre del producto',
@@ -34,15 +36,24 @@ export default function AdminProductApproval() {
     setLoading(true)
     try {
       const res = await fetch(`/api/products/?is_approved=false&page=${page}&page_size=${pageSize}`)
+      if (!res.ok) {
+        setProducts([])
+        setCount(0)
+        setError({ message: 'Error al cargar los productos pendientes.', status: res.status })
+        return
+      }
       const data = await res.json()
       setProducts(data.results || data || [])
       setCount(data.count || 0)
       setError(null)
-    } catch { setProducts([]); setCount(0); setError('Error al cargar los productos pendientes. Intenta de nuevo.') }
+    } catch (err) { setProducts([]); setCount(0); setError({ message: 'Error al cargar los productos pendientes.', status: err?.status || null }) }
     finally { setLoading(false) }
   }, [page])
 
-  useEffect(() => { loadProducts() }, [loadProducts])
+  useEffect(() => {
+    const t = setTimeout(() => { loadProducts() }, 0);
+    return () => clearTimeout(t);
+  }, [loadProducts])
 
   async function handleApprove(productId) {
     setProcessing(productId)
@@ -68,12 +79,22 @@ export default function AdminProductApproval() {
 
   async function handleReject(productId) {
     setProcessing(productId)
+    const motivo = window.prompt('Motivo del rechazo (se guardará en la auditoría del producto):', '')
+    if (motivo === null) { setProcessing(null); return }
     try {
-      await fetch(`/api/products/${productId}/toggle-active/`, { method: 'PATCH' })
-      setModal({ type: 'success', title: 'Producto rechazado', message: 'El producto ha sido desactivado.' })
+      const res = await fetch(`/api/products/${productId}/disapprove/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo: motivo.trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data?.motivo || 'Error al rechazar el producto')
+      }
+      setModal({ type: 'success', title: 'Producto rechazado', message: 'El producto ha sido desaprobado y desactivado.' })
       setTimeout(() => { setModal(null); loadProducts() }, 1500)
     } catch (e) {
-      setModal({ type: 'error', title: 'Error de red', message: e.message })
+      setModal({ type: 'error', title: 'Error', message: e.message })
     }
     finally { setProcessing(null) }
   }
@@ -105,7 +126,7 @@ export default function AdminProductApproval() {
         {loading ? (
           <Spinner text="Cargando productos pendientes..." />
         ) : error ? (
-          <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadProducts}>Reintentar</button></div>
+          <ErrorState error={error} module="aprobación de productos" onRetry={loadProducts} />
         ) : products.length === 0 ? (
           <div className="empty-state"><p>No hay productos pendientes de aprobación.</p></div>
         ) : (
@@ -115,6 +136,7 @@ export default function AdminProductApproval() {
                 <tr>
                   <th>Producto</th>
                   <th>Precio</th>
+                  <th>Stock</th>
                   <th>Checklist</th>
                   <th>Creado</th>
                   <th>Acciones</th>
@@ -136,7 +158,12 @@ export default function AdminProductApproval() {
                         </div>
                       </div>
                     </td>
-                    <td>${Number(p.base_price).toFixed(2)}</td>
+                    <td>{formatCOP(p.base_price)}</td>
+                    <td>
+                      <span className={`badge ${(p.total_stock ?? 0) > 0 ? 'badge-active' : 'badge-inactive'}`}>
+                        {p.total_stock ?? 0}
+                      </span>
+                    </td>
                     <td>
                       <span className={`badge ${p.ready_to_publish ? 'badge-approved' : 'badge-pending'}`}>
                         {p.ready_to_publish ? 'Listo' : 'Incompleto'}

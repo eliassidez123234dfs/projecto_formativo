@@ -3,6 +3,7 @@ import { fetchAuditLogs } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
+import ErrorState from '../components/ErrorState'
 
 export default function AdminAudit() {
   const [logs, setLogs] = useState([])
@@ -35,15 +36,19 @@ export default function AdminAudit() {
       setLogs(Array.isArray(list) ? list : [])
       setCount(data.count || list.length || 0)
       setError(null)
-    } catch { setLogs([]); setError('Error al cargar los registros de auditoría. Intenta de nuevo.') }
+    } catch (err) { setLogs([]); setError(err) }
     finally { setLoading(false) }
   }, [page, pageSize, appliedFilters])
 
-  useEffect(() => { loadLogs() }, [loadLogs])
-
-  useEffect(() => { setPage(1) }, [appliedFilters])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadLogs();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadLogs])
 
   const handleApplyFilters = () => {
+    setPage(1)
     setAppliedFilters({
       usuario_admin: filters.usuario_admin.trim(),
       usuario_afectado: filters.usuario_afectado.trim(),
@@ -53,6 +58,7 @@ export default function AdminAudit() {
   }
 
   const handleClearFilters = () => {
+    setPage(1)
     setFilters({ usuario_admin: '', usuario_afectado: '', fecha_inicio: '', fecha_fin: '' })
     setAppliedFilters({})
   }
@@ -119,7 +125,7 @@ export default function AdminAudit() {
         {loading ? (
           <Spinner text="Cargando registros..." />
         ) : error ? (
-          <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadLogs}>Reintentar</button></div>
+          <ErrorState error={error} module="auditoría" onRetry={loadLogs} />
         ) : logs.length === 0 ? (
           <div className="empty-state"><p>{hasActiveFilters ? 'No hay registros con los filtros seleccionados.' : 'No hay registros de auditoría.'}</p></div>
         ) : (

@@ -4,6 +4,7 @@ import UserEditModal from './UserEditModal'
 import InfoModal from './InfoModal'
 import Pagination from './Pagination'
 import Spinner from './Spinner'
+import ErrorState from './ErrorState'
 
 export default function UserList({ filters, onPageChange, onSaved }) {
   const [users, setUsers] = useState([])
@@ -26,7 +27,7 @@ export default function UserList({ filters, onPageChange, onSaved }) {
       setCount(data.count || list.length)
       setNext(data.next || null)
       setPrevious(data.previous || null)
-    } catch { setError('Error al cargar los usuarios. Intenta de nuevo.') }
+    } catch (err) { setError(err) }
     finally { setLoading(false) }
   }, [filters])
 
@@ -69,7 +70,7 @@ export default function UserList({ filters, onPageChange, onSaved }) {
   }
 
   if (loading) return <div className="card"><Spinner text="Cargando usuarios..." /></div>
-  if (error) return <div className="card"><div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={loadUsers}>Reintentar</button></div></div>
+  if (error) return <div className="card"><ErrorState error={error} module="usuarios" onRetry={loadUsers} /></div>
   if (!users.length) return <div className="card"><div className="empty-state"><p>No se encontraron usuarios.</p></div></div>
 
   const page = Number(filters.page || 1)

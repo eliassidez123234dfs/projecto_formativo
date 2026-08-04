@@ -6,10 +6,9 @@ from django.shortcuts import redirect
 from django.utils import timezone
 
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView
-)
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from apps.users.api.token_refresh import UsuarioTokenRefreshView
 
 # Importar viewsets
 from apps.users.api.viewset import (
@@ -71,7 +70,7 @@ urlpatterns = [
 
     # JWT
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/refresh/', UsuarioTokenRefreshView.as_view(), name='token_refresh'),
 
     # Productos
     path('api/products/', include('apps.products.api.urls')),
@@ -94,6 +93,9 @@ urlpatterns = [
     # Órdenes
     path('api/checkout/', include('apps.checkout.urls')),
     path('api/orders/', include('apps.orders.api.urls')),
+
+    # Monitoreo / logs de errores del frontend
+    path('api/logging/', include('apps.monitoring.urls')),
 ]
 
 # Media files

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './shop.css'
+import { formatCOP } from '../utils/format'
 
 function ProductCard({ product }) {
   return (
@@ -12,7 +13,7 @@ function ProductCard({ product }) {
           <h3>{product.name}</h3>
           <p>{product.description}</p>
           <div className="shop-card-meta">
-            <strong>${Number(product.base_price).toFixed(2)}</strong>
+            <strong>{formatCOP(product.base_price ?? 0)}</strong>
             <span>{product.available_sizes?.length || 0} tallas</span>
           </div>
         </div>

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import InfoModal, { formatChecklist } from './InfoModal'
 import Pagination from './Pagination'
 import Spinner from './Spinner'
+import ErrorState from './ErrorState'
+import { formatCOP } from '../utils/format'
 
 async function safeJson(res) {
   try { return await res.json() } catch { return null }
@@ -24,10 +26,19 @@ function useProducts(refreshKey) {
       if (q) params.set('search', q)
       try {
         const res = await fetch(`/api/products/?${params.toString()}`)
+        if (!res.ok) {
+          if (mounted) {
+            setData({ results: [], count: 0 })
+            setError({ message: 'Error al cargar los productos.', status: res.status })
+          }
+          return
+        }
         const json = await res.json()
         if (!mounted) return
         setData(json)
-      } catch { setError('Error al cargar los productos. Intenta de nuevo.') }
+      } catch (err) {
+        if (mounted) setError({ message: 'Error al cargar los productos.', status: err?.status || null })
+      }
       finally { if (mounted) setLoading(false) }
     }
     load()
@@ -97,7 +108,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
       {loading ? (
         <Spinner text="Cargando productos..." />
       ) : error ? (
-        <div className="error-message"><p>{error}</p><button className="btn btn-sm btn-primary" onClick={() => setPage(1)}>Reintentar</button></div>
+        <ErrorState error={error} module="gestión de productos" onRetry={() => setPage(1)} />
       ) : data.results.length === 0 ? (
         <div className="empty-state"><p>No se encontraron productos.</p></div>
       ) : (
@@ -109,6 +120,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
                 <th>ID</th>
                 <th>Nombre</th>
                 <th>Precio</th>
+                <th>Stock</th>
                 <th>Imágenes</th>
                 <th>Variantes</th>
                 <th>Estado</th>
@@ -129,7 +141,12 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
                   </td>
                   <td><code>{p.id}</code></td>
                   <td><strong>{p.name}</strong></td>
-                  <td>${Number(p.base_price).toFixed(2)}</td>
+                  <td>{formatCOP(p.base_price ?? 0)}</td>
+                  <td>
+                    <span className={`badge ${(p.total_stock ?? 0) > 0 ? 'badge-active' : 'badge-inactive'}`}>
+                      {p.total_stock ?? 0}
+                    </span>
+                  </td>
                   <td>{p.images_count || 0}</td>
                   <td>{p.variants_count || 0}</td>
                   <td>

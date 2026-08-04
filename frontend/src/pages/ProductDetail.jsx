@@ -6,6 +6,8 @@ import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
 import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
+import { formatCOP } from '../utils/format';
+import ErrorState from '../components/ErrorState';
 
 export const ProductDetail = () => {
   const { id } = useParams();
@@ -18,13 +20,31 @@ export const ProductDetail = () => {
   const { cart, addItem } = useCart();
   const [adding, setAdding] = useState(false);
   const [mainImage, setMainImage] = useState(null);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   useEffect(() => {
     const loadProduct = async () => {
       try {
         setLoading(true);
         const data = await fetchProductDetail(id);
-        setProduct(data);
+        // Normalize API response to avoid null-property access in render
+        const normalized = {
+          id: data?.id ?? null,
+          name: data?.name ?? '',
+          description: data?.description ?? '',
+          base_price: data?.base_price ?? 0,
+          main_image: data?.main_image ?? null,
+          images: Array.isArray(data?.images) ? data.images : [],
+          variants: Array.isArray(data?.variants) ? data.variants : [],
+          categories: Array.isArray(data?.categories) ? data.categories : [],
+          related_products: Array.isArray(data?.related_products) ? data.related_products : [],
+          total_stock: data?.total_stock ?? (Array.isArray(data?.variants) ? data.variants.reduce((s, v) => s + (v.stock || 0), 0) : 0),
+          created_at: data?.created_at ?? null,
+          is_active: !!data?.is_active,
+          is_approved: !!data?.is_approved,
+          ready_to_publish: !!data?.ready_to_publish,
+        };
+        setProduct(normalized);
         const firstAvailable = data.variants?.find((v) => v.stock > 0);
         if (firstAvailable) {
           setSelectedSize(firstAvailable.size);
@@ -34,7 +54,7 @@ export const ProductDetail = () => {
         const img = data.images?.[0]?.image_url || data.main_image || null;
         setMainImage(img);
       } catch (err) {
-        setError('No se pudo cargar el producto.');
+        setError(err);
       } finally {
         setLoading(false);
       }
@@ -98,6 +118,20 @@ export const ProductDetail = () => {
     return map[color.toLowerCase().replace(/\s+/g, '_')] || '#6B7280';
   }
 
+  function variantHex(color) {
+    const v = product?.variants?.find(x => x.size === selectedSize && x.color === color);
+    return v?.color_hex || colorToHex(color);
+  }
+
+  const totalStock = product?.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
+  const displayPrice = selectedVariant?.effective_price ?? (product?.base_price ?? 0);
+
+  const DESCRIPTION_LIMIT = 220;
+  const isLongDesc = (product?.description?.length || 0) > DESCRIPTION_LIMIT;
+  const shownDesc = isLongDesc && !descExpanded
+    ? `${product.description.slice(0, DESCRIPTION_LIMIT)}…`
+    : product.description;
+
   const r = 'var(--color-primary)';
 
   if (loading) {
@@ -128,9 +162,12 @@ export const ProductDetail = () => {
     return (
       <>
         <Header cartCount={0} />
-        <div className="container" style={{ paddingTop: '3rem', textAlign: 'center' }}>
-          <p style={{ color: r, marginBottom: 16 }}>{error || 'Producto no encontrado'}</p>
-          <Link to="/catalog" className="btn btn-primary" style={{ textDecoration: 'none' }}>Volver al catálogo</Link>
+        <div className="container" style={{ paddingTop: '3rem' }}>
+          <ErrorState
+            error={error}
+            status={error ? undefined : 404}
+            module="detalle de producto"
+          />
         </div>
       </>
     );
@@ -176,13 +213,18 @@ export const ProductDetail = () => {
             {product.categories?.length > 0 && (
               <div className="pd-cats">
                 {product.categories.map((cat) => (
-                  <span key={cat}>{cat}</span>
+                  <span key={cat.id ?? cat}>{cat.name ?? cat}</span>
                 ))}
               </div>
             )}
 
             <h1 className="pd-name">{product.name}</h1>
-            <p className="pd-price">${Number(product.base_price).toFixed(2)}</p>
+            <div className="pd-price-row">
+              <p className="pd-price">{formatCOP(displayPrice)}</p>
+              {totalStock > 0 && (
+                <span className="pd-total-stock">Stock total: {totalStock} unidades</span>
+              )}
+            </div>
 
             {product.variants?.length > 0 ? (
               <div className="pd-variant-selector">
@@ -212,7 +254,7 @@ export const ProductDetail = () => {
                           className={`pd-chip ${selectedColor === color ? 'pd-chip--active' : ''} ${stock === 0 ? 'pd-chip--disabled' : ''}`}
                           onClick={() => stock > 0 && selectColor(color)}
                           disabled={stock === 0}>
-                          <span className="pd-chip-color" style={{ background: colorToHex(color) }} />
+                          <span className="pd-chip-color" style={{ background: variantHex(color) }} />
                           {color}
                           {stock === 0 && <span className="pd-chip-agotado">Agotado</span>}
                         </button>
@@ -264,7 +306,12 @@ export const ProductDetail = () => {
             {product.description && (
               <div className="pd-description">
                 <h3>Descripción</h3>
-                <p>{product.description}</p>
+                <p>{shownDesc}</p>
+                {isLongDesc && (
+                  <button className="pd-read-more" onClick={() => setDescExpanded(e => !e)}>
+                    {descExpanded ? 'Leer menos' : 'Leer más'}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -281,7 +328,7 @@ export const ProductDetail = () => {
                   </div>
                   <div className="pd-related-info">
                     <p className="pd-related-name">{rp.name}</p>
-                    <p className="pd-related-price">${Number(rp.base_price).toFixed(2)}</p>
+                    <p className="pd-related-price">{formatCOP(rp.base_price)}</p>
                   </div>
                 </Link>
               ))}
@@ -324,7 +371,17 @@ export const ProductDetail = () => {
           color: var(--color-text-secondary);
         }
         .pd-name { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; line-height: 1.2; }
-        .pd-price { font-size: 1.5rem; font-weight: 700; color: #DC2626; margin-bottom: 1.5rem; }
+        .pd-price-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .pd-price { font-size: 1.5rem; font-weight: 700; color: #DC2626; margin: 0; }
+        .pd-total-stock {
+          font-size: 0.78rem; font-weight: 600; color: var(--color-success);
+          background: rgba(22,163,74,0.08); border: 1px solid rgba(22,163,74,0.25);
+          padding: 4px 10px; border-radius: 999px;
+        }
+        .pd-read-more {
+          border: none; background: none; color: #DC2626; cursor: pointer;
+          font-size: 0.85rem; font-weight: 600; padding: 0; margin-top: 6px;
+        }
         .pd-variant-selector { margin-bottom: 1.5rem; }
         .pd-variant-group { margin-bottom: 1rem; }
         .pd-variant-group label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 8px; color: var(--color-text-secondary); }

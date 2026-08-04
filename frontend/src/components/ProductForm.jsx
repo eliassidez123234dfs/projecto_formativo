@@ -1,19 +1,58 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 async function safeJson(res) {
   try { return await res.json() } catch { return null }
 }
 
-function VariantRow({ v, onChange, onRemove }) {
-  const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', 'Único']
-const COLORS = ['Rojo', 'Azul', 'Negro', 'Blanco', 'Gris', 'Verde', 'Amarillo', 'Naranja', 'Rosa', 'Morado', 'Marrón', 'Beige', 'Plateado', 'Dorado']
-const selectStyle = {
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', 'Único']
+
+const COLOR_OPTIONS = [
+  { value: 'Rojo', hex: '#DC2626' },
+  { value: 'Rojo Oscuro', hex: '#991B1B' },
+  { value: 'Rojo Claro', hex: '#FCA5A5' },
+  { value: 'Azul', hex: '#2563EB' },
+  { value: 'Azul Oscuro', hex: '#1E3A5F' },
+  { value: 'Azul Claro', hex: '#93C5FD' },
+  { value: 'Verde', hex: '#16A34A' },
+  { value: 'Verde Oscuro', hex: '#166534' },
+  { value: 'Verde Claro', hex: '#86EFAC' },
+  { value: 'Negro', hex: '#111827' },
+  { value: 'Gris', hex: '#6B7280' },
+  { value: 'Gris Claro', hex: '#D1D5DB' },
+  { value: 'Blanco', hex: '#FFFFFF' },
+  { value: 'Crema', hex: '#FEF3C7' },
+  { value: 'Beige', hex: '#F5F5DC' },
+  { value: 'Amarillo', hex: '#EAB308' },
+  { value: 'Naranja', hex: '#EA580C' },
+  { value: 'Morado', hex: '#9333EA' },
+  { value: 'Rosa', hex: '#EC4899' },
+  { value: 'Marrón', hex: '#78350F' },
+  { value: 'Dorado', hex: '#D97706' },
+  { value: 'Plateado', hex: '#9CA3AF' },
+  { value: 'Azul Marino', hex: '#1E3A5F' },
+  { value: 'Vino', hex: '#7F1D1D' },
+]
+
+const inputStyle = {
   width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)',
   borderRadius: 'var(--radius-md)', background: 'var(--color-bg)',
   color: 'var(--color-text)', fontSize: 13, outline: 'none',
 }
 const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 2 }
+
+function isValidCopPrice(value) {
+  const n = Number(value)
+  return Number.isFinite(n) && Number.isInteger(n) && n >= 50 && n % 50 === 0
+}
+
+function colorFor(value) {
+  return COLOR_OPTIONS.find(c => c.value.toLowerCase() === String(value).toLowerCase())
+}
+
+function VariantRow({ v, onChange, onRemove }) {
+  const color = colorFor(v.color)
+  const hex = color ? color.hex : (v.color_hex || '#6B7280')
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'flex-end', marginTop: 8,
@@ -22,17 +61,34 @@ const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-second
     }}>
       <div style={{ flex: 1 }}>
         <label style={labelSm}>Talla</label>
-        <select value={v.size} onChange={e => onChange({ ...v, size: e.target.value })} style={selectStyle}>
+        <select value={v.size} onChange={e => onChange({ ...v, size: e.target.value })} style={inputStyle}>
           <option value="">Seleccionar talla</option>
           {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
       <div style={{ flex: 1 }}>
         <label style={labelSm}>Color</label>
-        <select value={v.color} onChange={e => onChange({ ...v, color: e.target.value })} style={selectStyle}>
+        <select
+          value={color ? color.value : (v.color || '')}
+          onChange={e => {
+            const selected = COLOR_OPTIONS.find(c => c.value === e.target.value)
+            onChange({ ...v, color: selected.value, color_hex: selected.hex, color_nombre: selected.value })
+          }}
+          style={inputStyle}
+        >
           <option value="">Seleccionar color</option>
-          {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+          {COLOR_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
         </select>
+      </div>
+      <div style={{ width: 96 }}>
+        <label style={labelSm}>Precio (COP)</label>
+        <input
+          type="number" min="50" step="50" placeholder="Vacío = base"
+          value={v.price_variant ?? ''}
+          onChange={e => onChange({ ...v, price_variant: e.target.value === '' ? null : Number(e.target.value) })}
+          style={inputStyle}
+          onWheel={e => e.target.blur()}
+        />
       </div>
       <div style={{ width: 90 }}>
         <label style={labelSm}>Stock</label>
@@ -43,14 +99,11 @@ const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-second
             const val = Number(e.target.value)
             if (val >= 0) onChange({ ...v, stock: val })
           }}
-          style={{
-            width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-md)', background: 'var(--color-bg)',
-            color: 'var(--color-text)', fontSize: 13, outline: 'none',
-          }}
+          style={inputStyle}
           onWheel={e => e.target.blur()}
         />
       </div>
+      <div style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--color-border)', background: hex, flexShrink: 0, marginBottom: 1 }} title={v.color || ''} />
       <button type="button" onClick={onRemove} className="btn btn-sm btn-ghost" style={{ color: 'var(--color-error)', marginBottom: 1 }}>
         Eliminar
       </button>
@@ -68,12 +121,26 @@ export default function ProductForm({ product, onClose, onSaved }) {
   const [mainImage, setMainImageFile] = useState(null)
   const [extraImages, setExtraImages] = useState([])
   const [imageItems, setImageItems] = useState(() => (product?.images || []).slice().sort((a, b) => a.order - b.order))
+  const [existingVariants, setExistingVariants] = useState(() => (product?.variants || []).map(v => ({ ...v, _dirty: false })))
+  const [removedVariantIds, setRemovedVariantIds] = useState([])
   const [variants, setVariants] = useState([])
-  const currentVariants = product?.variants || []
+  const [categoryOptions, setCategoryOptions] = useState([])
+  const [categoryIds, setCategoryIds] = useState(() => (product?.categories || []).map(c => c.id))
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => {
+    fetch('/api/catalog/categories/')
+      .then(r => r.json())
+      .then(data => setCategoryOptions(Array.isArray(data) ? data : data.results || []))
+      .catch(() => {})
+  }, [])
+
+  function toggleCategory(id) {
+    setCategoryIds(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
+  }
+
   function addVariant() {
-    setVariants(vs => [...vs, { size: '', color: '', stock: 0 }])
+    setVariants(vs => [...vs, { size: '', color: '', color_hex: '', color_nombre: '', stock: 0, price_variant: null }])
   }
 
   async function patchProduct(payload) {
@@ -91,7 +158,9 @@ export default function ProductForm({ product, onClose, onSaved }) {
     const response = await fetch('/api/products/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description, base_price: Number(price), is_active: isActive }),
+      body: JSON.stringify({
+        name, description, base_price: Number(price), is_active: isActive, category_ids: categoryIds,
+      }),
     })
     const data = await safeJson(response)
     if (!response.ok) throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error creando producto')
@@ -121,17 +190,55 @@ export default function ProductForm({ product, onClose, onSaved }) {
     }
   }
 
-  async function uploadVariants(productId) {
+  async function createVariants(productId) {
     for (const variant of variants) {
       if (!variant.size || !variant.color) continue
       const response = await fetch(`/api/products/${productId}/variants/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(variant),
+        body: JSON.stringify({
+          size: variant.size,
+          color: variant.color,
+          color_hex: variant.color_hex,
+          color_nombre: variant.color_nombre || variant.color,
+          stock: variant.stock,
+          price_variant: variant.price_variant,
+        }),
       })
       if (!response.ok) {
         const data = await safeJson(response)
         throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error creando variantes')
+      }
+    }
+  }
+
+  async function saveExistingVariants(productId) {
+    for (const variant of existingVariants) {
+      const response = await fetch(`/api/products/${productId}/variants/${variant.id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          size: variant.size,
+          color: variant.color,
+          color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
+          color_nombre: variant.color_nombre || variant.color,
+          stock: variant.stock,
+          price_variant: variant.price_variant,
+        }),
+      })
+      if (!response.ok) {
+        const data = await safeJson(response)
+        throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error actualizando variante')
+      }
+    }
+  }
+
+  async function deleteVariants(productId) {
+    for (const variantId of removedVariantIds) {
+      const response = await fetch(`/api/products/${productId}/variants/${variantId}/`, { method: 'DELETE' })
+      if (!response.ok) {
+        const data = await safeJson(response)
+        throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error eliminando variante')
       }
     }
   }
@@ -162,27 +269,43 @@ export default function ProductForm({ product, onClose, onSaved }) {
     setImageItems(items => items.filter(img => img.id !== imageId))
   }
 
+  function validate() {
+    if (!name.trim()) return 'Nombre requerido'
+    if (!description.trim()) return 'Descripción requerida'
+    if (!isValidCopPrice(price)) return 'El precio base en COP debe ser >= 50 y múltiplo de 50'
+    for (const v of [...existingVariants, ...variants]) {
+      if (v.price_variant != null && v.price_variant !== '' && !isValidCopPrice(v.price_variant)) {
+        return `El precio de la variante "${v.size || '?'}/${v.color || '?'}" debe ser >= 50 y múltiplo de 50, o dejarse vacío`
+      }
+    }
+    if (!isEditing && !mainImage) return 'Imagen principal requerida'
+    if (!isEditing && variants.length === 0) return 'Agregar al menos una variante'
+    return null
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
 
-    if (!name.trim()) return toast.error('Nombre requerido')
-    if (!description.trim()) return toast.error('Descripción requerida')
-    if (!price || Number(price) <= 0) return toast.error('Precio inválido')
-    if (!isEditing && !mainImage) return toast.error('Imagen principal requerida')
-    if (!isEditing && variants.length === 0) return toast.error('Agregar al menos una variante')
+    const error = validate()
+    if (error) return toast.error(error)
 
     setSaving(true)
     try {
       let savedProduct = product
+      const basePayload = {
+        name, description, base_price: Number(price), is_active: isActive, category_ids: categoryIds,
+      }
       if (isEditing) {
-        savedProduct = await patchProduct({ name, description, base_price: Number(price), is_active: isActive })
+        savedProduct = await patchProduct(basePayload)
+        await saveExistingVariants(savedProduct.id)
+        await deleteVariants(savedProduct.id)
       } else {
         savedProduct = await createProduct()
         await uploadMainImage(savedProduct.id)
-        await uploadVariants(savedProduct.id)
+        await createVariants(savedProduct.id)
       }
 
-      if (isEditing && variants.length > 0) await uploadVariants(savedProduct.id)
+      if (isEditing && variants.length > 0) await createVariants(savedProduct.id)
       if (isEditing && extraImages.length > 0) await uploadExtraImages(savedProduct.id)
 
       if (isEditing) {
@@ -207,13 +330,6 @@ export default function ProductForm({ product, onClose, onSaved }) {
     reorderImages(next).catch(err => toast.error(err.message))
   }
 
-  const inputStyle = {
-    width: '100%', padding: '10px 12px', border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-lg)', background: 'var(--color-bg)',
-    color: 'var(--color-text)', fontSize: 14, outline: 'none',
-    transition: 'border-color 0.15s',
-  }
-
   const labelStyle = {
     display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text)',
     marginBottom: 6,
@@ -221,7 +337,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
   return (
     <div className="form-modal-backdrop" onClick={onClose}>
-      <div className="form-modal" onClick={e => e.stopPropagation()} style={{ width: 'min(820px, 95vw)' }}>
+      <div className="form-modal" onClick={e => e.stopPropagation()} style={{ width: 'min(860px, 95vw)' }}>
         <div className="form-modal-header">
           <h2>{isEditing ? 'Editar Producto' : 'Crear Producto'}</h2>
           <button className="form-modal-close" onClick={onClose}>✕</button>
@@ -231,17 +347,34 @@ export default function ProductForm({ product, onClose, onSaved }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className="form-group">
               <label style={labelStyle}>Nombre</label>
-              <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} maxLength={100} placeholder="Nombre del producto" />
+              <input style={{ ...inputStyle, fontSize: 14 }} value={name} onChange={e => setName(e.target.value)} maxLength={100} placeholder="Nombre del producto" />
             </div>
             <div className="form-group">
-              <label style={labelStyle}>Precio base</label>
-              <input style={inputStyle} type="number" value={price} onChange={e => setPrice(e.target.value)} min="0.01" step="0.01" placeholder="0.00" />
+              <label style={labelStyle}>Precio base (COP)</label>
+              <input style={{ ...inputStyle, fontSize: 14 }} type="number" value={price} onChange={e => setPrice(e.target.value)} min="50" step="50" placeholder="Múltiplo de 50" />
+              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Mínimo $50 COP, múltiplo de 50.</small>
             </div>
           </div>
 
           <div className="form-group">
             <label style={labelStyle}>Descripción</label>
-            <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={description} onChange={e => setDescription(e.target.value)} maxLength={500} placeholder="Descripción del producto" />
+            <textarea style={{ ...inputStyle, fontSize: 14, minHeight: 80, resize: 'vertical' }} value={description} onChange={e => setDescription(e.target.value)} maxLength={500} placeholder="Descripción del producto" />
+          </div>
+
+          <div className="form-group">
+            <label style={labelStyle}>Categorías</label>
+            {categoryOptions.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>No hay categorías disponibles.</p>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {categoryOptions.map(cat => (
+                  <label key={cat.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: `1px solid ${categoryIds.includes(cat.id) ? 'var(--color-primary)' : 'var(--color-border)'}`, background: categoryIds.includes(cat.id) ? 'var(--color-primary)' : 'var(--color-bg)', color: categoryIds.includes(cat.id) ? '#fff' : 'var(--color-text)' }}>
+                    <input type="checkbox" checked={categoryIds.includes(cat.id)} onChange={() => toggleCategory(cat.id)} style={{ display: 'none' }} />
+                    {cat.name}
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           {isEditing && (
@@ -309,24 +442,36 @@ export default function ProductForm({ product, onClose, onSaved }) {
               </button>
             </div>
             <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-              Define las variantes del producto: cada combinación de talla y color es una variante con su propio stock.
+              Cada combinación de talla y color es una variante con su propio stock y precio opcional (COP).
             </p>
 
-            {currentVariants.length > 0 && (
+            {existingVariants.length > 0 && (
               <div style={{
                 padding: '10px 14px', background: 'var(--color-bg-tertiary)',
                 borderRadius: 'var(--radius-lg)', marginBottom: 8,
                 border: '1px dashed var(--color-border)',
               }}>
                 <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  Variantes existentes ({currentVariants.length})
+                  Variantes existentes ({existingVariants.length}) — edita stock/precio o elimina
                 </p>
-                {currentVariants.map(v => (
-                  <p key={v.id} style={{ margin: '2px 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                    {v.size} / {v.color} — Stock: {v.stock}
-                  </p>
+                {existingVariants.map(v => (
+                  <VariantRow
+                    key={v.id}
+                    v={v}
+                    onChange={nv => setExistingVariants(a => a.map(x => x.id === v.id ? nv : x))}
+                    onRemove={() => {
+                      setRemovedVariantIds(ids => [...ids, v.id])
+                      setExistingVariants(a => a.filter(x => x.id !== v.id))
+                    }}
+                  />
                 ))}
               </div>
+            )}
+
+            {removedVariantIds.length > 0 && (
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-error)' }}>
+                {removedVariantIds.length} variante(s) se eliminarán al guardar.
+              </p>
             )}
 
             {variants.map((v, idx) => (
@@ -337,9 +482,9 @@ export default function ProductForm({ product, onClose, onSaved }) {
                 onRemove={() => setVariants(a => a.filter((_, i) => i !== idx))}
               />
             ))}
-            {variants.length === 0 && (
+            {variants.length === 0 && existingVariants.length === 0 && (
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>
-                No hay variantes nuevas. Haz clic en "+ Agregar variante" para añadir una.
+                No hay variantes. Haz clic en "+ Agregar variante" para añadir una.
               </p>
             )}
           </div>

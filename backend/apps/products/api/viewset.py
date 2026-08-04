@@ -3,12 +3,13 @@ from __future__ import annotations
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.utils.timezone import now
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
-from apps.products.models import Product, ProductAudit, ProductImage
+from apps.products.models import Product, ProductAudit, ProductImage, Variant
 
 from .serializers import (
     CartItemSerializer,
@@ -20,7 +21,28 @@ from .serializers import (
     ProductPagination,
     ProductWriteSerializer,
     VariantCreateSerializer,
+    VariantSerializer,
+    VariantUpdateSerializer,
 )
+
+
+def _actor_name(request) -> str:
+    """Nombre legible del usuario autenticado (Usuario custom o auth.User)."""
+    user = getattr(request, 'user', None)
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return 'anonymous'
+    if hasattr(user, 'rol'):
+        return getattr(user, 'usuario', '') or 'usuario'
+    return getattr(user, 'username', '') or 'usuario'
+
+
+def _resolve_creator(request):
+    user = getattr(request, 'user', None)
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return None
+    if hasattr(user, 'rol'):
+        return user
+    return None
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -81,11 +103,12 @@ class ProductViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        product = serializer.save()
+        serializer.save(creator=_resolve_creator(request))
+        product = serializer.instance
         ProductAudit.objects.create(
             product=product,
             action=ProductAudit.ACTION_CREATED,
-            actor=getattr(request.user, 'username', '') or 'anonymous',
+            actor=_actor_name(request),
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
         )
         response_serializer = ProductDetailSerializer(product, context=self.get_serializer_context())
@@ -109,16 +132,28 @@ class ProductViewSet(viewsets.ModelViewSet):
         ProductAudit.objects.create(
             product=product,
             action=ProductAudit.ACTION_UPDATED,
-            actor=getattr(request.user, 'username', '') or 'anonymous',
+            actor=_actor_name(request),
             before_data=before_data,
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
-    @action(detail=True, methods=['patch'], url_path=r'images/(?P<image_id>[^/.]+)')
+    @action(detail=True, methods=['patch', 'delete'], url_path=r'images/(?P<image_id>[0-9]+)')
     def update_image(self, request, pk=None, image_id=None):
         product = self.get_object()
         image = get_object_or_404(ProductImage, pk=image_id, product=product)
+
+        if request.method == 'DELETE':
+            was_main = image.is_main
+            image.delete()
+
+            if was_main:
+                first_image = product.images.order_by('order', 'id').first()
+                if first_image:
+                    first_image.is_main = True
+                    first_image.save(update_fields=['is_main'])
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
         order = request.data.get('order')
         is_main = request.data.get('is_main')
@@ -130,22 +165,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         image.save()
         return Response(ProductImageSerializer(image, context={'request': request}).data)
-
-    @action(detail=True, methods=['delete'], url_path=r'images/(?P<image_id>[^/.]+)')
-    def delete_image(self, request, pk=None, image_id=None):
-        product = self.get_object()
-        image = get_object_or_404(ProductImage, pk=image_id, product=product)
-
-        was_main = image.is_main
-        image.delete()
-
-        if was_main:
-            first_image = product.images.order_by('order', 'id').first()
-            if first_image:
-                first_image.is_main = True
-                first_image.save(update_fields=['is_main'])
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['patch'], url_path='images/reorder')
     def reorder_images(self, request, pk=None):
@@ -200,12 +219,40 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         product.is_active = True
         product.is_approved = True
+        product.approved_by = _resolve_creator(request)
+        product.approved_at = now()
         product.save()
         ProductAudit.objects.create(
             product=product,
             action=ProductAudit.ACTION_PUBLISHED,
-            actor=getattr(request.user, 'username', '') or 'anonymous',
+            actor=_actor_name(request),
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
+
+    @action(detail=True, methods=['post'], url_path='disapprove')
+    def disapprove(self, request, pk=None):
+        """Desaprueba un producto con motivo, lo quita de la tienda (RF-044/045)."""
+        product = self.get_object()
+        motivo = (request.data.get('motivo') or request.data.get('reason') or '').strip()
+        if not motivo:
+            return Response({'motivo': 'El motivo de desaprobación es obligatorio.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(motivo) > 255:
+            return Response({'motivo': 'El motivo no puede superar 255 caracteres.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        before_data = ProductDetailSerializer(product, context=self.get_serializer_context()).data
+        product.is_active = False
+        product.is_approved = False
+        product.approved_by = None
+        product.approved_at = None
+        product.save(update_fields=['is_active', 'is_approved', 'approved_by', 'approved_at', 'updated_at'])
+        ProductAudit.objects.create(
+            product=product,
+            action=ProductAudit.ACTION_DISAPPROVED,
+            actor=_actor_name(request),
+            before_data=before_data,
+            after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+            motivo=motivo,
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
@@ -223,7 +270,27 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = VariantCreateSerializer(data=request.data, context={'product': product})
         serializer.is_valid(raise_exception=True)
         variant = serializer.save()
-        return Response(VariantCreateSerializer(variant, context={'product': product}).data, status=status.HTTP_201_CREATED)
+        return Response(VariantSerializer(variant, context={'product': product}).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['patch', 'delete'], url_path=r'variants/(?P<variant_id>[0-9]+)')
+    def update_variant(self, request, pk=None, variant_id=None):
+        """Edita (stock/precio/color) o elimina una variante (RF-040)."""
+        product = self.get_object()
+        variant = get_object_or_404(Variant, pk=variant_id, product=product)
+
+        if request.method == 'DELETE':
+            if variant.orderitem_set.filter(order__status__in={'pending', 'paid', 'processing'}).exists():
+                return Response(
+                    {'variant': 'No se puede eliminar una variante con pedidos activos.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            variant.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = VariantUpdateSerializer(variant, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        variant = serializer.save()
+        return Response(VariantSerializer(variant, context={'product': product}).data)
 
     @action(detail=True, methods=['get'], url_path='audits')
     def audits(self, request, pk=None):
@@ -256,7 +323,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             cart=cart,
             product=product,
             variant=variant,
-            defaults={'quantity': quantity, 'unit_price': product.base_price}
+            defaults={'quantity': quantity, 'unit_price': variant.effective_price}
         )
         
         if not created:

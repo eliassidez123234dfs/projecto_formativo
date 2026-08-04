@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import './shop.css'
+import { formatCOP } from '../utils/format'
 
 export default function CheckoutPage() {
   const [summary, setSummary] = useState({ items: [], total_items: 0, total_amount: '0.00' })
@@ -44,7 +45,7 @@ export default function CheckoutPage() {
       return
     }
 
-    setMessage(`Orden #${data.order_id} creada por $${Number(data.total).toFixed(2)}`)
+    setMessage(`Orden #${data.order_id} creada por ${formatCOP(data.total)}`)
     setCustomerName('')
     setCustomerEmail('')
     await loadSummary()
@@ -72,10 +73,10 @@ export default function CheckoutPage() {
           <article className="cart-summary">
             <h2>Resumen del pedido</h2>
             <p>Items: {summary.total_items}</p>
-            <p>Total: <strong>${Number(summary.total_amount).toFixed(2)}</strong></p>
+            <p>Total: <strong>{formatCOP(summary.total_amount)}</strong></p>
             <ul className="clean-list">
               {(summary.items || []).map(item => (
-                <li key={item.id}>{item.product_name} ({item.variant}) x {item.quantity} - ${Number(item.subtotal).toFixed(2)}</li>
+                <li key={item.id}>{item.product_name} ({item.variant}) x {item.quantity} - {formatCOP(item.subtotal)}</li>
               ))}
             </ul>
           </article>

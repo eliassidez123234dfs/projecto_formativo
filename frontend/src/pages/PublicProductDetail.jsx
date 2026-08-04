@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './shop.css'
+import { formatCOP } from '../utils/format'
 
 export default function PublicProductDetail({ productId }) {
   const [product, setProduct] = useState(null)
@@ -75,7 +76,7 @@ export default function PublicProductDetail({ productId }) {
           <p className="eyebrow">Vista producto</p>
           <h1>{product.name}</h1>
           <p>{product.description}</p>
-          <div className="price-row">${Number(product.base_price).toFixed(2)}</div>
+          <div className="price-row">{formatCOP(product.base_price ?? 0)}</div>
 
           <div className="variant-selectors">
             <label>Variante</label>

@@ -31,7 +31,12 @@ export const Auth = () => {
   const [showConfirm, setShowConfirm] = useState(false)
   const [pwTouched, setPwTouched] = useState(false)
 
-  useEffect(() => { setErrors({}); setFieldErrors({}); setSuccess(false); setAnimKey(k => k + 1); setShowConfirm(false); setPwTouched(false) }, [isLogin])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setErrors({}); setFieldErrors({}); setSuccess(false); setAnimKey(k => k + 1); setShowConfirm(false); setPwTouched(false)
+    }, 0);
+    return () => clearTimeout(t);
+  }, [isLogin])
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
