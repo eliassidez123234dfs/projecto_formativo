@@ -17,9 +17,15 @@ export default function PublicProductDetail({ productId }) {
       const response = await fetch(`/api/products/${productId}/`)
       const data = await response.json()
       if (!cancelled) {
-        setProduct(data)
-        setSelectedImageId(data.images?.[0]?.id || null)
-        setSelectedVariant(data.variants?.[0] || null)
+        const normalized = {
+          ...data,
+          description: data?.description ?? '',
+          images: Array.isArray(data?.images) ? data.images : [],
+          variants: Array.isArray(data?.variants) ? data.variants : [],
+        }
+        setProduct(normalized)
+        setSelectedImageId(normalized.images[0]?.id || null)
+        setSelectedVariant(normalized.variants[0] || null)
         setLoading(false)
       }
     }
@@ -75,16 +81,16 @@ export default function PublicProductDetail({ productId }) {
         <div className="detail-panel">
           <p className="eyebrow">Vista producto</p>
           <h1>{product.name}</h1>
-          <p>{product.description}</p>
+          <p>{product.description || 'Sin descripción disponible'}</p>
           <div className="price-row">{formatCOP(product.base_price ?? 0)}</div>
 
           <div className="variant-selectors">
             <label>Variante</label>
             <select
               value={selectedVariant?.id || ''}
-              onChange={e => setSelectedVariant(product.variants.find(variant => String(variant.id) === e.target.value))}
+              onChange={e => setSelectedVariant((product.variants || []).find(variant => String(variant.id) === e.target.value))}
             >
-              {product.variants.map(variant => (
+              {(product.variants || []).map(variant => (
                 <option key={variant.id} value={variant.id}>
                   {variant.size} / {variant.color} - Stock {variant.stock}
                 </option>

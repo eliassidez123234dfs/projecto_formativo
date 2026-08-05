@@ -3,6 +3,8 @@ import './shop.css'
 import { formatCOP } from '../utils/format'
 
 function ProductCard({ product }) {
+  if (!product) return null
+
   return (
     <article className="shop-card">
       <a href={`/products/${product.id}`} className="shop-card-link">
@@ -11,7 +13,7 @@ function ProductCard({ product }) {
         </div>
         <div className="shop-card-body">
           <h3>{product.name}</h3>
-          <p>{product.description}</p>
+          <p>{product.description ?? 'Sin descripción disponible'}</p>
           <div className="shop-card-meta">
             <strong>{formatCOP(product.base_price ?? 0)}</strong>
             <span>{product.available_sizes?.length || 0} tallas</span>
@@ -66,7 +68,8 @@ export default function CatalogPage() {
       const response = await fetch(`/api/catalog/?${params.toString()}`)
       const data = await response.json()
       if (!cancelled) {
-        setItems(data.results || data)
+        const results = data.results || data
+        setItems(Array.isArray(results) ? results.filter(Boolean) : [])
         setTotalCount(data.count || (Array.isArray(data) ? data.length : 0))
         setLoading(false)
       }

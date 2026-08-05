@@ -125,12 +125,13 @@ export const ProductDetail = () => {
 
   const totalStock = product?.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
   const displayPrice = selectedVariant?.effective_price ?? (product?.base_price ?? 0);
+  const descriptionText = product?.description ?? '';
 
   const DESCRIPTION_LIMIT = 220;
-  const isLongDesc = (product?.description?.length || 0) > DESCRIPTION_LIMIT;
+  const isLongDesc = descriptionText.length > DESCRIPTION_LIMIT;
   const shownDesc = isLongDesc && !descExpanded
-    ? `${product.description.slice(0, DESCRIPTION_LIMIT)}…`
-    : product.description;
+    ? `${descriptionText.slice(0, DESCRIPTION_LIMIT)}…`
+    : descriptionText;
 
   const r = 'var(--color-primary)';
 
