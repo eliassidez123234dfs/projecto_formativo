@@ -218,11 +218,6 @@ export const fetchProductDetail = async (productId) => {
   return response.data;
 };
 
-export const fetchCategories = async () => {
-  const response = await publicApi.get('catalog/categories/');
-  return response.data;
-};
-
 // ─────────── CHECKOUT (sesión) ───────────
 export const getCheckoutSummary = async () => {
   const response = await sessionApi.get('checkout/summary/');
@@ -439,18 +434,6 @@ export const fetchAdminOrderDetail = async (id) => {
 };
 
 // ─────────── ADMIN ORDERS ───────────
-/** Obtiene la lista paginada de pedidos (admin). */
-export const fetchAdminOrders = async (page = 1, pageSize = 20) => {
-  const response = await api.get('admin/orders/', { params: { page, page_size: pageSize } });
-  return response.data;
-};
-
-/** Obtiene el detalle de un pedido por su ID (admin). */
-export const fetchAdminOrderDetail = async (id) => {
-  const response = await api.get(`admin/orders/${id}/`);
-  return response.data;
-};
-
 /** Actualiza el estado de un pedido (admin). */
 export const updateOrderStatus = async (id, status) => {
   const response = await api.patch(`admin/orders/${id}/status/`, { status });
@@ -611,7 +594,7 @@ export const fetchProductImages = async (params = {}) => {
   return response.data;
 };
 
-/** Elimina una imagen de producto. */
-export const deleteProductImage = async (id) => {
+/** Elimina una imagen de producto por su ID directo. */
+export const deleteProductImageById = async (id) => {
   await api.delete(`products/images/${id}/`);
 };

@@ -24,7 +24,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
 from apps.users.api.admin_viewset import AdminPermission
-from apps.products.models import Product, ProductAudit, ProductImage, Variant
+from apps.products.models import Product, ProductAudit, ProductImage, Variant, Review
 
 from .review_serializers import ReviewSerializer
 from .serializers import (

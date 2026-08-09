@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchProductImages, deleteProductImage } from '../services/api'
-import MainLayout from '../components/MainLayout'
+import { fetchProductImages, deleteProductImageById } from '../services/api'
+import AdminLayout from '../components/AdminLayout'
 import { DEFAULT_IMAGE } from '../constants'
 import toast from 'react-hot-toast'
 
@@ -20,7 +20,7 @@ export const AdminImages = () => {
 
   const handleDelete = async (img) => {
     if (!confirm(`¿Eliminar esta imagen de "${img.product_name || 'Producto #' + img.product_id}"?`)) return
-    try { await deleteProductImage(img.id); toast.success('Imagen eliminada'); load() }
+    try { await deleteProductImageById(img.id); toast.success('Imagen eliminada'); load() }
     catch { toast.error('Error al eliminar') }
   }
 

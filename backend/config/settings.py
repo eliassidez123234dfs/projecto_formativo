@@ -140,18 +140,8 @@ CKEDITOR_CONFIGS = {
 
 CKEDITOR_UPLOAD_PATH = "/media/"
 
-# ── Cloudinary (Almacenamiento en la Nube para Medios) ──
-# Agrupación separada porque solo se añade a INSTALLED_APPS cuando
-# las credenciales están presentes en el entorno.
-# Cloudinary reemplaza el almacenamiento local de imágenes y modelos 3D,
-# proporcionando CDN global, transformaciones de imagen y respaldo.
-CLOUDINARY_APPS = [
-    'cloudinary_storage',
-    'cloudinary',
-]
-
 # Fusión final de todas las apps instaladas
-INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS + CLOUDINARY_APPS
+INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS
 
 # =============================================================================
 #  CACHÉ — REDIS (PRODUCCIÓN) / MEMORIA LOCAL (DESARROLLO)
@@ -624,7 +614,31 @@ try:
         'API_KEY': env('CLOUDINARY_API_KEY', default=''),
         'API_SECRET': env('CLOUDINARY_API_SECRET', default=''),
     }
+
+    cloudinary.config(
+        cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+        api_key=CLOUDINARY_STORAGE['API_KEY'],
+        api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+        secure=True,
+    )
+
+    if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY'] and 'test' not in sys.argv:
+        STORAGES = {
+            "default": {
+                "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            },
+        }
+
     DATABASES['default']['ATOMIC_REQUESTS'] = True
+except ImportError:
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default=''),
+        'API_KEY': env('CLOUDINARY_API_KEY', default=''),
+        'API_SECRET': env('CLOUDINARY_API_SECRET', default=''),
+    }
 
 # -------------------- Logging / Monitoreo de errores --------------------
 LOGS_DIR = BASE_DIR / 'logs'
