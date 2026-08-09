@@ -5,6 +5,11 @@ import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
 
+/**
+ * Componente principal de la página de auditoría.
+ * Valida autenticación y rol de administrador, carga los registros
+ * paginados y los presenta en una tabla de solo lectura.
+ */
 export default function AdminAudit() {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)

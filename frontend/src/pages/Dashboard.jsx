@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+// User dashboard with profile editing, password change, and admin stats overview
 export function Dashboard() {
   const navigate = useNavigate()
 

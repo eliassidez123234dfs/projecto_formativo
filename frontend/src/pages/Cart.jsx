@@ -1,18 +1,72 @@
+// ---------------------------------------------------------------
+// Cart.jsx  —  Carrito de compras (RF-054)
+// APIs consumidas: CartContext (get/update/remove/clear via apiService)
+// Hooks: useCart (cart, loading, toast, updateQuantity, removeItem,
+//        clearCartItems, dismissToast), useNavigate, Link
+// Estado global: CartContext
+// Flujo: muestra items en lista con controles +/-; botón eliminar;
+//        resumen de totales; navegación a catálogo o checkout;
+//        modal Toast para feedback de operaciones
+// ---------------------------------------------------------------
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
-import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 
-export const Cart = () => {
-  const { cart, loading, updateQuantity, removeItem, clearCartItems } = useCart();
+// Toast — modal de confirmación superpuesto con overlay semitransparente
+const Toast = ({ toast, onDismiss }) => {
+  if (!toast) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.45)',
+      animation: 'toastFadeIn 0.25s ease',
+    }} onClick={onDismiss}>
+      <div style={{
+        background: '#fff', borderRadius: 16,
+        padding: '40px 48px', textAlign: 'center',
+        boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
+        animation: 'toastScaleIn 0.3s ease',
+        maxWidth: 400,
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          background: '#DC2626', color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 20px',
+        }}>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <p style={{
+          fontSize: 18, fontWeight: 700, color: '#111827',
+          margin: '0 0 8px',
+        }}>{toast.message}</p>
+        <button onClick={onDismiss} style={{
+          marginTop: 20, padding: '10px 32px', border: 'none',
+          borderRadius: 8, background: '#DC2626', color: '#fff',
+          fontWeight: 600, fontSize: 14, cursor: 'pointer',
+        }}>Cerrar</button>
+      </div>
+      <style>{`
+        @keyframes toastFadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes toastScaleIn { from { opacity:0; transform:scale(0.9) } to { opacity:1; transform:scale(1) } }
+      `}</style>
+    </div>
+  );
+};
 
+export const Cart = () => {
+  const { cart, loading, toast, updateQuantity, removeItem, clearCartItems, dismissToast } = useCart();
+
+  // Estado: carga inicial del carrito (skeleton)
   if (loading) {
     return (
       <>
-        <Header cartCount={0} />
         <div className="container" style={{ paddingTop: '2rem' }}>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>Carrito de Compras</h1>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -42,7 +96,7 @@ export const Cart = () => {
   if (items.length === 0) {
     return (
       <>
-        <Header cartCount={0} />
+        <Toast toast={toast} onDismiss={dismissToast} />
         <div className="container" style={{ paddingTop: '2rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>Carrito de Compras</h1>
           <div style={{ padding: '60px 20px' }}>
@@ -61,8 +115,9 @@ export const Cart = () => {
 
   return (
     <>
-      <Header cartCount={totalItems} />
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
+        <Link to="/catalog" style={{ color: 'var(--color-text-muted)', fontSize: 13, textDecoration: 'none', marginBottom: 16, display: 'inline-block' }}>← Seguir Comprando</Link>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Carrito de Compras</h1>
         <p style={{ color: 'var(--color-text-muted)', marginBottom: 24, fontSize: 14 }}>
           {totalItems} producto{totalItems !== 1 ? 's' : ''} en tu carrito

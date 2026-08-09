@@ -5,9 +5,9 @@ import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import ErrorState from '../components/ErrorState';
 import { useCart } from '../context/CartContext';
-import { Header } from '../components/Header';
 
 export const Category = () => {
+  const navigate = useNavigate()
   const { id } = useParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,7 @@ export const Category = () => {
   const [filters, setFilters] = useState({ q: '', min_price: '', max_price: '', ordering: '', page: 1 });
   const [pageInfo, setPageInfo] = useState(null);
   const [categoryName, setCategoryName] = useState('Categoría');
-  const { cart, addItem } = useCart();
+  const { cart } = useCart();
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -59,7 +59,6 @@ export const Category = () => {
 
   return (
     <>
-      <Header cartCount={cart?.total_items || 0} />
       <div className="container" style={{ paddingTop: '2rem', paddingBottom: '3rem' }}>
         <Link to="/catalog" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: 14, marginBottom: 16, display: 'inline-block' }}>
           ← Volver al catálogo
@@ -107,7 +106,8 @@ export const Category = () => {
                 <ProductCard
                   key={product.id}
                   product={{
-                    id: product.id, name: product.name,
+                    id: product.id,
+                    name: product.name,
                     price: Number(product.base_price) || 0,
                     min_price: product.min_price,
                     max_price: product.max_price,
@@ -115,9 +115,13 @@ export const Category = () => {
                     color_hexes: product.color_hexes || {},
                     badge: product.is_new ? 'Nuevo' : null,
                     image: product.main_image || null,
+                    base_price: product.base_price,
+                    available_sizes: product.available_sizes || [],
+                    available_colors: product.available_colors || [],
+                    stock_total: product.stock_total || 0,
+                    variants_summary: product.variants_summary || {},
                   }}
-                  onView={(id) => window.location.href = `/product/${id}`}
-                  onAdd={() => handleAddToCart(product)}
+                  onView={(id) => navigate(`/product/${id}`)}
                 />
               ))}
             </div>

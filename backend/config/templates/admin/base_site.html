@@ -1,0 +1,15 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | RED Admin{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">RED Administración</a></h1>
+{% endblock %}
+
+{% block nav-global %}
+<div style="display:flex;align-items:center;gap:12px;margin-left:24px;font-size:13px;">
+  <a href="{% url 'dev-landing' %}" style="color:var(--link-fg, #fff);text-decoration:none;padding:4px 10px;border-radius:4px;background:rgba(255,255,255,0.1);">Landing Informativa</a>
+  <a href="{% url 'dev-dashboard' %}" style="color:var(--link-fg, #fff);text-decoration:none;padding:4px 10px;border-radius:4px;background:rgba(255,255,255,0.1);">Dashboard Completo</a>
+  <a href="/" style="color:var(--link-fg, #fff);text-decoration:none;padding:4px 10px;border-radius:4px;background:rgba(255,255,255,0.1);">Volver al Inicio</a>
+</div>
+{% endblock %}

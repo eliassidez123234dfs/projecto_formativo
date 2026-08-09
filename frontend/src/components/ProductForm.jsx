@@ -126,6 +126,10 @@ function VariantRow({ v, onChange, onRemove }) {
   )
 }
 
+/**
+ * Componente principal del formulario de producto.
+ * @param {{ product?: Object, onClose: Function, onSaved: Function }}
+ */
 export default function ProductForm({ product, onClose, onSaved }) {
   const isEditing = Boolean(product)
 

@@ -195,5 +195,5 @@ export default function AdminLayout({ children, title, subtitle }) {
         </footer>
       </div>
     </div>
-  )
+  );
 }

@@ -1,9 +1,18 @@
+/**
+ * AdminProducts — CRUD de productos del catálogo (RF-033).
+ * Permite listar, crear, editar, activar/desactivar y ver estadísticas
+ * de productos. Integra ProductList y ProductForm como componentes hijos.
+ */
 import { useState, useEffect } from 'react'
 import { fetchAdminStats, fetchProductAdmin, toggleProductActive } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
 
+/**
+ * Hook personalizado que obtiene las estadísticas de productos desde el admin.
+ * @returns {{ stats: Object, loading: boolean }}
+ */
 function useAdminStats() {
   const [stats, setStats] = useState({ total: 0, active: 0, approved: 0, pending: 0 })
   const [loading, setLoading] = useState(true)

@@ -6,15 +6,31 @@
 # package-lock.json
 # yarn.lock
 
-### Django ###
-*.log
-*.pot
-*.pyc
+# =============================================================================
+#  Python / Django
+# =============================================================================
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-media
+db.sqlite3.backup
+*.sql
+*.sql.gz
+*.dump
+media/
+staticfiles/
+static_root/
+*.pot
+*.log
 
 # =============================================================================
 # Sistemas operativos
@@ -251,8 +267,8 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 .pnpm-debug.log*
+.lh/
 
 # Reportes de diagnóstico
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

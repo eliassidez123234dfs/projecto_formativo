@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.orders.models import Order
@@ -7,12 +7,15 @@ from .serializers import OrderSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
+    """ViewSet for order CRUD — requires authentication and scopes to current user."""
     serializer_class = OrderSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user).select_related('user').prefetch_related('items__product', 'items__variant').all()
 
     def create(self, request, *args, **kwargs):
-        # Map camelCase payload (from frontend) to snake_case expected by serializer
+        """Create a new order, mapping camelCase frontend fields to snake_case."""
         data = request.data.copy()
         if 'imageUrl' in data and 'image_url' not in data:
             data['image_url'] = data.get('imageUrl')

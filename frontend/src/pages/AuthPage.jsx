@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { buildApiUrl } from '../services/api'
+import { setTokens, getAccessToken, isAuthenticated } from '../services/authService'
+import { useCart } from '../context/CartContext'
 
 function passwordStrength(pw) {
   let score = 0
@@ -15,11 +17,29 @@ function passwordStrength(pw) {
   return { label, color, pct }
 }
 
+// ---------------------------------------------------------------
+// AuthPage.jsx  —  Página de autenticación (versión refactorizada, RF-055)
+// APIs consumidas:
+//   POST /api/login/login/           — login JWT
+//   POST /api/auth/registro/         — registro de usuario
+//   Query params: ?verified=1 | ?error=token-expirado | ?error=token-invalido
+// Hooks: useState, useEffect, useNavigate, useLocation, useCart
+// Estado global: authService (setTokens, getAccessToken, isAuthenticated),
+//                CartContext (reloadCart)
+// Validaciones: misma lógica que Auth.jsx con extractFieldErrors()
+// Flujo: detecta parámetros de verificación por email en URL;
+//        al login exitoso recarga carrito y redirige según rol
+// ---------------------------------------------------------------
 export default function AuthPage({ defaultMode = 'login' }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { reloadCart } = useCart()
   const [mode, setMode] = useState(defaultMode)
   const [animKey, setAnimKey] = useState(0)
+
+  useEffect(() => {
+    setMode(defaultMode)
+  }, [defaultMode])
   const [loginData, setLoginData] = useState({ correo: '', contrasena: '' })
   const [registerData, setRegisterData] = useState({ usuario: '', correo: '', contrasena: '', confirmar_contrasena: '' })
   const [errors, setErrors] = useState({})
@@ -35,10 +55,14 @@ export default function AuthPage({ defaultMode = 'login' }) {
   }, [mode])
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
+    const token = getAccessToken()
     if (token) navigate('/dashboard')
   }, [navigate])
 
+  // ---------------------------------------------------------------
+  // Lee parámetros de la URL para mostrar estado de verificación email
+  // ?verified=1 → éxito; ?error=token-expirado o token-invalido → error
+  // ---------------------------------------------------------------
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('verified') === '1') {
@@ -47,8 +71,31 @@ export default function AuthPage({ defaultMode = 'login' }) {
       setErrors({ general: 'El enlace de verificación ha expirado.' })
     } else if (params.get('error') === 'token-invalido') {
       setErrors({ general: 'El enlace de verificación no es válido.' })
+    } else if (params.get('token')) {
+      verificarEmail(params.get('token'))
     }
   }, [location.search])
+
+  async function verificarEmail(token) {
+    setLoading(true)
+    try {
+      const response = await fetch(buildApiUrl('auth/verificar_email/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setVerifiedMsg('Email verificado exitosamente. Ya puedes iniciar sesión.')
+      } else {
+        setErrors({ general: data?.error || data?.mensaje || 'Error al verificar email.' })
+      }
+    } catch {
+      setErrors({ general: 'Error al conectar con el servidor.' })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   function getError(errors, field) {
     const val = errors[field]
@@ -76,8 +123,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
 
   function validateLogin() {
     const errs = {}
-    if (!loginData.correo.trim()) errs.correo = 'El correo es obligatorio'
-    else if (!/\S+@\S+\.\S+/.test(loginData.correo)) errs.correo = 'Correo inválido'
+    if (!loginData.correo.trim()) errs.correo = 'El usuario o correo es obligatorio'
     if (!loginData.contrasena) errs.contrasena = 'La contraseña es obligatoria'
     setFieldErrors(errs)
     return Object.keys(errs).length === 0
@@ -118,11 +164,10 @@ export default function AuthPage({ defaultMode = 'login' }) {
         setErrors(errData)
         setFieldErrors(extractFieldErrors(errData))
       } else {
-        localStorage.setItem('access_token', data.access)
-        localStorage.setItem('refresh_token', data.refresh)
-        localStorage.setItem('usuario', JSON.stringify(data.usuario))
+        setTokens(data.access, data.refresh, data.usuario)
+        await reloadCart()
         const usr = data.usuario || {}
-        navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
+        navigate('/dashboard')
       }
     } catch { setErrors({ general: 'Error al conectar con el servidor' }) }
     finally { setLoading(false) }
@@ -175,6 +220,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
       </div>
 
       <div className="auth-form-panel">
+        <Link to="/" style={{ color: 'var(--color-text-muted)', fontSize: 13, textDecoration: 'none', marginBottom: 16, display: 'inline-block' }}>← Volver al Inicio</Link>
         <div className="auth-form-container">
           <div className="auth-form-header">
             <h2>{mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
@@ -197,10 +243,10 @@ export default function AuthPage({ defaultMode = 'login' }) {
             {mode === 'login' ? (
               <form onSubmit={handleLoginSubmit}>
                 <div className="auth-field">
-                  <label>Correo electrónico</label>
-                  <input type="email" value={loginData.correo}
+                  <label>Usuario o correo</label>
+                  <input type="text" value={loginData.correo}
                     onChange={e => { setLoginData(p => ({ ...p, correo: e.target.value })); setFieldErrors(f => ({...f, correo: undefined})) }}
-                    placeholder="tu@email.com" required
+                    placeholder="usuario@email.com" required autoComplete="username"
                     className={fieldErrors.correo ? 'input-error' : ''}
                   />
                   {fieldErrors.correo && <span className="field-error">{fieldErrors.correo}</span>}
@@ -224,7 +270,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
                   <label>Nombre de usuario</label>
                   <input type="text" value={registerData.usuario}
                     onChange={e => { setRegisterData(p => ({ ...p, usuario: e.target.value })); setFieldErrors(f => ({...f, usuario: undefined})) }}
-                    placeholder="miusuario" required
+                    placeholder="miusuario" required autoComplete="username"
+                    minLength={3} maxLength={100} pattern="[A-Za-z0-9_]+"
                     className={fieldErrors.usuario ? 'input-error' : ''}
                   />
                   {fieldErrors.usuario && <span className="field-error">{fieldErrors.usuario}</span>}
@@ -560,6 +607,46 @@ export default function AuthPage({ defaultMode = 'login' }) {
           .auth-tagline { font-size: 1.25rem; }
           .auth-benefits { align-items: center; }
           .auth-form-panel { padding: 2rem 1.25rem; }
+        }
+
+        [data-theme="dark"] .auth-form-panel {
+          background: var(--color-bg);
+        }
+        [data-theme="dark"] .auth-form-header h2 {
+          color: var(--color-text);
+        }
+        [data-theme="dark"] .auth-form-header p {
+          color: var(--color-text-secondary);
+        }
+        [data-theme="dark"] .auth-field label {
+          color: var(--color-text);
+        }
+        [data-theme="dark"] .auth-field input {
+          border-color: var(--color-border);
+          color: var(--color-text);
+          background: var(--color-bg);
+        }
+        [data-theme="dark"] .auth-alert--error {
+          background: var(--color-error-light);
+          color: #fca5a5;
+          border-color: rgba(239, 68, 68, 0.3);
+        }
+        [data-theme="dark"] .auth-alert--success {
+          background: var(--color-success-light);
+          color: #6ee7b7;
+          border-color: rgba(16, 185, 129, 0.3);
+        }
+        [data-theme="dark"] .auth-switch {
+          border-top-color: var(--color-border);
+        }
+        [data-theme="dark"] .auth-switch p {
+          color: var(--color-text-secondary);
+        }
+        [data-theme="dark"] .auth-switch button {
+          color: var(--color-primary);
+        }
+        [data-theme="dark"] .auth-curve {
+          background: var(--color-bg);
         }
       `}</style>
     </div>

@@ -1,3 +1,8 @@
+/**
+ * AdminCart — Listado de carritos de todos los usuarios del sistema.
+ * Muestra ID, usuario, cantidad de items, total, fecha de creación y estado
+ * de la orden asociada. Permite navegar al detalle de cada carrito.
+ */
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchAdminCarts } from '../services/api'
@@ -7,6 +12,20 @@ import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
 
+/** Estilos de color para los estados de orden mostrados en la tabla. */
+const STATUS_STYLES = {
+  pendiente: { bg: '#fef3c7', color: '#92400e' },
+  pagado: { bg: '#dbeafe', color: '#1e40af' },
+  enviado: { bg: '#e0e7ff', color: '#3730a3' },
+  entregado: { bg: '#d1fae5', color: '#065f46' },
+  cancelado: { bg: '#fee2e2', color: '#991b1b' },
+}
+
+/**
+ * Componente principal del listado de carritos.
+ * Redirige al login si no es administrador, carga carritos paginados
+ * y muestra una tabla con la información resumida de cada uno.
+ */
 export default function AdminCart() {
   const [carts, setCarts] = useState({ results: [], count: 0 })
   const [loading, setLoading] = useState(true)
@@ -52,6 +71,7 @@ export default function AdminCart() {
                   <th>Items</th>
                   <th>Total</th>
                   <th>Creado</th>
+                  <th>Estado</th>
                   <th>Acción</th>
                 </tr>
               </thead>
@@ -63,6 +83,15 @@ export default function AdminCart() {
                     <td>{cart.items_count}</td>
                     <td>{formatCOP(cart.total_amount)}</td>
                     <td>{new Date(cart.created_at).toLocaleDateString()}</td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12,
+                        fontWeight: 600, background: (STATUS_STYLES[cart.order_status] || { bg: '#fef3c7' }).bg,
+                        color: (STATUS_STYLES[cart.order_status] || { color: '#92400e' }).color,
+                      }}>
+                        {cart.order_status_display}
+                      </span>
+                    </td>
                     <td>
                       <Link to={`/admin-cart/${cart.id}`} className="btn btn-sm btn-secondary">
                         Ver detalle

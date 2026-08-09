@@ -55,6 +55,47 @@
 .cart-summary { background:#fff; border:1px solid #ececec; border-radius: 20px; padding: 16px; height: fit-content; box-shadow: 0 10px 30px rgba(0,0,0,.04); }
 .pager { display:flex; gap: 10px; align-items:center; justify-content:center; padding: 12px 0; }
 
+.sc-stock-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+}
+
+.sc-stock-ok { background: #16A34A; color: white; }
+.sc-stock-warn { background: #EA580C; color: white; }
+.sc-stock-no { background: #DC2626; color: white; }
+
+.load-more-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 0;
+}
+
+.load-more-btn {
+  min-width: 200px;
+}
+
+.load-more-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #E5E7EB;
+  border-top-color: #DC2626;
+  border-radius: 50%;
+  animation: lms-spin 0.7s linear infinite;
+}
+
+@keyframes lms-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 900px) {
   .shop-hero, .admin-detail-hero, .detail-layout, .admin-detail-grid { grid-template-columns: 1fr; }
   .shop-hero-actions, .detail-actions, .admin-detail-actions { justify-content:flex-start; }

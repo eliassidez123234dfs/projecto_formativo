@@ -6,18 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import './styles/theme.css';
 import './styles/globals.css';
-import { Landing } from './pages/Landing';
-import AuthPage from './pages/AuthPage';
-import { Dashboard } from './pages/Dashboard';
-import { Catalog } from './pages/Catalog';
-import { Category } from './pages/Category';
-import { ProductDetail } from './pages/ProductDetail';
-import { Product3D } from './pages/Product3D';
-import { Cart } from './pages/Cart';
-import AdminCart from './pages/AdminCart';
-import AdminCartDetail from './pages/AdminCartDetail';
-import { VerificarEmail, VerificacionPendiente } from './pages/Email';
-import { RecuperarPassword, NuevaPassword } from './pages/Password';
+import './styles/responsive.css';
 
 // Nuevos imports desde la rama jose
 import AdminDashboard from './pages/AdminDashboard';
@@ -38,24 +27,10 @@ function App() {
       <CartProvider>
         <BrowserRouter>
           <ErrorBoundary>
-          <Toaster position="top-right" toastOptions={{ duration: 4000, style: { fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
-          <Routes>
-            {/* Rutas existentes de integracion-total */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/catalog" element={<Catalog />} />
-            <Route path="/category/:id" element={<Category />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/product/:id/3d" element={<Product3D />} />
-            <Route path="/login" element={<AuthPage defaultMode="login" />} />
-            <Route path="/register" element={<AuthPage defaultMode="register" />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/perfil" element={<UserProfile />} />
-            <Route path="/email" element={<VerificarEmail />} />
-            <Route path="/verificar-email" element={<VerificarEmail />} />
-            <Route path="/verificar-email-pendiente" element={<VerificacionPendiente />} />
-            <Route path="/password" element={<RecuperarPassword />} />
-            <Route path="/nueva-password" element={<NuevaPassword />} />
+            <Toaster position="top-right" toastOptions={{ duration: 4000, style: { fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
+            <ScrollToTop />
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
 
             {/* Rutas admin protegidas */}
             <Route element={<ProtectedRoute />}>
@@ -73,9 +48,46 @@ function App() {
             </Route>
             <Route path="/checkout" element={<CheckoutPage />} />
 
-            {/* Opcional: si quieres mantener también /catalogo como alias de /catalog */}
-            <Route path="/catalogo" element={<Catalog />} />
-          </Routes>
+                {/* ─── AUTENTICACIÓN (Horizontal Header) ─── */}
+                <Route path="/login" element={<PublicLayout><AuthPage key="login" defaultMode="login" /></PublicLayout>} />
+                <Route path="/register" element={<PublicLayout><AuthPage key="register" defaultMode="register" /></PublicLayout>} />
+
+                {/* ─── VERIFICACIÓN / PASSWORD (Horizontal Header) ─── */}
+                <Route path="/email" element={<PublicLayout><VerificarEmail /></PublicLayout>} />
+                <Route path="/verificar-email" element={<PublicLayout><VerificarEmail /></PublicLayout>} />
+                <Route path="/verificar-email-pendiente" element={<PublicLayout><VerificacionPendiente /></PublicLayout>} />
+                <Route path="/password" element={<PublicLayout><RecuperarPassword /></PublicLayout>} />
+                <Route path="/nueva-password" element={<PublicLayout><NuevaPassword /></PublicLayout>} />
+
+                {/* ─── USUARIO AUTENTICADO (Sidebar layout) ─── */}
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/perfil" element={<ProtectedRoute><MainLayout title="Mi Perfil"><UserProfile /></MainLayout></ProtectedRoute>} />
+                <Route path="/mis-disenos" element={<ProtectedRoute><MainLayout title="Mis Diseños 3D"><UserDesigns /></MainLayout></ProtectedRoute>} />
+
+                {/* ─── ADMIN (Sidebar layout, admin-only) ─── */}
+                <Route path="/admin" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin-products" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminProducts /></ProtectedRoute>} />
+                <Route path="/admin-products/detail/:id" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminProductDetail /></ProtectedRoute>} />
+                <Route path="/admin-users" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminUsers /></ProtectedRoute>} />
+                <Route path="/admin-categories" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminCategories /></ProtectedRoute>} />
+                <Route path="/admin-images" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminImages /></ProtectedRoute>} />
+                <Route path="/admin-designs" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminDesigns /></ProtectedRoute>} />
+                <Route path="/admin-orders" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminOrders /></ProtectedRoute>} />
+                <Route path="/admin-orders/:id" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminOrderDetail /></ProtectedRoute>} />
+                <Route path="/admin-cart" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminCart /></ProtectedRoute>} />
+                <Route path="/admin-cart/:id" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminCartDetail /></ProtectedRoute>} />
+                <Route path="/admin-contact" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminContact /></ProtectedRoute>} />
+                <Route path="/admin-audit" element={<ProtectedRoute requiredRoles={[ROLES.ADMIN]}><AdminAudit /></ProtectedRoute>} />
+
+                {/* ─── CHECKOUT (requiere autenticación) ─── */}
+                <Route path="/checkout" element={<ProtectedRoute><PublicLayout><CheckoutPage /></PublicLayout></ProtectedRoute>} />
+                <Route path="/checkout/resultado" element={<ProtectedRoute><PublicLayout><OrderConfirmation /></PublicLayout></ProtectedRoute>} />
+
+                {/* ─── 404 CATCH-ALL ─── */}
+                <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
+
+              </Routes>
+            </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
       </CartProvider>

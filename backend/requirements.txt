@@ -9,8 +9,12 @@ cloudinary==1.44.2
 django-cloudinary-storage==0.3.0 ## poder guardar las imagenes en AWS o videos, cosas que pesen o se guardan en gran cantidad se guardan en un sdn (con cloudinary)
 django-ckeditor==6.7.3 ## crear cosas de manera mas rica para que se vea mejor
 psycopg2-binary==2.9.12 ## esto es para poder trabajar con postgresql
+pymongo==4.17.0 ## driver oficial de MongoDB para conexión con Atlas
 python-decouple==3.8 ## para manejar variables de entorno
 celery==5.4.0 ## para tareas asincrónicas (email)
 setuptools==78.1.0 ## necesario para pkg_resources en Python 3.12
 gunicorn==23.0.0 ## servidor WSGI para producción
 django-ratelimit==4.1.0 ## para limitar el número de requests por IP
+cloudinary==1.41.0 ## SDK de Cloudinary para Python
+django-cloudinary-storage==0.3.0 ## Storage backend de Cloudinary para Django
+django-redis>=5.4 ## Redis cache backend para Django

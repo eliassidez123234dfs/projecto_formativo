@@ -1,14 +1,23 @@
 import logging
 
+# =============================================================================
+# LANDING - ViewSets para el formulario de contacto (RF-030 a RF-032)
+# =============================================================================
+# RF-030: Formulario de contacto público
+# RF-031: Envío de mensaje (con rate limiting RN-031: 3/h por IP)
+# RF-032: Notificación por email al administrador (RN-032)
+# =============================================================================
+
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+from apps.users.services.email_service import EmailService
 
 from ..models import Contacto
 from .serializers import (
@@ -18,13 +27,27 @@ from .serializers import (
 
 
 class ContactRateThrottle(AnonRateThrottle):
-    """Rate throttle personalizado para formulario de contacto (RN-031)"""
+    """Límite de tasa para el formulario de contacto (RN-031).
+    
+    Máximo 3 envíos por hora por dirección IP para usuarios anónimos.
+    Previene abuso del formulario (spam, ataques de fuerza bruta).
+    """
     scope = 'contact_form'
     rate = '3/h'  # 3 requests per hour per IP
 
 
 class ContactoViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar formularios de contacto (RF-030 a RF-032)"""
+    """ViewSet para gestionar mensajes de contacto (RF-030, RF-031, RF-032).
+    
+    Acciones públicas:
+      - create:  Enviar nuevo mensaje (con rate limiting por IP)
+    
+    Acciones de administrador (requiere autenticación):
+      - list:         Listar todos los mensajes
+      - retrieve:     Ver detalle de un mensaje
+      - marcar_leido: Marcar como leído
+      - eliminar:     Eliminar mensaje
+    """
     queryset = Contacto.objects.all()
     permission_classes = [permissions.AllowAny]
     filterset_fields = ['leido']
@@ -33,7 +56,13 @@ class ContactoViewSet(viewsets.ModelViewSet):
     throttle_classes = [ContactRateThrottle]
     
     def get_serializer_class(self):
-        """Retornar serializer apropiado según la acción"""
+        """Retorna el serializer adecuado según la acción REST.
+        
+        - create  → ContactoCreateSerializer (solo campos de envío)
+        - list    → ContactoListSerializer (resumen sin mensaje)
+        - retrieve → ContactoDetailSerializer (incluye mensaje completo)
+        - default → ContactoSerializer
+        """
         if self.action == 'create':
             return ContactoCreateSerializer
         elif self.action == 'list': # Muestra todos los contactos
@@ -43,7 +72,11 @@ class ContactoViewSet(viewsets.ModelViewSet):
         return ContactoSerializer
     
     def get_queryset(self):
-        """Filtrar según permisos"""
+        """Filtra el queryset según permisos del usuario.
+        
+        Solo administradores pueden listar/ver mensajes.
+        Usuarios no autenticados reciben queryset vacío.
+        """
         if self.request.user and self.request.user.is_authenticated:
             # Admin puede ver todos
             if hasattr(self.request.user, 'rol') and self.request.user.rol == 'Administrador':
@@ -64,7 +97,7 @@ class ContactoViewSet(viewsets.ModelViewSet):
             contacto = serializer.save(ip_origen=ip_origen)
             
             # Enviar email al admin de forma asíncrona (RF-032, RN-032)
-            self._enviar_email_admin(contacto)
+            EmailService.send_contact_notification(contacto)
             
             return Response({
                 'mensaje': 'Mensaje enviado exitosamente. Nos contactaremos pronto.',
@@ -76,14 +109,13 @@ class ContactoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def marcar_leido(self, request, pk=None):
         """Marcar mensaje como leído (admin)"""
-        contacto = self.get_object()
-        
-        # Solo admin puede marcar como leído
+        # Verificar permisos antes de buscar el objeto
         if not hasattr(request.user, 'rol') or request.user.rol != 'Administrador':
             return Response({
                 'error': 'No tienes permiso para realizar esta acción'
             }, status=status.HTTP_403_FORBIDDEN)
         
+        contacto = self.get_object()
         contacto.leido = True
         contacto.fecha_lectura = timezone.now()
         contacto.save()
@@ -95,50 +127,18 @@ class ContactoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['delete'], permission_classes=[permissions.IsAuthenticated])
     def eliminar(self, request, pk=None):
         """Eliminar mensaje de contacto (admin)"""
-        contacto = self.get_object()
-        
-        # Solo admin puede eliminar
+        # Verificar permisos antes de buscar el objeto
         if not hasattr(request.user, 'rol') or request.user.rol != 'Administrador':
             return Response({
                 'error': 'No tienes permiso para realizar esta acción'
             }, status=status.HTTP_403_FORBIDDEN)
         
+        contacto = self.get_object()
         contacto.delete()
         
         return Response({
             'mensaje': 'Mensaje eliminado'
         }, status=status.HTTP_204_NO_CONTENT)
-    
-    def _enviar_email_admin(self, contacto):
-        """Enviar notificación al admin (RF-032, RN-032)"""
-        admin_email = settings.DEFAULT_FROM_EMAIL
-        
-        asunto = f"Nuevo mensaje de contacto de {contacto.nombre}"
-        mensaje = f"""
-        Nuevo mensaje de contacto:
-        
-        Nombre: {contacto.nombre}
-        Correo: {contacto.correo}
-        Asunto: {contacto.asunto or 'Sin asunto'}
-        
-        Mensaje:
-        {contacto.mensaje}
-        
-        IP de origen: {contacto.ip_origen}
-        Fecha: {contacto.fecha_envio}
-        """
-        
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [admin_email],
-                fail_silently=False
-            )
-        except Exception as exc:
-            # RN-032: Si falla el email, el mensaje se guarda igual
-            logger.exception('Error al enviar email de notificación de contacto: %s', exc)
     
     def _obtener_ip_cliente(self, request):
         """Obtener IP del cliente para rate limiting"""

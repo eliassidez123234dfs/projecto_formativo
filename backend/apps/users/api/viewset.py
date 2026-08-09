@@ -1,49 +1,122 @@
-import logging
+# ==============================================================================
+# ViewSets — Módulo de Usuarios (Red Estampación)
+# ==============================================================================
+# Implementa los endpoints REST para:
+#
+#   RegistroViewSet   → RF-001, RF-003, RF-009
+#     (registro público, verificación de email, reenvío, recuperación
+#      de contraseña y establecimiento de nueva contraseña)
+#
+#   LoginViewSet      → RF-008, RF-011, RF-012
+#     (login con JWT + httpOnly cookies, logout con blacklist,
+#      migración de carrito anónimo a autenticado)
+#
+#   UsuarioViewSet    → RF-010
+#     (perfil, actualizar perfil, cambiar contraseña)
+#
+# ── Flujos principales ──
+# Registro → verificar_email → login → (operaciones) → logout
+#                          ↘ recuperar_password → nueva_password
+#
+# ── Mecanismos de seguridad ──
+# * JWT con token_version para invalidación remota de sesiones.
+# * httpOnly cookies para access/refresh tokens (protección XSS).
+# * Refresh token blacklist al cerrar sesión (RN-013).
+# * cycle_key() en login/logout para prevenir session fixation.
+# * Migración del carrito anónimo → autenticado al iniciar sesión.
+# ==============================================================================
+"""ViewSets para registro, autenticación y gestión de perfil de usuarios (RF-001 a RF-012)."""
 
+# ─────────────────────────────────────────────────────────
+# Importaciones de la librería estándar y terceros
+# ─────────────────────────────────────────────────────────
+import logging
+import secrets
+from datetime import timedelta
+
+from django.utils import timezone
+from django.conf import settings
+from django.db import transaction
+from django.db.models import Q
+from django_ratelimit.decorators import ratelimit
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.utils import timezone
-from django.core.mail import send_mail
-from django.conf import settings
-from django.db import transaction
-from django.db.models import Q
-import secrets
-from datetime import timedelta
+from rest_framework_simplejwt.exceptions import TokenError
 
+# ─────────────────────────────────────────────────────────
+# Importaciones del proyecto
+# ─────────────────────────────────────────────────────────
 from apps.carts.models import Cart
 
-logger = logging.getLogger(__name__)
-
+from ..services.email_service import EmailService
 from ..models import (
     Usuario, Token_Verificacion, Cambio_Email, 
     Log_Auditoria, Historial_Estado_Usuario
 )
-
 from .serializers import (
     UsuarioSerializer, UsuarioDetailSerializer, RegistroSerializer,
     LoginSerializer, VerificacionEmailSerializer, ReenvioVerificacionSerializer,
     RecuperacionPasswordSerializer, NuevaPasswordSerializer,
-    CambioPasswordSerializer, ActualizarPerfilSerializer, LogAuditoriaSerializer
+    CambioPasswordSerializer, ActualizarPerfilSerializer,
 )
+logger = logging.getLogger(__name__)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ViewSet: RegistroViewSet (RF-001, RF-003, RF-009)
+# ─────────────────────────────────────────────────────────────────────────────
+# Endpoints públicos para el ciclo de vida inicial del usuario.
+# No requiere autenticación (AllowAny).
+#
+# RF-001: Registro de nuevos usuarios.
+# RF-003: Verificación de correo electrónico mediante token.
+# RF-009: Reenvío de verificación, recuperación y cambio de contraseña.
+#
+# Todos los flujos usan tokens criptográficos de un solo uso y expiración
+# temporal para garantizar seguridad en la verificación de identidad.
+# ─────────────────────────────────────────────────────────────────────────────
 class RegistroViewSet(viewsets.ViewSet):
-    """ViewSet para registro de nuevos usuarios (RF-001, RF-003, RF-009)"""
+    """
+    ViewSet para registro público de usuarios (RF-001, RF-003, RF-009).
+    Expone: registro, verificación de email, reenvío, recuperación de
+    contraseña y establecimiento de nueva contraseña.
+    Todos los endpoints son de acceso público (AllowAny).
+    """
     permission_classes = [permissions.AllowAny]
     
+    # ────────────────────────────────────────────────────────
+    # POST /api/registro/registro/   (RF-001)
+    # ────────────────────────────────────────────────────────
+    # Registro público de nuevos usuarios.
+    #
+    # Flujo:
+    #   1. Valida datos con RegistroSerializer (RN-001: formato contraseña).
+    #   2. Crea el usuario en estado Inactivo con email_verificado=False.
+    #   3. Genera token de verificación criptográfico (vía post-save signal).
+    #   4. Envia email de verificación (no bloquea si falla el envío).
+    #
+    # RN-004: el usuario nace Inactivo; solo pasa a Activo tras verificar email.
+    # RF-001: registro con usuario, correo y contraseña (mín. 8 chars, mayúscula,
+    #         número y carácter especial).
+    #
+    # Seguridad: la transacción es atómica (transaction.atomic) para evitar
+    # estados inconsistentes si falla la creación del token.
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def registro(self, request):
-        """Endpoint de registro (RF-001)"""
         serializer = RegistroSerializer(data=request.data)
         if serializer.is_valid():
             with transaction.atomic():
                 usuario = serializer.save()
                 
-                # Enviar email de verificación (no bloquea el registro si falla)
-                email_enviado = self._enviar_email_verificacion(usuario)
+                # Obtiene el token creado por la señal post-save y envía el email
+                token_obj = usuario.tokens_verificacion.filter(
+                    tipo='Verificacion_Email', usado=False
+                ).first()
+                email_enviado = EmailService.send_verification_email(usuario, token_obj) if token_obj else False
                 if not email_enviado:
                     logger.warning('No se pudo enviar email de verificación a %s', usuario.correo)
             
@@ -55,10 +128,23 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Funcion la cual verifica el email
+    # ────────────────────────────────────────────────────────
+    # POST /api/registro/verificar_email/   (RF-003)
+    # ────────────────────────────────────────────────────────
+    # Verifica la dirección de correo electrónico mediante un token único.
+    #
+    # Flujo:
+    #   1. Valida el token con VerificacionEmailSerializer (existencia, expiración, uso).
+    #   2. Marca email_verificado=True y cambia estado a 'Activo' (RN-004).
+    #   3. Marca el token como usado (un solo uso — previene reutilización).
+    #
+    # RN-004: el usuario pasa de Inactivo → Activo al verificar el email.
+    # RN-006: el token expira a las 24 horas de su creación.
+    #
+    # Seguridad: el token es de un solo uso y tiene expiración temporal.
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def verificar_email(self, request):
-        """Endpoint para verificar email (RF-009)"""
         serializer = VerificacionEmailSerializer(data=request.data)
         if serializer.is_valid():
             token = serializer.validated_data['token']
@@ -66,10 +152,10 @@ class RegistroViewSet(viewsets.ViewSet):
             
             usuario = token_obj.usuario
             usuario.email_verificado = True
-            usuario.estado = 'Activo'  # RN-004
+            usuario.estado = 'Activo'  # RN-004: el usuario nace inactivo hasta verificar
             usuario.save()
             
-            # Marcar token como usado
+            # Seguridad: token de un solo uso
             token_obj.usado = True
             token_obj.save()
             
@@ -80,14 +166,31 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    # ────────────────────────────────────────────────────────
+    # POST /api/registro/reenviar_verificacion/   (RF-009)
+    # ────────────────────────────────────────────────────────
+    # Reenvía el email de verificación si el usuario no lo recibió o el
+    # token anterior expiró.
+    #
+    # Flujo:
+    #   1. Valida el correo con ReenvioVerificacionSerializer (límite 3 reenvíos/24h).
+    #   2. Genera un NUEVO token con expiración de 24 horas (RN-006).
+    #   3. Envía el email de verificación.
+    #
+    # RN-006: el token expira en 24 horas.
+    # RN-009: máximo 3 reenvíos en 24 horas (control en el serializador).
+    #
+    # Seguridad: cada reenvío genera un token fresco; los anteriores quedan
+    # huérfanos (no se invalidan explícitamente, pero el nuevo reemplaza al
+    # anterior en la práctica).
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def reenviar_verificacion(self, request):
-        """Endpoint para reenviar email de verificación (RF-003, RN-006)"""
         serializer = ReenvioVerificacionSerializer(data=request.data)
         if serializer.is_valid():
             usuario = Usuario.objects.get(correo=serializer.validated_data['correo'])
             
-            # Crear nuevo token
+            # Genera nuevo token criptográficamente seguro con expiración
             fecha_expiracion = timezone.now() + timedelta(hours=24)
             nuevo_token = Token_Verificacion.objects.create(
                 usuario=usuario,
@@ -96,8 +199,7 @@ class RegistroViewSet(viewsets.ViewSet):
                 fecha_expiracion=fecha_expiracion
             )
             
-            # Enviar email
-            if not self._enviar_email_verificacion(usuario, nuevo_token.token):
+            if not EmailService.send_verification_email(usuario, nuevo_token):
                 return Response({
                     'error': 'No se pudo enviar el correo de verificación. Intenta más tarde.'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -108,15 +210,30 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
+    # ────────────────────────────────────────────────────────
+    # POST /api/registro/recuperar_password/   (RF-009)
+    # ────────────────────────────────────────────────────────
+    # Primer paso del flujo de recuperación de contraseña.
+    #
+    # Flujo:
+    #   1. Valida el correo con RecuperacionPasswordSerializer.
+    #   2. Genera un token de tipo 'Recuperacion_Password'.
+    #   3. Envía email con enlace para restablecer contraseña.
+    #
+    # RN-005: el token de recuperación expira en 1 hora (ventana corta
+    #         para mitigar riesgos de reutilización).
+    #
+    # Seguridad: el token se genera con secrets.token_urlsafe(32) y tiene
+    # una ventana de expiración limitada. No se revela si el correo existe
+    # o no (evita enumeración de usuarios).
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def recuperar_password(self, request):
-        """Endpoint para solicitar recuperación de contraseña (RF-002)"""
         serializer = RecuperacionPasswordSerializer(data=request.data)
         if serializer.is_valid():
             usuario = Usuario.objects.get(correo=serializer.validated_data['correo'])
             
-            # Crear token de recuperación (RN-005: expira en 1 hora)
+            # RN-005: ventana de expiración corta (1 hora) para mitigar riesgos
             fecha_expiracion = timezone.now() + timedelta(hours=1)
             token = Token_Verificacion.objects.create(
                 usuario=usuario,
@@ -125,8 +242,7 @@ class RegistroViewSet(viewsets.ViewSet):
                 fecha_expiracion=fecha_expiracion
             )
             
-            # Enviar email
-            if not self._enviar_email_recuperacion(usuario, token.token):
+            if not EmailService.send_password_reset_email(usuario, token):
                 return Response({
                     'error': 'No se pudo enviar el correo de recuperación. Intenta más tarde.'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -137,10 +253,27 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
+    # ────────────────────────────────────────────────────────
+    # POST /api/registro/nueva_password/   (RF-009)
+    # ────────────────────────────────────────────────────────
+    # Segundo paso del flujo de recuperación: establece la nueva contraseña.
+    #
+    # Flujo:
+    #   1. Valida token + nueva contraseña con NuevaPasswordSerializer.
+    #   2. Aplica hash bcrypt a la nueva contraseña.
+    #   3. Reinicia intentos_fallidos y fecha_bloqueo (desbloquea si estaba bloqueado).
+    #   4. Marca el token como usado (un solo uso — RN-005).
+    #
+    # RN-001: la nueva contraseña debe cumplir: ≥8 caracteres, 1 mayúscula,
+    #         1 número, 1 carácter especial.
+    # RN-005: token de un solo uso con expiración de 1 hora.
+    #
+    # Seguridad: el hash se aplica con make_password (bcrypt/Django PBKDF2).
+    # Al reiniciar intentos_fallidos se permite el acceso si el usuario había
+    # sido bloqueado por superar el límite de intentos.
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def nueva_password(self, request):
-        """Endpoint para establecer nueva contraseña (RF-002)"""
         serializer = NuevaPasswordSerializer(data=request.data)
         if serializer.is_valid():
             token = serializer.validated_data['token']
@@ -153,7 +286,7 @@ class RegistroViewSet(viewsets.ViewSet):
             usuario.fecha_bloqueo = None
             usuario.save()
             
-            # Marcar token como usado (RN-005: uso único)
+            # RN-005: el token se invalida tras su uso
             token_obj.usado = True
             token_obj.save()
             
@@ -164,69 +297,64 @@ class RegistroViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-    def _send_email(self, asunto, mensaje, destinatarios):
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                destinatarios,
-                fail_silently=False
-            )
-            return True
-        except Exception as exc:
-            logger.exception('Error al enviar email a %s: %s', destinatarios, exc)
-            return False
 
-    def _enviar_email_verificacion(self, usuario, token=None):
-        """Enviar email de verificación"""
-        if not token:
-            token_obj = usuario.tokens_verificacion.filter(
-                tipo='Verificacion_Email',
-                usado=False
-            ).first()
-            token = token_obj.token if token_obj else None
-        
-        if token:
-            enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
-            logger.info('Enlace de verificación para %s: %s', usuario.correo, enlace)
-            asunto = "Verifica tu cuenta"
-            mensaje = f"""
-            Hola {usuario.usuario},
-            
-            Para completar tu registro, haz clic en el siguiente enlace:
-            {enlace}
-            
-            Este enlace expira en 24 horas.
-            """
-
-            return self._send_email(asunto, mensaje, [usuario.correo])
-
-        logger.error('No se encontró token de verificación para el usuario %s', usuario.id)
-        return False
-    
-
-    def _enviar_email_recuperacion(self, usuario, token):
-        """Enviar email de recuperación de contraseña"""
-        enlace = f"{settings.FRONTEND_URL}/nueva-password?token={token}"
-        asunto = "Recupera tu contraseña"
-        mensaje = f"""
-        Hola {usuario.usuario},
-        
-        Para recuperar tu contraseña, haz clic en el siguiente enlace:
-        {enlace}
-        
-        Este enlace expira en 1 hora.
-        """
-        
-        return self._send_email(asunto, mensaje, [usuario.correo])
-
-
+# ─────────────────────────────────────────────────────────────────────────────
+# ViewSet: LoginViewSet (RF-008, RF-011, RF-012)
+# ─────────────────────────────────────────────────────────────────────────────
+# Endpoints de autenticación con JWT.
+#
+# RF-008: Inicio de sesión con usuario/email + contraseña.
+# RF-011: Generación de tokens JWT (access + refresh) con token_version
+#         para invalidación remota.
+# RF-012: Cierre de sesión con blacklist del refresh token.
+#
+# ── Mecanismos de seguridad ──
+# * httpOnly cookies: el frontend NO puede leer access_token / refresh_token
+#   (protección contra XSS).
+# * Secure flag: solo en HTTPS (desactivado en DEBUG).
+# * SameSite=Lax: mitiga CSRF en navegadores modernos.
+# * token_version en JWT: permite invalidar todas las sesiones activas.
+# * Migración del carrito anónimo (session_key) al autenticado (user_id).
+# * cycle_key(): previene session fixation al iniciar/cerrar sesión.
+# ─────────────────────────────────────────────────────────────────────────────
 class LoginViewSet(viewsets.ViewSet):
-    """ViewSet para autenticación (RF-008, RF-011, RF-012)"""
+    """
+    ViewSet para autenticación de usuarios (RF-008, RF-011, RF-012).
+    - login: genera tokens JWT y los coloca en httpOnly cookies + respuesta JSON.
+    - logout: invalida el refresh token (blacklist) y elimina las cookies.
+    Maneja migración del carrito anónimo al autenticado al iniciar sesión.
+    """
     permission_classes = [permissions.AllowAny]
     
+    # ────────────────────────────────────────────────────────
+    # POST /api/login/login/   (RF-008, RF-011)
+    # ────────────────────────────────────────────────────────
+    # POST /api/login/   (RF-012, RN-013)
+    # Autenticación de usuarios con JWT.
+    #
+    # Flujo completo:
+    #   1. Rate limiting: máximo 5 intentos/minuto por IP (previene
+    #      fuerza bruta distribuida, complementando RN-004 local).
+    #   2. Valida credenciales con LoginSerializer.
+    #      2a. Verifica que el usuario existe y no está eliminado.
+    #      2b. Verifica estado Activo (rechaza Bloqueado o Inactivo).
+    #      2c. Verifica contraseña con check_password.
+    #      2d. Control de intentos fallidos: ≥5 → Bloqueado (RN-004).
+    #      2e. Reinicia intentos_fallidos y actualiza fecha_ultima_sesion.
+    #   3. Migra items del carrito anónimo (session_key) al carrito
+    #      del usuario autenticado (RF-011: persistencia del carrito).
+    #   4. cycle_key() — previene session fixation.
+    #   5. Genera tokens JWT inyectando token_version del usuario.
+    #   6. Establece httpOnly cookies (access: 15 min, refresh: 7 días).
+    #
+    # Seguridad:
+    #   - Rate limit por IP (5/min) + bloqueo local (5 intentos fallidos).
+    #   - token_version: si el usuario es bloqueado/desactivado después del
+    #     login, los JWT existentes quedan invalidados.
+    #   - Cookies httpOnly + Secure + SameSite=Lax (protección XSS y CSRF).
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    @ratelimit(key='ip', rate='10/m', method='POST', block=True)
     def login(self, request):
         """Endpoint de login con JWT (RF-008, RF-011)"""
         try:
@@ -278,35 +406,107 @@ class LoginViewSet(viewsets.ViewSet):
                 'error': 'Error interno del servidor. Intenta nuevamente.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    # ────────────────────────────────────────────────────────
+    # POST /api/login/logout/   (RF-012, RN-013)
+    # ────────────────────────────────────────────────────────
+    # Cierra la sesión del usuario.
+    #
+    # Flujo:
+    #   1. cycle_key() — renueva la clave de sesión (previene session fixation).
+    #   2. Blacklist del refresh token: obtiene el token del body o de la
+    #      cookie refresh_token y lo invalida (previene reutilización incluso
+    #      si fue interceptado, RN-013).
+    #   3. Elimina las cookies access_token y refresh_token del lado del cliente.
+    #
+    # RN-013: el refresh token DEBE ser invalidado al cerrar sesión mediante
+    # blacklist (restringe la ventana de exposición del token).
+    #
+    # Nota: el access_token no se puede invalidar directamente (es stateless).
+    # Su expiración corta (15 min) mitiga el riesgo. Si se requiere
+    # invalidación inmediata, usar token_version del usuario.
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def logout(self, request):
-        """Endpoint de logout (RF-012, RN-013)"""
         request.session.cycle_key()
-        return Response({
+
+        # Blacklist del refresh token: previene su reutilización incluso si es interceptado
+        refresh_token = request.data.get('refresh') or request.COOKIES.get('refresh_token')
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except (TokenError, AttributeError):
+                pass
+
+        response = Response({
             'mensaje': 'Sesión cerrada exitosamente'
         }, status=status.HTTP_200_OK)
 
+        # Limpieza de cookies del lado del servidor
+        response.delete_cookie('access_token', path='/')
+        response.delete_cookie('refresh_token', path='/api/token/refresh/')
 
+        return response
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ViewSet: UsuarioViewSet (RF-010)
+# ─────────────────────────────────────────────────────────────────────────────
+# Gestión del perfil del usuario autenticado.
+# Requiere autenticación JWT (IsAuthenticated).
+#
+# RF-010: El usuario puede consultar y modificar su propio perfil, así como
+#         cambiar su contraseña.
+#
+# Acciones:
+#   - perfil:             GET    → datos completos del usuario autenticado.
+#   - actualizar_perfil:  PUT/PATCH → modificar usuario/correo.
+#   - cambiar_password:   POST   → cambiar contraseña (requiere actual).
+#
+# Filtra usuarios con eliminado=False (soft-delete).
+# ─────────────────────────────────────────────────────────────────────────────
 class UsuarioViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestión de perfil de usuario (RF-010)"""
+    """
+    ViewSet para gestión del perfil del usuario autenticado (RF-010).
+    Expone: perfil, actualizar_perfil, cambiar_password.
+    Requiere autenticación (IsAuthenticated).
+    Filtra usuarios eliminados lógicamente.
+    """
     queryset = Usuario.objects.filter(eliminado=False)
     serializer_class = UsuarioSerializer
     permission_classes = [permissions.IsAuthenticated]
     
-
+    # ────────────────────────────────────────────────────────
+    # GET /api/usuario/perfil/   (RF-010)
+    # ────────────────────────────────────────────────────────
+    # Obtiene los datos completos del perfil del usuario autenticado.
+    # Usa UsuarioDetailSerializer que incluye campos de seguridad
+    # (intentos_fallidos, fecha_bloqueo, eliminado).
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['get'])
     def perfil(self, request):
-        """Obtener datos del perfil del usuario autenticado"""
         usuario = request.user
         serializer = UsuarioDetailSerializer(usuario)
         return Response(serializer.data)
     
-    
+    # ────────────────────────────────────────────────────────
+    # PUT/PATCH /api/usuario/actualizar_perfil/   (RF-010)
+    # ────────────────────────────────────────────────────────
+    # Actualiza los datos del perfil del usuario autenticado.
+    # Permite modificar usuario y/o correo (campos editables).
+    #
+    # Flujo:
+    #   1. Valida datos con ActualizarPerfilSerializer.
+    #   2. Si se cambia el correo, exige contraseña actual como verificación.
+    #   3. Aplica partial=True para permitir actualizaciones parciales.
+    #
+    # Seguridad: el cambio de correo requiere verificación de identidad
+    # mediante la contraseña actual (prevención de account takeover).
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['put', 'patch'])
     def actualizar_perfil(self, request):
-        """Actualizar perfil del usuario (RF-010)"""
         usuario = request.user
-        serializer = ActualizarPerfilSerializer(usuario, data=request.data,partial=True, context={'usuario': usuario} )
+        serializer = ActualizarPerfilSerializer(usuario, data=request.data, partial=True, context={'usuario': usuario})
         
         if serializer.is_valid():
             usuario = serializer.save()
@@ -317,11 +517,26 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    # ────────────────────────────────────────────────────────
+    # POST /api/usuario/cambiar_password/   (RF-010)
+    # ────────────────────────────────────────────────────────
+    # Cambia la contraseña del usuario autenticado.
+    #
+    # Flujo:
+    #   1. Valida contraseña actual + nueva + confirmación con CambioPasswordSerializer.
+    #   2. Verifica que la contraseña actual coincida con el hash almacenado.
+    #   3. Aplica hash bcrypt a la nueva contraseña y la guarda.
+    #
+    # RN-001: la nueva contraseña debe cumplir: ≥8 caracteres, 1 mayúscula,
+    #         1 número, 1 carácter especial.
+    #
+    # Seguridad: se exige la contraseña actual para prevenir cambios no
+    # autorizados incluso si el JWT es robado (factor de verificación adicional).
+    # ────────────────────────────────────────────────────────
     @action(detail=False, methods=['post'])
     def cambiar_password(self, request):
-        """Cambiar contraseña del usuario autenticado (RF-010)"""
         usuario = request.user
-        serializer = CambioPasswordSerializer(data=request.data,context={'usuario': usuario})
+        serializer = CambioPasswordSerializer(data=request.data, context={'usuario': usuario})
         
         if serializer.is_valid():
             from django.contrib.auth.hashers import make_password

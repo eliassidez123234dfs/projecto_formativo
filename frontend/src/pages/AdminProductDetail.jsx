@@ -1,5 +1,11 @@
+/**
+ * AdminProductDetail — Detalle y edición de un producto en el panel admin.
+ * Muestra información general, variantes, imágenes, un historial de auditoría
+ * con diferencias (diff) entre versiones, y permite editar el producto.
+ */
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { api } from '../services/api'
 import ProductForm from '../components/ProductForm'
 import AdminLayout from '../components/AdminLayout'
 import ErrorState from '../components/ErrorState'
@@ -13,6 +19,11 @@ const ACTION_LABELS = {
   disapproved: 'Desaprobado',
 }
 
+/**
+ * Convierte cualquier valor a texto plano para comparación en el diff de auditoría.
+ * @param {any} value
+ * @returns {string}
+ */
 function toText(value) {
   if (value === null || value === undefined) return '-'
   if (typeof value === 'object') return JSON.stringify(value)
@@ -35,6 +46,10 @@ function getAuditDiff(entry) {
     .map(key => ({ key, before: toText(before[key]), after: toText(after[key]) }))
 }
 
+/**
+ * Tarjeta reutilizable para mostrar una sección del detalle.
+ * @param {{ title: string, children: ReactNode, fullWidth?: boolean }}
+ */
 function DetailCard({ title, children, fullWidth }) {
   return (
     <div className="card" style={fullWidth ? { gridColumn: '1 / -1' } : {}}>
@@ -48,6 +63,10 @@ function DetailCard({ title, children, fullWidth }) {
   )
 }
 
+/**
+ * Fila de información con label a la izquierda y valor a la derecha.
+ * @param {{ label: string, value: string }}
+ */
 function InfoRow({ label, value }) {
   return (
     <div style={{

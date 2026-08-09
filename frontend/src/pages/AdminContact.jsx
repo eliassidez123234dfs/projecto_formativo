@@ -6,6 +6,11 @@ import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
 
+/**
+ * Página principal de la bandeja de contacto administrativa.
+ * Valida rol de administrador, carga los mensajes y maneja
+ * las acciones de marcar como leído y eliminar.
+ */
 export default function AdminContact() {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)

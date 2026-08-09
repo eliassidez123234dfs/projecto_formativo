@@ -46,6 +46,84 @@ export const ProductCard = ({ product, onView, onAdd }) => {
         </div>
       </div>
 
+      {showModal && (
+        <div className="pc-modal-overlay">
+          <div className="pc-modal" ref={modalRef}>
+            <button className="pc-modal-close" onClick={closeModal}>&times;</button>
+            <div className="pc-modal-content">
+              <div className="pc-modal-left">
+                <img src={imgSrc} alt={product.name} className="pc-modal-img" />
+              </div>
+              <div className="pc-modal-right">
+                <h3 className="pc-modal-title">{product.name}</h3>
+                <p className="pc-modal-price">${displayPrice.toFixed(2)}</p>
+
+                {loadingVariant ? (
+                  <p className="pc-modal-loading">Cargando variantes...</p>
+                ) : (
+                  <>
+                    <div className="pc-modal-field">
+                      <label className="pc-modal-label">Talla</label>
+                      <div className="pc-modal-chips">
+                        {availableSizes().map(s => (
+                          <button
+                            key={s}
+                            className={`pc-chip ${selectedSize === s ? 'pc-chip--active' : ''}`}
+                            onClick={() => { setSelectedSize(s); setQuantity(1); }}
+                          >{s}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pc-modal-field">
+                      <label className="pc-modal-label">Color</label>
+                      <div className="pc-modal-chips">
+                        {availableColors().map(c => (
+                          <button
+                            key={c}
+                            className={`pc-chip ${selectedColor === c ? 'pc-chip--active' : ''}`}
+                            onClick={() => { setSelectedColor(c); setQuantity(1); }}
+                          >{c}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pc-modal-field">
+                      <label className="pc-modal-label">Cantidad</label>
+                      <div className="pc-modal-qty">
+                        <button
+                          className="pc-qty-btn"
+                          onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                          disabled={quantity <= 1}
+                        >−</button>
+                        <span className="pc-qty-value">{quantity}</span>
+                        <button
+                          className="pc-qty-btn"
+                          onClick={() => setQuantity(q => Math.min(maxStock, q + 1))}
+                          disabled={quantity >= maxStock}
+                        >+</button>
+                      </div>
+                    </div>
+
+                    {matchedVariant && (
+                      isAdmin && <p className="pc-modal-stock">Stock disponible: {matchedVariant.stock}</p>
+                    )}
+
+                    <button
+                      className="pc-modal-submit"
+                      disabled={!selectedSize || !selectedColor || !matchedVariant}
+                      onClick={handleSubmit}
+                    >Agregar al carrito</button>
+                  </>
+                )}
+
+                <button className="pc-modal-cancel" onClick={closeModal}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .pc-wrap {
           border-radius: 16px;
@@ -177,6 +255,11 @@ export const ProductCard = ({ product, onView, onAdd }) => {
           border: none;
         }
 
+        .pc-act:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .pc-act--view {
           background: #F3F4F6;
           color: #374151;
@@ -201,13 +284,288 @@ export const ProductCard = ({ product, onView, onAdd }) => {
           box-shadow: 0 3px 10px rgba(220,38,38,0.25);
         }
 
-        .pc-act--add:hover {
+        .pc-act--add:hover:not(:disabled) {
           transform: translateY(-1px);
           box-shadow: 0 5px 14px rgba(220,38,38,0.3);
         }
 
-        .pc-act--add:active {
+        .pc-act--add:active:not(:disabled) {
           transform: translateY(0);
+        }
+
+        .pc-stock-badge {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          z-index: 2;
+          padding: 4px 12px;
+          border-radius: 999px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
+
+        .pc-stock-ok {
+          background: #16A34A;
+          color: white;
+        }
+
+        .pc-stock-warn {
+          background: #EA580C;
+          color: white;
+        }
+
+        .pc-stock-no {
+          background: #DC2626;
+          color: white;
+        }
+
+        .pc-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.45);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1rem;
+        }
+
+        .pc-modal {
+          background: white;
+          border-radius: 20px;
+          max-width: 520px;
+          width: 100%;
+          position: relative;
+          box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+          animation: pcModalIn 0.2s ease-out;
+        }
+
+        @keyframes pcModalIn {
+          from { opacity: 0; transform: scale(0.92) translateY(12px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .pc-modal-close {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          z-index: 2;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          border: none;
+          background: rgba(0,0,0,0.06);
+          color: #6B7280;
+          font-size: 1.3rem;
+          line-height: 1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s;
+        }
+
+        .pc-modal-close:hover {
+          background: rgba(0,0,0,0.12);
+          color: #111827;
+        }
+
+        .pc-modal-content {
+          display: flex;
+          gap: 20px;
+          padding: 24px;
+        }
+
+        .pc-modal-left {
+          flex-shrink: 0;
+          width: 120px;
+        }
+
+        .pc-modal-img {
+          width: 120px;
+          height: 120px;
+          object-fit: cover;
+          border-radius: 12px;
+          background: #F3F4F6;
+        }
+
+        .pc-modal-right {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .pc-modal-title {
+          margin: 0 0 4px;
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .pc-modal-price {
+          margin: 0 0 16px;
+          font-size: 1.25rem;
+          font-weight: 800;
+          color: #DC2626;
+        }
+
+        .pc-modal-loading {
+          font-size: 0.85rem;
+          color: #9CA3AF;
+          text-align: center;
+          padding: 2rem 0;
+        }
+
+        .pc-modal-field {
+          margin-bottom: 14px;
+        }
+
+        .pc-modal-label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #6B7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 6px;
+        }
+
+        .pc-modal-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .pc-chip {
+          padding: 6px 14px;
+          border-radius: 8px;
+          border: 1.5px solid #E5E7EB;
+          background: white;
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: #374151;
+          cursor: pointer;
+          transition: all 0.12s;
+        }
+
+        .pc-chip:hover {
+          border-color: #DC2626;
+          color: #DC2626;
+        }
+
+        .pc-chip--active {
+          background: #DC2626;
+          border-color: #DC2626;
+          color: white;
+        }
+
+        .pc-modal-qty {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .pc-qty-btn {
+          width: 34px;
+          height: 34px;
+          border-radius: 8px;
+          border: 1.5px solid #E5E7EB;
+          background: white;
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #374151;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.12s;
+        }
+
+        .pc-qty-btn:hover:not(:disabled) {
+          border-color: #DC2626;
+          color: #DC2626;
+        }
+
+        .pc-qty-btn:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+
+        .pc-qty-value {
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: #111827;
+          min-width: 24px;
+          text-align: center;
+        }
+
+        .pc-modal-stock {
+          font-size: 0.78rem;
+          color: #6B7280;
+          margin: 10px 0 14px;
+        }
+
+        .pc-modal-submit {
+          width: 100%;
+          padding: 12px;
+          border: none;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #DC2626, #EF4444);
+          color: white;
+          font-size: 0.9rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s;
+          box-shadow: 0 4px 14px rgba(220,38,38,0.3);
+        }
+
+        .pc-modal-submit:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(220,38,38,0.35);
+        }
+
+        .pc-modal-submit:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+
+        .pc-modal-cancel {
+          width: 100%;
+          padding: 10px;
+          border: none;
+          border-radius: 12px;
+          background: transparent;
+          color: #9CA3AF;
+          font-size: 0.82rem;
+          font-weight: 600;
+          cursor: pointer;
+          margin-top: 6px;
+          transition: color 0.15s;
+        }
+
+        .pc-modal-cancel:hover {
+          color: #374151;
+        }
+
+        @media (max-width: 500px) {
+          .pc-modal-content {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+          .pc-modal-left {
+            width: 100px;
+          }
+          .pc-modal-img {
+            width: 100px;
+            height: 100px;
+          }
+          .pc-modal-chips {
+            justify-content: center;
+          }
+          .pc-modal-qty {
+            justify-content: center;
+          }
         }
       `}</style>
     </div>

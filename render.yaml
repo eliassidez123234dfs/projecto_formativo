@@ -1,0 +1,62 @@
+# Render Blueprint - Despliegue automatizado
+# Más info: https://render.com/docs/blueprint-spec
+services:
+  # ─── BACKEND DJANGO ───
+  - type: web
+    name: red-backend
+    runtime: python
+    repo: https://github.com/tu-usuario/tu-repo
+    branch: main
+    rootDir: backend
+    buildCommand: "../start.sh"
+    startCommand: ""
+    healthCheckPath: /api/health/
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,.vercel.app"
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        value: "https://tu-app.vercel.app"
+      - key: BACKEND_URL
+        value: "https://red-backend.onrender.com"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://tu-app.vercel.app"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://tu-app.vercel.app"
+      - key: EMAIL_BACKEND
+        value: "django.core.mail.backends.smtp.EmailBackend"
+      - key: EMAIL_HOST
+        value: "smtp.gmail.com"
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USE_TLS
+        value: "true"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: WOMPI_PUBLIC_KEY
+        sync: false
+      - key: WOMPI_PRIVATE_KEY
+        sync: false
+      - key: WOMPI_INTEGRITY_KEY
+        sync: false
+      - key: WOMPI_WEBHOOK_SECRET
+        sync: false
+      - key: GUNICORN_WORKERS
+        value: "4"
+      - key: PYTHON_VERSION
+        value: "3.12"

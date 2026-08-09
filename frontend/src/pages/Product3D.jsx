@@ -6,6 +6,9 @@ import { Button } from '../components/Button';
 import { useCart } from '../context/CartContext';
 import ErrorState from '../components/ErrorState';
 
+const EDITOR_URL = import.meta.env.VITE_3D_EDITOR_URL || 'http://localhost:5174'
+
+// 3D product viewer / editor page — embeds the Three.js viewer or full editor iframe from the microservice
 export const Product3D = () => {
   const { id } = useParams();
   const { search } = useLocation();
@@ -36,10 +39,8 @@ export const Product3D = () => {
       }
     };
 
-    if (id) {
-      loadProduct();
-    }
-  }, [id]);
+  const editorUrl = `${EDITOR_URL}?mode=${mode}${id ? `&productId=${id}` : ''}`
+  const iframeUrl = `${EDITOR_URL}/preview?productId=${id}`
 
   const sizes = [...new Set(product?.variants?.map(v => v.size) || [])];
   const colors = [...new Set(product?.variants?.filter(v => v.size === selectedSize).map(v => v.color) || [])];
@@ -118,7 +119,22 @@ export const Product3D = () => {
             <p>Si aún no ejecutas el microservicio 3D, levanta <code>npm run dev</code> dentro de <code>microservices/Tshirt3D</code> para tener acceso.</p>
           </div>
         </div>
+
+        {error && <div className="alert alert-danger">{error}</div>}
+
+        {viewMode === '3d' ? (
+          <Product3DViewer height={480} />
+        ) : (
+          <div style={{ width: '100%', height: 600, borderRadius: 12, overflow: 'hidden', border: '1px solid #ddd' }}>
+            <iframe src={iframeUrl} title="Editor 3D" width="100%" height="100%" style={{ border: 'none' }} />
+          </div>
+        )}
+      </Card>
+
+      <div className="text-muted small">
+        <p className="mb-1">💡 El editor 3D completo debe ejecutarse en <code>microservices/Tshirt3D</code> con <code>npm run dev</code>.</p>
+        <p className="mb-0">🔧 Configura la URL en <code>VITE_3D_EDITOR_URL</code> (archivo <code>.env</code>).</p>
       </div>
-    </>
-  );
-};
+    </div>
+  )
+}

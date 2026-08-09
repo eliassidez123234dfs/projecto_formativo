@@ -1,3 +1,19 @@
+"""
+Módulo de modelos para la gestión de modelos 3D (Red Estampación).
+Define los modelos de datos para catalogar y almacenar archivos 3D
+en Cloudinary, junto con sus imágenes de vista previa.
+
+Modelos:
+  - Model3D:      Archivo 3D (GLB/GLTF/OBJ/FBX/DAE) con metadatos
+  - Model3DImage: Imagen de preview asociada a un Model3D
+"""
+
+# =============================================================================
+# Cloudinary almacena tanto los archivos 3D como las imágenes de preview.
+# Los campos cloudinary_url y cloudinary_public_id permiten gestionar
+# los recursos directamente desde la API de Cloudinary.
+# =============================================================================
+
 from __future__ import annotations
 
 from django.db import models
@@ -6,20 +22,23 @@ from django.core.exceptions import ValidationError
 
 
 class Model3D(models.Model):
+    """Modelo que representa un archivo 3D almacenado en Cloudinary.
+    
+    Soporta formatos: GLB, GLTF, OBJ, FBX, DAE.
+    Cada modelo puede tener múltiples imágenes de preview (Model3DImage).
+    Los campos is_active e is_approved controlan la visibilidad pública.
     """
-    Modelo para almacenar información de modelos 3D con URLs de Cloudinary
-    """
+    # ── Identificación y descripción ──
     name = models.CharField(max_length=255, unique=True, verbose_name='Nombre del modelo')
     description = models.TextField(blank=True, null=True, verbose_name='Descripción')
     
-    # URL de Cloudinary - secure_url
+    # ── Almacenamiento Cloudinary ──
     cloudinary_url = models.URLField(
         max_length=500,
         verbose_name='URL Cloudinary',
         help_text='URL segura del modelo almacenado en Cloudinary'
     )
     
-    # Información del archivo
     cloudinary_public_id = models.CharField(
         max_length=255,
         blank=True,
@@ -28,6 +47,7 @@ class Model3D(models.Model):
         help_text='ID público del archivo en Cloudinary'
     )
     
+    # ── Metadatos del archivo ──
     file_type = models.CharField(
         max_length=20,
         choices=[
@@ -48,11 +68,11 @@ class Model3D(models.Model):
         help_text='Tamaño en bytes del archivo almacenado'
     )
     
-    # Estado
+    # ── Estado ──
     is_active = models.BooleanField(default=True, verbose_name='Activo')
     is_approved = models.BooleanField(default=False, verbose_name='Aprobado')
     
-    # Timestamps
+    # ── Timestamps ──
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado el')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado el')
     
@@ -79,8 +99,11 @@ class Model3D(models.Model):
 
 
 class Model3DImage(models.Model):
-    """
-    Modelo para almacenar imágenes de vista previa de los modelos 3D desde Cloudinary
+    """Imagen de vista previa de un modelo 3D, almacenada en Cloudinary.
+    
+    - is_main: marca la imagen principal que se muestra en galerías/listados
+    - order:   define la secuencia de visualización (1 = primero)
+    - unique:  (model_3d, order) para evitar conflictos de orden
     """
     model_3d = models.ForeignKey(
         Model3D,
@@ -89,7 +112,7 @@ class Model3DImage(models.Model):
         verbose_name='Modelo 3D'
     )
     
-    # URL de Cloudinary para imagen de preview
+    # ── Almacenamiento Cloudinary ──
     cloudinary_url = models.URLField(
         max_length=500,
         verbose_name='URL Cloudinary',
@@ -104,6 +127,7 @@ class Model3DImage(models.Model):
         help_text='ID público del archivo en Cloudinary'
     )
     
+    # ── Metadatos ──
     is_main = models.BooleanField(default=False, verbose_name='Es imagen principal')
     order = models.PositiveSmallIntegerField(default=1, verbose_name='Orden')
     

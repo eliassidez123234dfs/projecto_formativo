@@ -1,10 +1,20 @@
+"""
+Módulo de modelos para la gestión de carritos de compra.
+Define Cart (carrito vinculado a sesión anónima o usuario autenticado) y
+CartItem (producto + variante + cantidad con precio congelado).
+
+Flujo del carrito:
+  1. Usuario anónimo: carrito vinculado a session_key.
+  2. Al autenticarse: los items del carrito anónimo se fusionan al del usuario.
+  3. Al crear pedido: el carrito se asocia a Order (cart.order) y se vacían los items.
+"""
+
 from __future__ import annotations
 
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Sum
 
 from apps.products.models import Product, Variant
 
@@ -12,6 +22,7 @@ from apps.products.models import Product, Variant
 class Cart(models.Model):
 	session_key = models.CharField(max_length=64, unique=True, null=True, blank=True)
 	user = models.ForeignKey('users.Usuario', null=True, blank=True, on_delete=models.SET_NULL, related_name='carts')
+	order = models.OneToOneField('orders.Order', null=True, blank=True, on_delete=models.SET_NULL, related_name='cart')
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 
@@ -20,17 +31,27 @@ class Cart(models.Model):
 
 	@property
 	def total_items(self) -> int:
-		return self.items.aggregate(total=Sum('quantity'))['total'] or 0
+		"""Suma agregada de cantidades de todos los items (consulta SQL SUM).
+		Retorna 0 si el carrito está vacío."""
+		return self.items.aggregate(total=models.Sum('quantity'))['total'] or 0
 
 	@property
 	def total_amount(self):
-		total = Decimal('0.00')
-		for item in self.items.all():
-			total += item.subtotal
-		return total
+		"""Monto total calculado en SQL: SUM(quantity * unit_price).
+		Usa expresiones F del ORM para evitar cargar todos los items en memoria.
+		Retorna Decimal('0.00') si el carrito está vacío."""
+		aggregate = self.items.aggregate(
+			total=models.Sum(models.F('quantity') * models.F('unit_price'))
+		)['total']
+		return aggregate or Decimal('0.00')
 
 
 class CartItem(models.Model):
+	"""Producto con variante y cantidad dentro de un carrito.
+	unique_together: solo una entrada por (cart, product, variant).
+	unit_price se congela al añadir al carrito desde el precio base del producto.
+	Validaciones de negocio en clean(): stock, producto activo/aprobado,
+	variante pertenece al producto."""
 	cart = models.ForeignKey(Cart, related_name='items', on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, on_delete=models.CASCADE)
 	variant = models.ForeignKey(Variant, on_delete=models.CASCADE)
@@ -41,6 +62,7 @@ class CartItem(models.Model):
 
 	class Meta:
 		constraints = [
+			# Garantiza que un producto+variante solo aparezca una vez en un carrito.
 			models.UniqueConstraint(fields=['cart', 'product', 'variant'], name='unique_cart_product_variant'),
 		]
 
@@ -49,9 +71,16 @@ class CartItem(models.Model):
 
 	@property
 	def subtotal(self):
+		"""Subtotal del item: unit_price × quantity."""
 		return self.unit_price * self.quantity
 
 	def clean(self):
+		"""Validaciones de negocio del item del carrito:
+		- Cantidad mínima 1.
+		- La cantidad no puede superar el stock disponible de la variante.
+		- El producto debe estar activo (is_active=True).
+		- El producto debe estar aprobado (is_approved=True).
+		- La variante debe pertenecer al producto seleccionado."""
 		super().clean()
 		if self.quantity < 1:
 			raise ValidationError({'quantity': 'La cantidad mínima permitida es 1.'})
@@ -65,6 +94,7 @@ class CartItem(models.Model):
 			raise ValidationError({'variant': 'La variante no pertenece al producto seleccionado.'})
 
 	def save(self, *args, **kwargs):
+		"""Congela el precio unitario desde el producto si no se especificó."""
 		if not self.unit_price:
 			self.unit_price = self.product.base_price
 		self.full_clean()

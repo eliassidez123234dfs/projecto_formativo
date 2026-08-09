@@ -1,3 +1,17 @@
+"""
+ViewSets del módulo de productos.
+ProductViewSet: CRUD completo con acciones personalizadas para gestión de imágenes,
+variantes, publicación/aprobación, auditoría (SQL + MongoDB) y búsqueda avanzada.
+ReviewViewSet: CRUD de reseñas filtradas por producto.
+
+Requerimientos funcionales (RF) cubiertos:
+  - RF-048: Búsqueda de productos con filtros combinables (search, price, active, approved).
+  - RF-049: Publicación/aprobación de productos con checklist de requisitos.
+  - RF-050: Gestión de imágenes (subir, reordenar, eliminar, marcar principal).
+  - RF-051: Auditoría dual: ProductAudit (SQL) + log_event en MongoDB.
+  - RF-052: Catálogo público con filtros avanzados (search action).
+"""
+
 from __future__ import annotations
 
 from django.db.models import Q
@@ -12,6 +26,7 @@ from rest_framework.pagination import PageNumberPagination
 from apps.users.api.admin_viewset import AdminPermission
 from apps.products.models import Product, ProductAudit, ProductImage, Variant
 
+from .review_serializers import ReviewSerializer
 from .serializers import (
     CartItemSerializer,
     ProductAuditSerializer,
@@ -47,7 +62,12 @@ def _resolve_creator(request):
 
 
 class ProductViewSet(viewsets.ModelViewSet):
+    """ViewSet principal de productos. Soporta CRUD con filtros, búsqueda,
+
+    paginación, y acciones personalizadas para el ciclo de vida completo."""
+
     queryset = Product.objects.all().prefetch_related('images', 'variants', 'audit_entries')
+
     pagination_class = ProductPagination
 
     def get_permissions(self):
@@ -57,9 +77,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [AdminPermission()]
 
     def get_queryset(self):
+        """Filtra productos por: search (nombre/descripción), is_active,
+        is_approved, min_price, max_price. Ordenación controlada por 'ordering'
+        con lista blanca de campos permitidos."""
         queryset = super().get_queryset()
         params = self.request.query_params
 
+        # ── Búsqueda textual (insensible a mayúsculas) ──
         search = params.get('search')
         if search:
             queryset = queryset.filter(
@@ -67,6 +91,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(description__icontains=search)
             )
 
+        # ── Filtros de estado ──
         is_active = params.get('is_active')
         if is_active in {'true', 'false'}:
             queryset = queryset.filter(is_active=is_active == 'true')
@@ -75,6 +100,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if is_approved in {'true', 'false'}:
             queryset = queryset.filter(is_approved=is_approved == 'true')
 
+        # ── Filtros de precio ──
         min_price = params.get('min_price')
         if min_price:
             queryset = queryset.filter(base_price__gte=min_price)
@@ -83,6 +109,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if max_price:
             queryset = queryset.filter(base_price__lte=max_price)
 
+        # ── Ordenación con lista blanca ──
         ordering = params.get('ordering', '-created_at')
         allowed_ordering = {
             'name', '-name', 'base_price', '-base_price', 
@@ -95,6 +122,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         return queryset.order_by(ordering)
 
     def get_serializer_class(self):
+        """Selecciona el serializer según la acción:
+        - list → ProductListSerializer (resumido)
+        - create/update/partial_update → ProductWriteSerializer (escritura)
+        - retrieve/detail actions → ProductDetailSerializer (completo)"""
         if self.action == 'list':
             return ProductListSerializer
         if self.action in {'create', 'update', 'partial_update'}:
@@ -102,12 +133,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         return ProductDetailSerializer
 
     def get_serializer_context(self):
-        context = super().get_serializer_context()
-        if self.kwargs.get('pk'):
-            context['product'] = self.get_object()
-        return context
+        return super().get_serializer_context()
 
     def create(self, request, *args, **kwargs):
+        """Crea un producto y registra auditoría dual:
+        - ProductAudit en SQL con instantánea 'after' del producto creado.
+        - mongo_log_event en MongoDB con metadatos (severity='info')."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(creator=_resolve_creator(request))
@@ -118,14 +149,27 @@ class ProductViewSet(viewsets.ModelViewSet):
             actor=_actor_name(request),
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
         )
+        # ── Auditoría MongoDB ──
+        mongo_log_event(
+            action='product.created',
+            actor_id=getattr(request.user, 'id', None),
+            target_type='product',
+            target_id=str(product.id),
+            metadata={'name': product.name},
+            severity='info',
+        )
         response_serializer = ProductDetailSerializer(product, context=self.get_serializer_context())
         headers = self.get_success_headers(response_serializer.data)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
+        """Actualiza un producto con protección: si tiene pedidos activos,
+        no permite cambiar el nombre. Registra auditoría dual con instantánea
+        antes/después (before_data/after_data)."""
         product = self.get_object()
         before_data = ProductDetailSerializer(product, context=self.get_serializer_context()).data
 
+        # Protección: no permitir renombrar si hay pedidos activos (pending/paid/processing).
         if product.has_active_order_items and 'name' in request.data:
             return Response(
                 {'name': 'No se puede editar el nombre si existen pedidos activos.'},
@@ -136,12 +180,22 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(product, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         product = serializer.save()
+        # ── Auditoría SQL con instantáneas before/after ──
         ProductAudit.objects.create(
             product=product,
             action=ProductAudit.ACTION_UPDATED,
             actor=_actor_name(request),
             before_data=before_data,
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        # ── Auditoría MongoDB ──
+        mongo_log_event(
+            action='product.updated',
+            actor_id=getattr(request.user, 'id', None),
+            target_type='product',
+            target_id=str(product.id),
+            metadata={'name': product.name, 'changed_fields': list(request.data.keys())},
+            severity='info',
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
@@ -174,7 +228,11 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductImageSerializer(image, context={'request': request}).data)
 
     @action(detail=True, methods=['patch'], url_path='images/reorder')
+
     def reorder_images(self, request, pk=None):
+        """Reordena las imágenes de un producto usando transacción atómica.
+        Patrón: primero suma 1000 a todos los órdenes (evita conflictos UNIQUE),
+        luego asigna los nuevos órdenes. Requiere enviar TODAS las imágenes."""
         product = self.get_object()
         items = request.data.get('items', [])
         if not isinstance(items, list) or not items:
@@ -186,10 +244,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response({'items': 'La lista debe incluir todas las imágenes del producto.'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
+            # Primera pasada: desplazar órdenes para evitar violaciones de unique_constraint.
             for image in images.values():
                 image.order = image.order + 1000
                 image.save(update_fields=['order'])
 
+            # Segunda pasada: asignar los nuevos órdenes.
             for item in items:
                 image = images.get(str(item.get('id')))
                 if image is None:
@@ -201,19 +261,29 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductImageSerializer(ordered_images, many=True, context={'request': request}).data)
 
     @action(detail=True, methods=['patch'], url_path='toggle-active')
+
     def toggle_active(self, request, pk=None):
+        """Activa/desactiva la visibilidad del producto en tienda.
+        No requiere pasar por el flujo de aprobación completo."""
         product = self.get_object()
         product.is_active = not product.is_active
         product.save(update_fields=['is_active', 'updated_at'])
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=['get'], url_path='checklist')
+
     def checklist(self, request, pk=None):
+        """Retorna el checklist de requisitos del producto para publicación.
+        Útil para mostrar al vendedor/revisor qué falta."""
         product = self.get_object()
         return Response(product.checklist)
 
     @action(detail=True, methods=['post'], url_path='publish')
+
     def publish(self, request, pk=None):
+        """Publica un producto: requiere cumplir can_be_published (imagen principal
+        + variante con stock). Establece is_active=True e is_approved=True.
+        Registra dos entradas de auditoría (published + approved) y log en MongoDB."""
         product = self.get_object()
         if not product.can_be_published:
             return Response(
@@ -229,11 +299,28 @@ class ProductViewSet(viewsets.ModelViewSet):
         product.approved_by = _resolve_creator(request)
         product.approved_at = now()
         product.save()
+        # ── Auditoría SQL: publicación ──
         ProductAudit.objects.create(
             product=product,
             action=ProductAudit.ACTION_PUBLISHED,
             actor=_actor_name(request),
             after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        # ── Auditoría SQL: aprobación ──
+        ProductAudit.objects.create(
+            product=product,
+            action=ProductAudit.ACTION_APPROVED,
+            actor=getattr(request.user, 'username', '') or 'anonymous',
+            after_data=ProductDetailSerializer(product, context=self.get_serializer_context()).data,
+        )
+        # ── Auditoría MongoDB ──
+        mongo_log_event(
+            action='product.published',
+            actor_id=getattr(request.user, 'id', None),
+            target_type='product',
+            target_id=str(product.id),
+            metadata={'name': product.name},
+            severity='info',
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
@@ -265,6 +352,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='images')
     def add_image(self, request, pk=None):
+        """Agrega una imagen a un producto existente. Usa ProductImageCreateSerializer
+        que valida el límite de 5 imágenes y los requisitos de formato/tamaño."""
         product = self.get_object()
         serializer = ProductImageCreateSerializer(data=request.data, context={'product': product, 'request': request})
         serializer.is_valid(raise_exception=True)
@@ -272,7 +361,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(ProductImageCreateSerializer(image, context={'product': product}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='variants')
+
     def add_variant(self, request, pk=None):
+        """Agrega una variante (talla+color+stock) a un producto.
+        Usa VariantCreateSerializer que valida los límites de 4 tallas y 10 colores."""
         product = self.get_object()
         serializer = VariantCreateSerializer(data=request.data, context={'product': product})
         serializer.is_valid(raise_exception=True)
@@ -300,14 +392,22 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(VariantSerializer(variant, context={'product': product}).data)
 
     @action(detail=True, methods=['get'], url_path='audits')
+
     def audits(self, request, pk=None):
+        """Retorna el historial completo de auditoría del producto
+        (eventos created/updated/published/approved/disapproved)."""
         product = self.get_object()
         serializer = ProductAuditSerializer(product.audit_entries.all(), many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'], url_path='add-to-cart')
+
     def add_to_cart(self, request):
-        """Agregar producto al carrito desde catálogo o editor 3D"""
+        """Agrega un producto al carrito directamente desde el catálogo o editor 3D.
+        Prioriza carrito del usuario autenticado; si no, usa la sesión anónima.
+        Si el item ya existe, incrementa la cantidad (valida contra stock disponible)."""
+        from apps.carts.models import Cart, CartItem
+
         serializer = CartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -315,15 +415,16 @@ class ProductViewSet(viewsets.ModelViewSet):
         variant = serializer.validated_data['variant']
         quantity = serializer.validated_data['quantity']
         
-        # Obtener o crear carrito (sesión o usuario)
-        from apps.carts.models import Cart, CartItem
-        
-        session_key = request.session.session_key
-        if not session_key:
-            request.session.create()
+        # Priorizar carrito del usuario autenticado sobre el de sesión
+        user = request.user
+        if user.is_authenticated:
+            cart, _ = Cart.objects.get_or_create(user=user)
+        else:
             session_key = request.session.session_key
-        
-        cart, created = Cart.objects.get_or_create(session_key=session_key)
+            if not session_key:
+                request.session.create()
+                session_key = request.session.session_key
+            cart, _ = Cart.objects.get_or_create(session_key=session_key)
         
         # Verificar si ya existe el item en el carrito
         cart_item, created = CartItem.objects.get_or_create(
@@ -334,7 +435,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         
         if not created:
-            # Actualizar cantidad si ya existe
             new_quantity = cart_item.quantity + quantity
             if new_quantity > variant.stock:
                 return Response(
@@ -352,11 +452,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=False, methods=['get'], url_path='search')
+
     def search(self, request):
-        """Búsqueda avanzada con filtros combinables"""
+        """Búsqueda avanzada con filtros combinables (RF-052).
+        Busca en nombre, descripción, talla y color. Filtros adicionales:
+        is_active, is_approved, min_price, max_price, has_images, has_stock.
+        Retorna resultados paginados con ProductListSerializer."""
         queryset = self.get_queryset()
         
-        # Búsqueda parcial insensible a mayúsculas
+        # ── Búsqueda textual en múltiples campos ──
         search = request.query_params.get('search', '').strip()
         if search:
             queryset = queryset.filter(
@@ -366,7 +470,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(variants__color__icontains=search)
             ).distinct()
         
-        # Filtros combinables
+        # ── Filtros combinables ──
         filters = {
             'is_active': request.query_params.get('is_active'),
             'is_approved': request.query_params.get('is_approved'),
@@ -400,7 +504,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if filters['has_stock'] == 'true':
             queryset = queryset.filter(variants__stock__gt=0).distinct()
         
-        # Paginación
+        # ── Paginación ──
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = ProductListSerializer(page, many=True, context={'request': request})
@@ -408,3 +512,40 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         serializer = ProductListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """ViewSet para reseñas de productos. Filtrable por product_id.
+    El usuario se asigna automáticamente desde request.user al crear."""
+    queryset = Review.objects.select_related('user').all()
+    serializer_class = ReviewSerializer
+
+    def get_queryset(self):
+        """Filtra reseñas por producto si se pasa el parámetro 'product'."""
+        qs = super().get_queryset()
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            qs = qs.filter(product_id=product_id)
+        return qs
+
+    def perform_create(self, serializer):
+        """Asigna automáticamente el usuario autenticado a la reseña."""
+        serializer.save(user=self.request.user)
+
+# ═══════════════════════════════════════════════════════════════════════
+# ProductImageViewSet: Listado y eliminación de imágenes Cloudinary
+# ═══════════════════════════════════════════════════════════════════════
+
+class ProductImageViewSet(viewsets.ModelViewSet):
+    """ViewSet para consultar y eliminar imágenes de productos (Cloudinary)."""
+    queryset = ProductImage.objects.all().select_related('product').order_by('product', 'order')
+    serializer_class = ProductImageSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return []
+        from rest_framework.permissions import IsAuthenticated
+        return [IsAuthenticated()]
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)

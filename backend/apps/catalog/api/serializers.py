@@ -26,6 +26,10 @@ class CatalogProductSerializer(serializers.ModelSerializer):
     max_price = serializers.SerializerMethodField()
     total_stock = serializers.SerializerMethodField()
     categories = serializers.SerializerMethodField()
+    stock_total = serializers.SerializerMethodField()
+    variants_summary = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    total_reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -39,7 +43,9 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         image = obj.main_image
         if not image:
             return None
-        return image.image.url
+        request = self.context.get('request')
+        url = image.image_url
+        return request.build_absolute_uri(url) if request else url
 
     def get_available_sizes(self, obj):
         return list(obj.variants.filter(stock__gt=0).values_list('size', flat=True).distinct())

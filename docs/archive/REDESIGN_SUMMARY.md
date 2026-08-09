@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Resumen del rediseño corporativo v2.0. Para la guía de diseño actual consulta [DESIGN_GUIDE.md](../DESIGN_GUIDE.md).
+
 # 🎯 Resumen Ejecutivo - Rediseño Corporativo de la Interfaz
 
 **Fecha:** 12 de mayo de 2026  
