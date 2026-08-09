@@ -239,12 +239,20 @@ urlpatterns = [
 
     # -------------------------------------------------------------------
     #  Productos — CRUD y operaciones de inventario
+    #  NOTA: Las rutas específicas (reviews/, images/) deben ir ANTES que
+    #  el router genérico (api/products/) para evitar que el patrón
+    #  (?P<pk>[^/.]+)/$ capture 'reviews' o 'images' como un pk.
     # -------------------------------------------------------------------
+    path('api/products/reviews/', include('apps.products.api.review_urls')),
+    path('api/products/images/', include('apps.products.api.image_urls')),
     path('api/products/', include('apps.products.api.urls')),
 
     # -------------------------------------------------------------------
     #  Catálogo — Navegación, filtros y búsqueda de productos
+    #  NOTA: api/categories/ debe ir ANTES que api/catalog/ por la misma
+    #  razón — evitar que (?P<pk>[^/.]+)/$ capture 'categories' como pk.
     # -------------------------------------------------------------------
+    path('api/categories/', include('apps.catalog.api.category_urls')),
     path('api/catalog/', include('apps.catalog.api.urls')),
 
     # -------------------------------------------------------------------
