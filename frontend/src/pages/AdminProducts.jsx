@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchAdminStats } from '../services/api'
+import { fetchAdminStats, fetchProductAdmin, toggleProductActive } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
@@ -37,14 +37,13 @@ export default function AdminProducts() {
   const { stats } = useAdminStats()
 
   async function openEdit(productId) {
-    const response = await fetch(`/api/products/${productId}/`)
-    const data = await response.json()
+    const data = await fetchProductAdmin(productId)
     setEditingProduct(data)
     setShowForm(true)
   }
 
   async function toggleActive(productId) {
-    await fetch(`/api/products/${productId}/toggle-active/`, { method: 'PATCH' })
+    await toggleProductActive(productId)
     setRefreshKey(k => k + 1)
   }
 

@@ -329,7 +329,7 @@ export const ProductDetail = () => {
                   </div>
                   <div className="pd-related-info">
                     <p className="pd-related-name">{rp.name}</p>
-                    <p className="pd-related-price">{formatCOP(rp.base_price)}</p>
+                    <p className="pd-related-price">{formatCOP(rp.base_price ?? 0)}</p>
                   </div>
                 </Link>
               ))}

@@ -31,8 +31,6 @@ import AdminOrderDetail from './pages/AdminOrderDetail';
 import AdminProductApproval from './pages/AdminProductApproval';
 import UserProfile from './pages/UserProfile';
 import CheckoutPage from './pages/CheckoutPage';
-// Si CatalogPage es diferente a Catalog, renómbralo o unifica
-// import CatalogPage from './pages/CatalogPage';
 
 function App() {
   return (

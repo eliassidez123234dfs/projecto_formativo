@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
+import { updateMyProfile, changeMyPassword } from '../services/api'
 import '../styles/UserProfile.scss'
 
 export default function UserProfile() {
@@ -25,17 +26,7 @@ export default function UserProfile() {
     setSaving(true)
     setMsg(null)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await fetch('/api/usuarios/actualizar_perfil/', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(editData),
-      })
-      const data = await (async () => { try { return await res.json() } catch { return {} } })()
-      if (!res.ok) {
-        setMsg({ type: 'error', text: data.error || data.detail || data.mensaje || 'Error al actualizar' })
-        return
-      }
+      const data = await updateMyProfile(editData)
       const updated = data.usuario || { ...usuario, ...editData }
       localStorage.setItem('usuario', JSON.stringify(updated))
       setUsuario(updated)
@@ -43,7 +34,7 @@ export default function UserProfile() {
       setMsg({ type: 'success', text: 'Perfil actualizado correctamente' })
       setTimeout(() => setMsg(null), 3000)
     } catch (e) {
-      setMsg({ type: 'error', text: 'Error de conexión' })
+      setMsg({ type: 'error', text: e?.response?.data?.error || e?.response?.data?.detail || e?.response?.data?.mensaje || 'Error al actualizar' })
     } finally {
       setSaving(false)
     }
@@ -58,27 +49,17 @@ export default function UserProfile() {
     setSavingPass(true)
     setMsg(null)
     try {
-      const token = localStorage.getItem('access_token')
-      const res = await fetch('/api/usuarios/cambiar_password/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          contrasena_actual: passData.actual,
-          contrasena_nueva: passData.nueva,
-          confirmar_contrasena: passData.confirmar,
-        }),
+      await changeMyPassword({
+        contrasena_actual: passData.actual,
+        contrasena_nueva: passData.nueva,
+        confirmar_contrasena: passData.confirmar,
       })
-      const data = await (async () => { try { return await res.json() } catch { return {} } })()
-      if (!res.ok) {
-        setMsg({ type: 'error', text: data.error || data.detail || 'Error al cambiar contraseña' })
-        return
-      }
       setShowPassForm(false)
       setPassData({})
       setMsg({ type: 'success', text: 'Contraseña cambiada correctamente' })
       setTimeout(() => setMsg(null), 3000)
     } catch (e) {
-      setMsg({ type: 'error', text: 'Error de conexión' })
+      setMsg({ type: 'error', text: e?.response?.data?.error || e?.response?.data?.detail || 'Error al cambiar contraseña' })
     } finally {
       setSavingPass(false)
     }

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from django.conf import settings
 from django.db import models
 
 from apps.products.models import Product, Variant
@@ -22,7 +21,7 @@ class Order(models.Model):
 	]
 
 	user = models.ForeignKey(
-		settings.AUTH_USER_MODEL,
+		'users.Usuario',
 		null=True,
 		blank=True,
 		on_delete=models.SET_NULL,

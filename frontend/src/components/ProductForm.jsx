@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import {
+  fetchCategories,
+  createProduct,
+  updateProduct,
+  createProductImage,
+  updateProductImage,
+  deleteProductImage,
+  reorderProductImages,
+  createProductVariant,
+  updateProductVariant,
+  deleteProductVariant,
+} from '../services/api'
 
-async function safeJson(res) {
-  try { return await res.json() } catch { return null }
+function errMsg(error, fallback) {
+  const data = error?.response?.data
+  if (!data) return fallback
+  if (typeof data === 'string') return data
+  return Object.values(data).flat().join(' | ') || fallback
 }
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', 'Único']
@@ -129,8 +144,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/catalog/categories/')
-      .then(r => r.json())
+    fetchCategories()
       .then(data => setCategoryOptions(Array.isArray(data) ? data : data.results || []))
       .catch(() => {})
   }, [])
@@ -144,37 +158,20 @@ export default function ProductForm({ product, onClose, onSaved }) {
   }
 
   async function patchProduct(payload) {
-    const response = await fetch(`/api/products/${product.id}/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    const data = await safeJson(response)
-    if (!response.ok) throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error actualizando producto')
-    return data
+    return updateProduct(product.id, payload)
   }
 
-  async function createProduct() {
-    const response = await fetch('/api/products/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name, description, base_price: Number(price), is_active: isActive, category_ids: categoryIds,
-      }),
+  async function createProductRecord() {
+    return createProduct({
+      name, description, base_price: Number(price), is_active: isActive, category_ids: categoryIds,
     })
-    const data = await safeJson(response)
-    if (!response.ok) throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error creando producto')
-    return data
   }
 
   async function uploadMainImage(productId) {
     const form = new FormData()
     form.append('image', mainImage)
     form.append('is_main', 'true')
-    const response = await fetch(`/api/products/${productId}/images/`, { method: 'POST', body: form })
-    const data = await safeJson(response)
-    if (!response.ok) throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error subiendo imagen')
-    return data
+    return createProductImage(productId, form)
   }
 
   async function uploadExtraImages(productId) {
@@ -182,90 +179,58 @@ export default function ProductForm({ product, onClose, onSaved }) {
       const form = new FormData()
       form.append('image', file)
       form.append('is_main', 'false')
-      const response = await fetch(`/api/products/${productId}/images/`, { method: 'POST', body: form })
-      if (!response.ok) {
-        const data = await safeJson(response)
-        throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error subiendo imágenes')
-      }
+      await createProductImage(productId, form)
     }
   }
 
   async function createVariants(productId) {
     for (const variant of variants) {
       if (!variant.size || !variant.color) continue
-      const response = await fetch(`/api/products/${productId}/variants/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          size: variant.size,
-          color: variant.color,
-          color_hex: variant.color_hex,
-          color_nombre: variant.color_nombre || variant.color,
-          stock: variant.stock,
-          price_variant: variant.price_variant,
-        }),
+      await createProductVariant(productId, {
+        size: variant.size,
+        color: variant.color,
+        color_hex: variant.color_hex,
+        color_nombre: variant.color_nombre || variant.color,
+        stock: variant.stock,
+        price_variant: variant.price_variant,
       })
-      if (!response.ok) {
-        const data = await safeJson(response)
-        throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error creando variantes')
-      }
     }
   }
 
   async function saveExistingVariants(productId) {
     for (const variant of existingVariants) {
-      const response = await fetch(`/api/products/${productId}/variants/${variant.id}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          size: variant.size,
-          color: variant.color,
-          color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
-          color_nombre: variant.color_nombre || variant.color,
-          stock: variant.stock,
-          price_variant: variant.price_variant,
-        }),
+      await updateProductVariant(productId, variant.id, {
+        size: variant.size,
+        color: variant.color,
+        color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
+        color_nombre: variant.color_nombre || variant.color,
+        stock: variant.stock,
+        price_variant: variant.price_variant,
       })
-      if (!response.ok) {
-        const data = await safeJson(response)
-        throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error actualizando variante')
-      }
     }
   }
 
   async function deleteVariants(productId) {
     for (const variantId of removedVariantIds) {
-      const response = await fetch(`/api/products/${productId}/variants/${variantId}/`, { method: 'DELETE' })
-      if (!response.ok) {
-        const data = await safeJson(response)
-        throw new Error(data ? Object.values(data).flat().join(' | ') : 'Error eliminando variante')
-      }
+      await deleteProductVariant(productId, variantId)
     }
   }
 
   async function reorderImages(nextItems) {
     setImageItems(nextItems)
     if (!isEditing) return
-    await fetch(`/api/products/${product.id}/images/reorder/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: nextItems.map((img, i) => ({ id: img.id, order: i + 1 })) }),
-    })
+    await reorderProductImages(product.id, nextItems.map((img, i) => ({ id: img.id, order: i + 1 })))
   }
 
   async function markImageAsMain(imageId) {
     if (!isEditing) return
-    await fetch(`/api/products/${product.id}/images/${imageId}/`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_main: true }),
-    })
+    await updateProductImage(product.id, imageId, { is_main: true })
     setImageItems(items => items.map(img => ({ ...img, is_main: img.id === imageId })))
   }
 
   async function removeImage(imageId) {
     if (!isEditing) return
-    await fetch(`/api/products/${product.id}/images/${imageId}/`, { method: 'DELETE' })
+    await deleteProductImage(product.id, imageId)
     setImageItems(items => items.filter(img => img.id !== imageId))
   }
 
@@ -300,7 +265,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
         await saveExistingVariants(savedProduct.id)
         await deleteVariants(savedProduct.id)
       } else {
-        savedProduct = await createProduct()
+        savedProduct = await createProductRecord()
         await uploadMainImage(savedProduct.id)
         await createVariants(savedProduct.id)
       }
@@ -316,7 +281,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
       toast.success(isEditing ? 'Producto actualizado' : 'Producto creado')
       onSaved && onSaved()
     } catch (err) {
-      toast.error(err.message || 'Error')
+      toast.error(errMsg(err, 'Error'))
     } finally {
       setSaving(false)
     }

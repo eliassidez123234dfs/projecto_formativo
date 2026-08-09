@@ -5,10 +5,7 @@ import Pagination from './Pagination'
 import Spinner from './Spinner'
 import ErrorState from './ErrorState'
 import { formatCOP } from '../utils/format'
-
-async function safeJson(res) {
-  try { return await res.json() } catch { return null }
-}
+import { fetchProducts, fetchProductChecklist, publishProduct } from '../services/api'
 
 function useProducts(refreshKey) {
   const [data, setData] = useState({ results: [], count: 0 })
@@ -22,22 +19,17 @@ function useProducts(refreshKey) {
     async function load() {
       setLoading(true)
       setError(null)
-      const params = new URLSearchParams({ page, page_size: 20 })
-      if (q) params.set('search', q)
+      const params = { page, page_size: 20 }
+      if (q) params.search = q
       try {
-        const res = await fetch(`/api/products/?${params.toString()}`)
-        if (!res.ok) {
-          if (mounted) {
-            setData({ results: [], count: 0 })
-            setError({ message: 'Error al cargar los productos.', status: res.status })
-          }
-          return
-        }
-        const json = await res.json()
+        const json = await fetchProducts(params)
         if (!mounted) return
         setData(json)
       } catch (err) {
-        if (mounted) setError({ message: 'Error al cargar los productos.', status: err?.status || null })
+        if (mounted) {
+          setData({ results: [], count: 0 })
+          setError({ message: 'Error al cargar los productos.', status: err?.response?.status || null })
+        }
       }
       finally { if (mounted) setLoading(false) }
     }
@@ -49,10 +41,12 @@ function useProducts(refreshKey) {
 }
 
 async function safeChecklist(productId, onResult) {
-  const res = await fetch(`/api/products/${productId}/checklist/`)
-  const data = await safeJson(res)
-  if (!data) return onResult({ error: 'Error al cargar el checklist' })
-  onResult({ checklist: formatChecklist(data), ready: data.ready_to_publish })
+  try {
+    const data = await fetchProductChecklist(productId)
+    onResult({ checklist: formatChecklist(data), ready: data.ready_to_publish })
+  } catch (err) {
+    onResult({ error: 'Error al cargar el checklist' })
+  }
 }
 
 export default function ProductList({ refreshKey, onEdit, onToggle }) {
@@ -65,22 +59,20 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
   function handlePublish(productId) {
     if (!confirm('¿Publicar este producto? Se activará y aprobará automáticamente.')) return
     setPublishing(productId)
-    fetch(`/api/products/${productId}/publish/`, { method: 'POST' })
-      .then(async res => {
-        const d = await safeJson(res)
-        if (!res.ok) {
-          setModal({
-            type: 'error',
-            title: 'No se pudo publicar',
-            message: d?.detail || 'Error al publicar el producto',
-            checklist: d?.checklist ? formatChecklist(d.checklist) : null,
-          })
-          return
-        }
+    publishProduct(productId)
+      .then(d => {
         setModal({ type: 'success', title: '', message: 'Producto publicado exitosamente' })
         setTimeout(() => window.location.reload(), 1200)
       })
-      .catch(e => setModal({ type: 'error', title: 'Error de red', message: e.message }))
+      .catch(e => {
+        const d = e?.response?.data
+        setModal({
+          type: 'error',
+          title: 'No se pudo publicar',
+          message: d?.detail || 'Error al publicar el producto',
+          checklist: d?.checklist ? formatChecklist(d.checklist) : null,
+        })
+      })
       .finally(() => setPublishing(null))
   }
 

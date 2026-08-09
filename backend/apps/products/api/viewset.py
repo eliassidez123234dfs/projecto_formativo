@@ -4,11 +4,12 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils.timezone import now
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
+from apps.users.api.admin_viewset import AdminPermission
 from apps.products.models import Product, ProductAudit, ProductImage, Variant
 
 from .serializers import (
@@ -48,6 +49,12 @@ def _resolve_creator(request):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all().prefetch_related('images', 'variants', 'audit_entries')
     pagination_class = ProductPagination
+
+    def get_permissions(self):
+        """Lectura pública; toda escritura/gestión requiere un administrador activo."""
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.AllowAny()]
+        return [AdminPermission()]
 
     def get_queryset(self):
         queryset = super().get_queryset()

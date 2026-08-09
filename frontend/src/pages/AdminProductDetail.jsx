@@ -4,6 +4,7 @@ import ProductForm from '../components/ProductForm'
 import AdminLayout from '../components/AdminLayout'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
+import { fetchProductAdmin, fetchProductAudits, disapproveProduct } from '../services/api'
 
 const ACTION_LABELS = {
   created: 'Creado',
@@ -16,6 +17,13 @@ function toText(value) {
   if (value === null || value === undefined) return '-'
   if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
+}
+
+function errMsg(error, fallback) {
+  const data = error?.response?.data
+  if (!data) return fallback
+  if (typeof data === 'string') return data
+  return Object.values(data).flat().join(' | ') || fallback
 }
 
 function getAuditDiff(entry) {
@@ -66,17 +74,10 @@ export default function AdminProductDetail() {
   const loadProduct = useCallback(async () => {
     setLoading(true)
     try {
-      const [productResponse, auditsResponse] = await Promise.all([
-        fetch(`/api/products/${productId}/`),
-        fetch(`/api/products/${productId}/audits/`),
+      const [productData, auditsData] = await Promise.all([
+        fetchProductAdmin(productId),
+        fetchProductAudits(productId),
       ])
-      const productData = await productResponse.json()
-      if (!productResponse.ok) {
-        setProduct(null)
-        setError({ message: 'Error al cargar el producto.', status: productResponse.status })
-        return
-      }
-      const auditsData = await auditsResponse.json()
       // Normalize product data to avoid null reads in render
       const normalized = {
         id: productData?.id ?? null,
@@ -95,7 +96,7 @@ export default function AdminProductDetail() {
       setProduct(normalized)
       setAudits(Array.isArray(auditsData) ? auditsData : [])
       setError(null)
-    } catch (err) { setProduct(null); setError({ message: 'Error al cargar el producto.', status: err?.status || null }) }
+    } catch (err) { setProduct(null); setError({ message: 'Error al cargar el producto.', status: err?.response?.status || null }) }
     finally { setLoading(false) }
   }, [productId])
 
@@ -111,20 +112,12 @@ export default function AdminProductDetail() {
     if (!motivo.trim()) return
     setDisapproving(true)
     try {
-      const response = await fetch(`/api/products/${productId}/disapprove/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ motivo: motivo.trim() }),
-      })
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data?.motivo || 'Error al desaprobar el producto')
-      }
+      await disapproveProduct(productId, { motivo: motivo.trim() })
       setShowDisapprove(false)
       setMotivo('')
       await loadProduct()
     } catch (err) {
-      alert(err.message)
+      alert(errMsg(err, 'Error al desaprobar el producto'))
     } finally {
       setDisapproving(false)
     }

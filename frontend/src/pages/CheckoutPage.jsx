@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import './shop.css'
+import { getCheckoutSummary, confirmCheckout } from '../services/api'
 import { formatCOP } from '../utils/format'
 
 export default function CheckoutPage() {
@@ -12,8 +13,7 @@ export default function CheckoutPage() {
 
   const loadSummary = useCallback(async () => {
     setLoading(true)
-    const response = await fetch('/api/checkout/summary/')
-    const data = await response.json()
+    const data = await getCheckoutSummary()
     setSummary(data)
     setLoading(false)
   }, [])
@@ -29,27 +29,22 @@ export default function CheckoutPage() {
     }
   }, [loadSummary])
 
-  async function confirmCheckout(e) {
+  async function confirmCheckoutHandler(e) {
     e.preventDefault()
     setMessage('')
     setSubmitting(true)
-    const response = await fetch('/api/checkout/confirm/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_name: customerName, customer_email: customerEmail }),
-    })
-    const data = await response.json()
-    if (!response.ok) {
+    try {
+      const data = await confirmCheckout({ customer_name: customerName, customer_email: customerEmail })
+      setMessage(`Orden #${data.order_id} creada por ${formatCOP(data.total)}`)
+      setCustomerName('')
+      setCustomerEmail('')
+      await loadSummary()
+    } catch (err) {
+      const data = err?.response?.data || {}
       setMessage(data.detail || data.customer_name || 'No se pudo confirmar el checkout')
+    } finally {
       setSubmitting(false)
-      return
     }
-
-    setMessage(`Orden #${data.order_id} creada por ${formatCOP(data.total)}`)
-    setCustomerName('')
-    setCustomerEmail('')
-    await loadSummary()
-    setSubmitting(false)
   }
 
   return (
@@ -83,7 +78,7 @@ export default function CheckoutPage() {
 
           <article className="cart-summary">
             <h2>Datos del cliente</h2>
-            <form onSubmit={confirmCheckout} className="variant-selectors">
+            <form onSubmit={confirmCheckoutHandler} className="variant-selectors">
               <label>Nombre</label>
               <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre completo" required />
 

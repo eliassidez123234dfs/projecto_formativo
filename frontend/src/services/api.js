@@ -117,6 +117,17 @@ sessionApi.interceptors.response.use(
   }
 );
 
+// ─────────── USUARIOS (cuenta propia) ───────────
+export const updateMyProfile = async (data) => {
+  const response = await api.patch('usuarios/actualizar_perfil/', data);
+  return response.data;
+};
+
+export const changeMyPassword = async (data) => {
+  const response = await api.post('usuarios/cambiar_password/', data);
+  return response.data;
+};
+
 // ─────────── CATALOG ───────────
 export const fetchCatalog = async (params = {}) => {
   const response = await publicApi.get('catalog/', { params });
@@ -141,6 +152,107 @@ export const fetchCategoryProducts = async (categoryId, params = {}) => {
 export const fetchProductDetail = async (productId) => {
   const response = await publicApi.get(`products/${productId}/`);
   return response.data;
+};
+
+export const fetchCategories = async () => {
+  const response = await publicApi.get('catalog/categories/');
+  return response.data;
+};
+
+// ─────────── CHECKOUT (sesión) ───────────
+export const getCheckoutSummary = async () => {
+  const response = await sessionApi.get('checkout/summary/');
+  return response.data;
+};
+
+export const confirmCheckout = async (data) => {
+  const response = await sessionApi.post('checkout/confirm/', data);
+  return response.data;
+};
+
+// ─────────── PRODUCTS (gestión admin, con token) ───────────
+export const fetchProducts = async (params = {}) => {
+  const response = await api.get('products/', { params });
+  return response.data;
+};
+
+export const fetchProductAdmin = async (id) => {
+  const response = await api.get(`products/${id}/`);
+  return response.data;
+};
+
+export const createProduct = async (data) => {
+  const response = await api.post('products/', data);
+  return response.data;
+};
+
+export const updateProduct = async (id, data) => {
+  const response = await api.patch(`products/${id}/`, data);
+  return response.data;
+};
+
+export const deleteProduct = async (id) => {
+  await api.delete(`products/${id}/`);
+};
+
+export const fetchProductChecklist = async (id) => {
+  const response = await api.get(`products/${id}/checklist/`);
+  return response.data;
+};
+
+export const publishProduct = async (id) => {
+  const response = await api.post(`products/${id}/publish/`);
+  return response.data;
+};
+
+export const disapproveProduct = async (id, data = {}) => {
+  const response = await api.post(`products/${id}/disapprove/`, data);
+  return response.data;
+};
+
+export const toggleProductActive = async (id) => {
+  const response = await api.patch(`products/${id}/toggle-active/`);
+  return response.data;
+};
+
+export const fetchProductAudits = async (id) => {
+  const response = await api.get(`products/${id}/audits/`);
+  return response.data;
+};
+
+// ─────────── IMÁGENES de producto (admin) ───────────
+export const createProductImage = async (id, formData) => {
+  const response = await api.post(`products/${id}/images/`, formData);
+  return response.data;
+};
+
+export const updateProductImage = async (productId, imageId, data) => {
+  const response = await api.patch(`products/${productId}/images/${imageId}/`, data);
+  return response.data;
+};
+
+export const deleteProductImage = async (productId, imageId) => {
+  await api.delete(`products/${productId}/images/${imageId}/`);
+};
+
+export const reorderProductImages = async (id, items) => {
+  const response = await api.patch(`products/${id}/images/reorder/`, { items });
+  return response.data;
+};
+
+// ─────────── VARIANTES de producto (admin) ───────────
+export const createProductVariant = async (productId, data) => {
+  const response = await api.post(`products/${productId}/variants/`, data);
+  return response.data;
+};
+
+export const updateProductVariant = async (productId, variantId, data) => {
+  const response = await api.patch(`products/${productId}/variants/${variantId}/`, data);
+  return response.data;
+};
+
+export const deleteProductVariant = async (productId, variantId) => {
+  await api.delete(`products/${productId}/variants/${variantId}/`);
 };
 
 // ─────────── CART (usa sesión, NO JWT) ───────────

@@ -5,6 +5,14 @@ import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
+import { fetchProducts, publishProduct, disapproveProduct } from '../services/api'
+
+function errMsg(error, fallback) {
+  const data = error?.response?.data
+  if (!data) return fallback
+  if (typeof data === 'string') return data
+  return Object.values(data).flat().join(' | ') || fallback
+}
 
 const CHECKLIST_LABELS = {
   name: 'Nombre del producto',
@@ -35,18 +43,11 @@ export default function AdminProductApproval() {
   const loadProducts = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/products/?is_approved=false&page=${page}&page_size=${pageSize}`)
-      if (!res.ok) {
-        setProducts([])
-        setCount(0)
-        setError({ message: 'Error al cargar los productos pendientes.', status: res.status })
-        return
-      }
-      const data = await res.json()
-      setProducts(data.results || data || [])
+      const data = await fetchProducts({ is_approved: 'false', page, page_size: pageSize })
+      setProducts(Array.isArray(data.results) ? data.results : Array.isArray(data) ? data : [])
       setCount(data.count || 0)
       setError(null)
-    } catch (err) { setProducts([]); setCount(0); setError({ message: 'Error al cargar los productos pendientes.', status: err?.status || null }) }
+    } catch (err) { setProducts([]); setCount(0); setError({ message: 'Error al cargar los productos pendientes.', status: err?.response?.status || null }) }
     finally { setLoading(false) }
   }, [page])
 
@@ -58,21 +59,17 @@ export default function AdminProductApproval() {
   async function handleApprove(productId) {
     setProcessing(productId)
     try {
-      const res = await fetch(`/api/products/${productId}/publish/`, { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) {
-        setModal({
-          type: 'error',
-          title: 'No se pudo aprobar',
-          message: data?.detail || 'Error al aprobar el producto',
-          checklist: data?.checklist ? formatChecklist(data.checklist) : null,
-        })
-        return
-      }
+      const data = await publishProduct(productId)
       setModal({ type: 'success', title: 'Producto aprobado', message: `"${data.name}" fue aprobado y publicado exitosamente.` })
       setTimeout(() => { setModal(null); loadProducts() }, 1500)
     } catch (e) {
-      setModal({ type: 'error', title: 'Error de red', message: e.message })
+      const d = e?.response?.data
+      setModal({
+        type: 'error',
+        title: 'No se pudo aprobar',
+        message: d?.detail || 'Error al aprobar el producto',
+        checklist: d?.checklist ? formatChecklist(d.checklist) : null,
+      })
     }
     finally { setProcessing(null) }
   }
@@ -82,19 +79,11 @@ export default function AdminProductApproval() {
     const motivo = window.prompt('Motivo del rechazo (se guardará en la auditoría del producto):', '')
     if (motivo === null) { setProcessing(null); return }
     try {
-      const res = await fetch(`/api/products/${productId}/disapprove/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ motivo: motivo.trim() }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data?.motivo || 'Error al rechazar el producto')
-      }
+      await disapproveProduct(productId, { motivo: motivo.trim() })
       setModal({ type: 'success', title: 'Producto rechazado', message: 'El producto ha sido desaprobado y desactivado.' })
       setTimeout(() => { setModal(null); loadProducts() }, 1500)
     } catch (e) {
-      setModal({ type: 'error', title: 'Error', message: e.message })
+      setModal({ type: 'error', title: 'Error', message: errMsg(e, 'Error al rechazar el producto') })
     }
     finally { setProcessing(null) }
   }
@@ -158,7 +147,7 @@ export default function AdminProductApproval() {
                         </div>
                       </div>
                     </td>
-                    <td>{formatCOP(p.base_price)}</td>
+                    <td>{formatCOP(p.base_price ?? 0)}</td>
                     <td>
                       <span className={`badge ${(p.total_stock ?? 0) > 0 ? 'badge-active' : 'badge-inactive'}`}>
                         {p.total_stock ?? 0}
