@@ -1,10 +1,11 @@
 from pathlib import Path
+from typing import Any
 import os
 
 import environ
 
 # Definir nuestras variables de ambiente
-env = environ.Env()
+env: Any = environ.Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

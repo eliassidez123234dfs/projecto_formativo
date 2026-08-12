@@ -1,0 +1,112 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Gestor Cloudinary{% endblock %}
+
+{% block extrahead %}{{ block.super }}{% endblock %}
+
+{% block content %}
+<style>
+  .cloud-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-top: 12px; }
+  .cloud-card { border: 1px solid var(--border-color, #ccc); border-radius: 8px; overflow: hidden; background: #fff; }
+  .cloud-card.in-use { border-color: #28a745; box-shadow: 0 0 0 1px #28a745; }
+  .cloud-thumb { height: 150px; display: flex; align-items: center; justify-content: center; background: #f6f6f6; overflow: hidden; }
+  .cloud-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .cloud-body { padding: 8px 10px; font-size: 12px; }
+  .cloud-pid { word-break: break-all; font-family: monospace; font-size: 11px; color: #555; }
+  .cloud-badge { display:inline-block; padding: 1px 6px; border-radius: 10px; font-size: 11px; margin: 2px 0; }
+  .badge-use { background: #d4edda; color: #155724; }
+  .badge-free { background: #fff3cd; color: #856404; }
+  .cloud-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .cloud-tools .res-type a { margin-right: 8px; }
+  .cloud-tools .active { font-weight: bold; text-decoration: underline; }
+  .cloud-delete { margin-top: 6px; }
+  .cloud-check { width: auto; }
+</style>
+
+<div id="content-main">
+  <div class="module">
+    <h2>{{ title }}</h2>
+    <p>Todos los recursos de Cloudinary (no solo las imágenes de camisas): consulta y gestión en tiempo real.</p>
+
+    {% if messages %}
+      <ul class="messagelist">
+        {% for msg in messages %}<li class="{{ msg.tags }}">{{ msg }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    {# Selector de tipo de recurso #}
+    <div class="cloud-tools">
+      <span><strong>Tipo:</strong></span>
+      {% for value, label in resource_types %}
+        <a class="{% if resource_type == value %}active{% endif %}"
+           href="{{ request.path }}?resource_type={{ value }}&per_page={{ per_page }}">{% if resource_type == value %}▶ {% endif %}{{ label }}</a>
+      {% endfor %}
+    </div>
+
+    {# Formulario de búsqueda y cantidad por página #}
+    <form method="get" style="margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <input type="hidden" name="resource_type" value="{{ resource_type }}">
+      <input type="text" name="q" value="{{ q }}" placeholder="Buscar por public_id..." size="30">
+      <select name="per_page">
+        {% for n in per_page_options %}
+          <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }} por página</option>
+        {% endfor %}
+      </select>
+      <input type="submit" value="Filtrar" class="default">
+    </form>
+
+    {# Formulario de eliminación masiva #}
+    <form id="cloud-delete-form" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="resource_type" value="{{ resource_type }}">
+
+      <div class="cloud-grid">
+        {% for res in object_list %}
+          <div class="cloud-card {% if res.is_referenced %}in-use{% endif %}">
+            <div class="cloud-thumb">
+              {% if resource_type == 'image' %}
+                <img src="{{ res.thumbnail }}" alt="{{ res.public_id }}" loading="lazy">
+              {% else %}
+                <div style="padding:10px; text-align:center;">
+                  <div style="font-size:34px;">{% if resource_type == 'video' %}🎬{% else %}📦{% endif %}</div>
+                  <div>{{ res.format|upper }}</div>
+                </div>
+              {% endif %}
+            </div>
+            <div class="cloud-body">
+              <div class="cloud-badge {% if res.is_referenced %}badge-use{% else %}badge-free{% endif %}">
+                {{ res.is_referenced|yesno:"En uso en BD,Libre" }}
+              </div>
+              <div class="cloud-pid">{{ res.public_id }}</div>
+              <div>{{ res.width }}x{{ res.height }} · {{ res.size_mb }} MB · {{ res.format }}</div>
+              <label class="cloud-delete">
+                <input class="cloud-check" type="checkbox" name="public_ids" value="{{ res.public_id }}">
+                Eliminar
+              </label>
+            </div>
+          </div>
+        {% empty %}
+          <p style="grid-column:1/-1;">No hay recursos que coincidan con la búsqueda.</p>
+        {% endfor %}
+      </div>
+
+      {% if object_list %}
+        <div class="submit-row" style="margin-top:16px;">
+          <input type="submit" value="Eliminar seleccionados de Cloudinary" onclick="return confirm('¿Eliminar permanentemente los recursos seleccionados de Cloudinary?');">
+        </div>
+      {% endif %}
+    </form>
+
+    {# Paginación con cursor #}
+    <div class="paginator" style="margin-top:12px;">
+      {% if q %}<span class="this-page">Resultados para "{{ q }}"</span>{% endif %}
+      <span class="this-page">{{ object_list|length }} mostrados</span>
+      {% if next_cursor_url %}
+        <a href="{{ next_cursor_url }}">Siguiente ›</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

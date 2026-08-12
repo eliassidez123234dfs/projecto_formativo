@@ -1,6 +1,9 @@
 from django.contrib import admin
 from .models import Model3D, Model3DImage
 
+# Registro del gestor global de recursos de Cloudinary (CloudinaryResourceAdmin)
+from . import cloudinary_admin  # noqa: F401
+
 
 class Model3DImageInline(admin.TabularInline):
     model = Model3DImage

@@ -46,6 +46,7 @@ cd frontend
 
 # 2. Instalar dependencias
 npm install
+npm install-scripts approve --all
 
 # 3. Configurar variables de entorno
 # Editar frontend/.env si es necesario
