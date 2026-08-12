@@ -354,3 +354,42 @@ export const fetchAdminOrderDetail = async (id) => {
   const response = await api.get(`admin/orders/${id}/`);
   return response.data;
 };
+
+// ─────────── MODELOS 3D (admin) ───────────
+export const fetchModel3DList = async () => {
+  const response = await api.get('models3d/models/');
+  return response.data;
+};
+
+export const fetchModel3D = async (id) => {
+  const response = await api.get(`models3d/models/${id}/`);
+  return response.data;
+};
+
+export const createModel3D = async (data) => {
+  const response = await api.post('models3d/models/', data);
+  return response.data;
+};
+
+export const updateModel3D = async (id, data) => {
+  const response = await api.patch(`models3d/models/${id}/`, data);
+  return response.data;
+};
+
+export const deleteModel3D = async (id) => {
+  await api.delete(`models3d/models/${id}/`);
+};
+
+// ─────────── GESTOR CLOUDINARY (admin) ───────────
+export const fetchCloudinaryResources = async (params = {}) => {
+  const response = await api.get('models3d/cloudinary/', { params });
+  return response.data;
+};
+
+export const deleteCloudinaryResources = async (publicIds, resourceType = 'image') => {
+  const response = await api.post('models3d/cloudinary/delete/', {
+    public_ids: publicIds,
+    resource_type: resourceType,
+  });
+  return response.data;
+};

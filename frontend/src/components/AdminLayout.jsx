@@ -84,6 +84,18 @@ const Icons = {
       <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
+  Box: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  ),
+  Cloud: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+    </svg>
+  ),
 }
 
 export default function AdminLayout({ children, title, subtitle }) {
@@ -107,6 +119,8 @@ export default function AdminLayout({ children, title, subtitle }) {
     { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },
     { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
     { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard },
+    { label: 'Modelos 3D', href: '/admin-model3d', icon: Icons.Box },
+    { label: 'Cloudinary', href: '/admin-cloudinary', icon: Icons.Cloud },
   ]
 
   const isActive = (href) => {
