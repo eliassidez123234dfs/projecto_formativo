@@ -65,11 +65,12 @@ def list_resources(resource_type='image', per_page=12, next_cursor='', prefix=''
         return {
             'resources': _augment_resources(result.get('resources', []), resource_type),
             'next_cursor': result.get('next_cursor') or '',
+            'total_count': int(result.get('total_count') or 0),
             'error': None,
         }
     except Exception as exc:
         logger.warning('Cloudinary list error: %s', exc)
-        return {'resources': [], 'next_cursor': '', 'error': str(exc)}
+        return {'resources': [], 'next_cursor': '', 'total_count': 0, 'error': str(exc)}
 
 
 def delete_resources(public_ids, resource_type='image'):

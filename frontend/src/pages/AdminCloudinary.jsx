@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import AdminLayout from '../components/AdminLayout'
 import Spinner from '../components/Spinner'
@@ -14,48 +14,77 @@ export default function AdminCloudinary() {
   const [resourceType, setResourceType] = useState('image')
   const [q, setQ] = useState('')
   const [perPage, setPerPage] = useState('12')
-  const [nextCursor, setNextCursor] = useState('')
   const [resources, setResources] = useState([])
-  const [hasNext, setHasNext] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [selected, setSelected] = useState([])
   const [error, setError] = useState(null)
+  const pageCursorsRef = useRef({ 1: '' })
+  const requestIdRef = useRef(0)
 
-  const load = useCallback(async (cursor = '') => {
+  const loadPage = useCallback(async (targetPage = 1) => {
+    const requestId = ++requestIdRef.current
     setLoading(true)
     setError(null)
+    setSelected([])
+
     try {
-      const data = await fetchCloudinaryResources({
-        resource_type: resourceType,
-        per_page: perPage,
-        q: q || undefined,
-        next_cursor: cursor || undefined,
-      })
-      setResources(data.resources || [])
-      setHasNext(Boolean(data.has_next))
-      setNextCursor(data.next_cursor || '')
-      if (data.error) setError(data.error)
+      const perPageNumber = Number(perPage) || 12
+      const cursors = { ...pageCursorsRef.current }
+      let startPage = targetPage
+
+      while (startPage > 1 && cursors[startPage] === undefined) {
+        startPage -= 1
+      }
+      if (cursors[startPage] === undefined) {
+        startPage = 1
+      }
+
+      let response = null
+
+      for (let page = startPage; page <= targetPage; page += 1) {
+        const cursor = cursors[page] || ''
+        response = await fetchCloudinaryResources({
+          resource_type: resourceType,
+          per_page: perPageNumber,
+          q: q || undefined,
+          next_cursor: cursor || undefined,
+        })
+        cursors[page + 1] = response.next_cursor || ''
+      }
+
+      if (requestId !== requestIdRef.current || !response) return
+
+      pageCursorsRef.current = cursors
+      setResources(response.resources || [])
+      setTotalCount(Number(response.total_count || 0))
+      setCurrentPage(targetPage)
+      if (response.error) setError(response.error)
     } catch (err) {
+      if (requestId !== requestIdRef.current) return
       setError(err?.response?.data?.detail || err.message || 'Error al cargar Cloudinary')
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
   }, [resourceType, perPage, q])
 
   useEffect(() => {
-    setSelected([])
-    setNextCursor('')
-    load('')
-  }, [load])
+    pageCursorsRef.current = { 1: '' }
+    setCurrentPage(1)
+    setTotalCount(0)
+    loadPage(1)
+  }, [loadPage])
+
+  const totalPages = totalCount > 0 ? Math.ceil(totalCount / (Number(perPage) || 12)) : 0
 
   const toggleSelect = (pid) => {
     setSelected(prev => prev.includes(pid) ? prev.filter(x => x !== pid) : [...prev, pid])
   }
 
   const refresh = () => {
-    setSelected([])
-    load('')
+    loadPage(currentPage)
   }
 
   const handleDelete = async (publicIds = selected) => {
@@ -78,6 +107,11 @@ export default function AdminCloudinary() {
     } finally {
       setDeleting(false)
     }
+  }
+
+  const goToPage = (page) => {
+    if (page < 1 || page === currentPage) return
+    loadPage(page)
   }
 
   return (
@@ -194,15 +228,44 @@ export default function AdminCloudinary() {
             </div>
           )}
 
-          {/* Paginación con cursor */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
-            <span className="pagination-info">{resources.length} recursos mostrados</span>
-            {hasNext && (
-              <button className="btn btn-sm btn-secondary" onClick={() => load(nextCursor)} disabled={loading}>
-                Siguiente ›
+          {/* Paginación con páginas y cursores */}
+          {totalPages > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={loading || currentPage === 1}
+              >
+                Anterior
               </button>
-            )}
-          </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
+                  <button
+                    key={page}
+                    className={`btn btn-sm ${page === currentPage ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => goToPage(page)}
+                    disabled={loading}
+                    aria-current={page === currentPage ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={loading || currentPage === totalPages}
+              >
+                Siguiente
+              </button>
+
+              <span className="pagination-info" style={{ marginLeft: 'auto' }}>
+                {resources.length} recursos · {totalCount} totales · página {currentPage} de {totalPages}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>

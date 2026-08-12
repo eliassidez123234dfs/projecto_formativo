@@ -62,6 +62,22 @@ const Customizer = ({ onOrderCreated }) => {
     <AnimatePresence>
       {!snap.intro && (
         <>
+          <motion.button
+            type="button"
+            className="editor-back-btn"
+            onClick={() => {
+              window.location.href = 'http://localhost:5173/admin';
+            }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <span aria-hidden="true">←</span>
+            <span>Volver al dashboard</span>
+          </motion.button>
+
           <motion.div key="custom" className="absolute top-0 left-0 z-10" {...slideAnimation("left")}>
             <div className="flex items-center min-h-screen">
               <div className="editortabs-container tabs">

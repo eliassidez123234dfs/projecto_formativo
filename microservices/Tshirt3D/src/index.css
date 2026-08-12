@@ -35,6 +35,19 @@ html {
   @apply w-14 h-14 flex justify-center items-center rounded-full glassmorphism cursor-pointer outline-none;
 }
 
+.editor-back-btn {
+  @apply absolute top-4 right-4 z-20 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white;
+  background: rgba(15, 23, 42, 0.65);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.editor-back-btn:hover {
+  background: rgba(15, 23, 42, 0.8);
+}
+
 .editortabs-container {
   @apply glassmorphism w-16 border-[2px] rounded-lg flex flex-col justify-center items-center ml-1 py-4 gap-4;
 }
@@ -58,8 +71,8 @@ html {
 .glassmorphism {
   background: rgba(255, 255, 255, 0.25);
   box-shadow: 0 2px 30px 0 rgba(31, 38, 135, 0.07);
-  backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
@@ -73,8 +86,8 @@ input[type="file"] {
   width: 170px !important;
   background: rgba(255, 255, 255, 0.25) !important;
   box-shadow: 0 2px 30px 0 rgba(31, 38, 135, 0.07) !important;
-  backdrop-filter: blur(4px) !important;
   -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
   border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 6px !important;
 }

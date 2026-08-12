@@ -38,6 +38,7 @@ class CloudinaryResourceAPIView(APIView):
             'resource_type': resource_type,
             'per_page': per_page,
             'q': prefix,
+            'total_count': payload.get('total_count', 0),
             'has_next': bool(payload['next_cursor']),
             'next_cursor': payload['next_cursor'],
             'resource_types': RESOURCE_TYPES,
