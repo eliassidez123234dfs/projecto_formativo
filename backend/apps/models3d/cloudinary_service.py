@@ -55,10 +55,14 @@ def _augment_resources(resources, resource_type):
 
 def list_resources(resource_type='image', per_page=12, next_cursor='', prefix=''):
     """Devuelve un dict con los recursos (aumentados), next_cursor y total_count."""
+    clean_prefix = (prefix or '').strip()
     try:
         expr = f"resource_type:{resource_type}"
-        if prefix:
-            expr += f" AND public_id:{prefix}*"
+        if clean_prefix:
+            if 'tshirtify' in clean_prefix.lower() or '/' in clean_prefix:
+                expr += f" AND (public_id:{clean_prefix}* OR folder:{clean_prefix}*)"
+            else:
+                expr += f" AND public_id:{clean_prefix}*"
         
         search = (
             cloudinary.Search()
@@ -80,9 +84,9 @@ def list_resources(resource_type='image', per_page=12, next_cursor='', prefix=''
     except Exception as exc:
         logger.warning('Cloudinary search error, fallback to resources API: %s', exc)
         try:
-            kwargs = {'resource_type': resource_type, 'max_results': per_page}
-            if prefix:
-                kwargs['prefix'] = prefix
+            kwargs = {'resource_type': resource_type, 'type': 'upload', 'max_results': per_page}
+            if clean_prefix:
+                kwargs['prefix'] = clean_prefix
             if next_cursor:
                 kwargs['next_cursor'] = next_cursor
             result = cloudinary.api.resources(**kwargs)
@@ -100,7 +104,7 @@ def list_resources(resource_type='image', per_page=12, next_cursor='', prefix=''
 def delete_resources(public_ids, resource_type='image'):
     """Elimina recursos en Cloudinary. Devuelve (deleted_ids, error)."""
     try:
-        result = cloudinary.api.delete_resources(public_ids, resource_type=resource_type)
+        result = cloudinary.api.delete_resources(public_ids, resource_type=resource_type, type='upload')
         deleted = {
             pid for pid, st in (result.get('deleted') or {}).items() if st == 'deleted'
         }

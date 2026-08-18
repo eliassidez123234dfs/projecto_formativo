@@ -12,6 +12,7 @@ import {
 } from '../services/api'
 
 const FILE_TYPE_LABELS = {
+  png: 'PNG', jpg: 'JPG', jpeg: 'JPEG', webp: 'WEBP',
   glb: 'GLB', gltf: 'GLTF', obj: 'OBJ', fbx: 'FBX', dae: 'DAE',
 }
 
@@ -116,7 +117,7 @@ export default function AdminModel3D() {
     { name: 'description', label: 'Descripción', type: 'textarea', value: editing?.description },
     { name: 'cloudinary_url', label: 'URL Cloudinary', type: 'url', required: true, placeholder: 'https://res.cloudinary.com/...', value: editing?.cloudinary_url },
     { name: 'cloudinary_public_id', label: 'Public ID Cloudinary', type: 'text', value: editing?.cloudinary_public_id },
-    { name: 'file_type', label: 'Tipo de archivo', type: 'select', options: Object.entries(FILE_TYPE_LABELS).map(([value, label]) => ({ value, label })), value: editing?.file_type || 'glb' },
+    { name: 'file_type', label: 'Tipo de archivo', type: 'select', options: Object.entries(FILE_TYPE_LABELS).map(([value, label]) => ({ value, label })), value: editing?.file_type || 'png' },
     { name: 'file_size', label: 'Tamaño (bytes)', type: 'number', value: editing?.file_size },
     { name: 'is_active', label: 'Activo', type: 'select', options: [{ value: 'true', label: 'Sí' }, { value: 'false', label: 'No' }], value: boolToSelect(editing?.is_active ?? true) },
     { name: 'is_approved', label: 'Aprobado', type: 'select', options: [{ value: 'true', label: 'Sí' }, { value: 'false', label: 'No' }], value: boolToSelect(editing?.is_approved ?? false) },
@@ -129,7 +130,7 @@ export default function AdminModel3D() {
         <div className="admin-toolbar-right">
           <button className="btn btn-primary" onClick={openCreate}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nuevo Modelo 3D
+            Nuevo Diseño 3D
           </button>
         </div>
       </div>
@@ -139,7 +140,7 @@ export default function AdminModel3D() {
           {loading ? (
             <Spinner />
           ) : items.length === 0 ? (
-            <p style={{ color: 'var(--color-gray-600)', padding: '1rem' }}>No hay modelos 3D registrados.</p>
+            <p style={{ color: 'var(--color-gray-600)', padding: '1rem' }}>No hay diseños 3D registrados.</p>
           ) : (
             <table className="admin-table">
               <thead>
@@ -154,25 +155,30 @@ export default function AdminModel3D() {
                 </tr>
               </thead>
               <tbody>
-                {items.map(item => (
-                  <tr key={item.id}>
-                    <td>
-                      {item.preview_images?.[0]?.cloudinary_url ? (
-                        <img
-                          src={item.preview_images[0].cloudinary_url}
-                          alt={item.name}
-                          style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6 }}
-                        />
-                      ) : (
-                        <span style={{ color: 'var(--color-gray-400)' }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ maxWidth: 240 }}>
-                      <strong>{item.name}</strong>
-                      {item.description && (
-                        <div style={{ fontSize: 12, color: 'var(--color-gray-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>
-                      )}
-                    </td>
+                {items.map(item => {
+                  const previewUrl = item.preview_images?.[0]?.cloudinary_url || item.cloudinary_url
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        {previewUrl ? (
+                          <img
+                            src={previewUrl}
+                            alt={item.name}
+                            style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--color-gray-200)' }}
+                          />
+                        ) : (
+                          <span style={{ color: 'var(--color-gray-400)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ maxWidth: 240 }}>
+                        <strong>{item.name}</strong>
+                        {item.description && (
+                          <div style={{ fontSize: 12, color: 'var(--color-gray-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.description}</div>
+                        )}
+                        {item.cloudinary_public_id && (
+                          <div style={{ fontSize: 11, color: 'var(--color-primary, #2563eb)', fontFamily: 'monospace', marginTop: 2 }}>{item.cloudinary_public_id}</div>
+                        )}
+                      </td>
                     <td>{FILE_TYPE_LABELS[item.file_type] || item.file_type}</td>
                     <td>
                       <span className={`badge ${item.is_active ? 'badge-activo' : 'badge-inactivo'}`}>
@@ -192,7 +198,8 @@ export default function AdminModel3D() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )
+              })}
               </tbody>
             </table>
           )}

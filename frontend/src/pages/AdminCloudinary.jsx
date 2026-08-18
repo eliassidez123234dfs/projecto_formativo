@@ -154,17 +154,33 @@ export default function AdminCloudinary() {
     >
       <div className="card">
         <div className="card-body">
-          {/* Tabs de tipo de recurso */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+          {/* Categorías y filtros rápidos */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center', borderBottom: '1px solid var(--color-gray-200, #e2e8f0)', paddingBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-gray-700)', marginRight: 4 }}>Categorías:</span>
             {TABS.map(t => (
               <button
                 key={t.value}
-                className={`btn btn-sm ${resourceType === t.value ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setResourceType(t.value)}
+                type="button"
+                className={`btn btn-sm ${resourceType === t.value && !q ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setResourceType(t.value); setQ(''); }}
               >
                 {t.label}
               </button>
             ))}
+            <button
+              type="button"
+              className={`btn btn-sm ${q === 'camisa' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setResourceType('image'); setQ(q === 'camisa' ? '' : 'camisa'); }}
+            >
+              👕 Camisas
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${q === 'tshirtify_designs' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setResourceType('image'); setQ(q === 'tshirtify_designs' ? '' : 'tshirtify_designs'); }}
+            >
+              🎨 Diseños 3D (/tshirtify_designs/)
+            </button>
           </div>
 
           {/* Búsqueda + cantidad por página */}

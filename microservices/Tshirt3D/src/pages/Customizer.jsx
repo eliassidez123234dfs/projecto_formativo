@@ -122,7 +122,7 @@ const Customizer = ({ onOrderCreated }) => {
                       description: "Diseño generado desde Tshirt3D",
                       cloudinary_url: uploadedUrl,
                       cloudinary_public_id: result.public_id || null,
-                      file_type: "glb",
+                      file_type: "png",
                       file_size: result.bytes || null,
                       is_active: true,
                       is_approved: false,
