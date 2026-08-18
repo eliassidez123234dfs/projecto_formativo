@@ -30,7 +30,7 @@ python manage.py migrate
 python manage.py createsuperuser
 
 # 7. Poblar base de datos con datos de prueba (opcional)
-python manage.py seed_products
+python manage.py seed_all
 
 # 8. Iniciar servidor de desarrollo
 python manage.py runserver
@@ -48,7 +48,7 @@ cd frontend
 npm install
 npm install-scripts approve --all
 
-# 3. Configurar variables de entorno
+# 3. Configurar variables de entorn o
 # Editar frontend/.env si es necesario
 # VITE_API_URL=http://localhost:8000/api/
 
@@ -57,6 +57,32 @@ npm run dev -- --host
 ```
 
 El frontend estara disponible en: `http://localhost:5173/`
+
+### Microservicio de Editor 3D (Arquitectura propia, aunque usa mismo Backend)
+
+```bash
+# 1. Navegar al directorio del editor
+cd microservices/Tshirt3D
+
+# 2. Configurar variables de entorno
+# Crea un archivo `.env` en la carpeta `microservices/Tshirt3D` con estas variables si es necesario:
+# VITE_CLOUDINARY_CLOUD_NAME=tu_cloud_name
+# VITE_CLOUDINARY_UPLOAD_PRESET=tu_upload_preset
+# VITE_CLOUDINARY_URL=https://api.cloudinary.com/v1_1/tu_cloud_name/image/upload
+# VITE_MODELS3D_API_URL=http://127.0.0.1:8000/api/models3d/models/
+# VITE_API_URL=http://127.0.0.1:8000/api/orders/
+
+# 3. Backend (Django) ya deberia estar activado en otra terminal como se explico antes.
+
+# 2. Instalar dependencias
+npm install
+npm install-scripts approve --all
+
+# 4. Iniciar servidor de desarrollo
+npm run dev -- --host
+```
+
+Abre el navegador en la URL que muestre Vite, normalmente `http://127.0.0.1:5174/`
 
 ## 24.2 Ejecucion con Docker Compose
 

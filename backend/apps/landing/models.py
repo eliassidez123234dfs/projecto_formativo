@@ -17,6 +17,7 @@ class Contacto(models.Model):
     
     class Meta:
         db_table = 'contactos'
+        ordering = ['-fecha_envio']
         indexes = [
             models.Index(fields=['correo']),
             models.Index(fields=['fecha_envio']),

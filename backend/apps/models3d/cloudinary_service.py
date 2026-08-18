@@ -54,23 +54,47 @@ def _augment_resources(resources, resource_type):
 
 
 def list_resources(resource_type='image', per_page=12, next_cursor='', prefix=''):
-    """Devuelve un dict con los recursos (aumentados) y next_cursor, o None en caso de error."""
+    """Devuelve un dict con los recursos (aumentados), next_cursor y total_count."""
     try:
-        kwargs = {'resource_type': resource_type, 'max_results': per_page}
+        expr = f"resource_type:{resource_type}"
         if prefix:
-            kwargs['prefix'] = prefix
+            expr += f" AND public_id:{prefix}*"
+        
+        search = (
+            cloudinary.Search()
+            .expression(expr)
+            .sort_by('created_at', 'desc')
+            .max_results(per_page)
+        )
         if next_cursor:
-            kwargs['next_cursor'] = next_cursor
-        result = cloudinary.api.resources(**kwargs)
+            search = search.next_cursor(next_cursor)
+        
+        result = search.execute()
+        resources = result.get('resources', [])
         return {
-            'resources': _augment_resources(result.get('resources', []), resource_type),
+            'resources': _augment_resources(resources, resource_type),
             'next_cursor': result.get('next_cursor') or '',
             'total_count': int(result.get('total_count') or 0),
             'error': None,
         }
     except Exception as exc:
-        logger.warning('Cloudinary list error: %s', exc)
-        return {'resources': [], 'next_cursor': '', 'total_count': 0, 'error': str(exc)}
+        logger.warning('Cloudinary search error, fallback to resources API: %s', exc)
+        try:
+            kwargs = {'resource_type': resource_type, 'max_results': per_page}
+            if prefix:
+                kwargs['prefix'] = prefix
+            if next_cursor:
+                kwargs['next_cursor'] = next_cursor
+            result = cloudinary.api.resources(**kwargs)
+            return {
+                'resources': _augment_resources(result.get('resources', []), resource_type),
+                'next_cursor': result.get('next_cursor') or '',
+                'total_count': int(result.get('total_count') or 0),
+                'error': None,
+            }
+        except Exception as exc2:
+            logger.warning('Cloudinary list error: %s', exc2)
+            return {'resources': [], 'next_cursor': '', 'total_count': 0, 'error': str(exc2)}
 
 
 def delete_resources(public_ids, resource_type='image'):

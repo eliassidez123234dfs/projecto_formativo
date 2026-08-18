@@ -47,7 +47,7 @@ class ContactoViewSet(viewsets.ModelViewSet):
         if self.request.user and self.request.user.is_authenticated:
             # Admin puede ver todos
             if hasattr(self.request.user, 'rol') and self.request.user.rol == 'Administrador':
-                return Contacto.objects.all()
+                return Contacto.objects.all().order_by('-fecha_envio')
         # Otros usuarios no pueden listar
         return Contacto.objects.none()
     

@@ -123,7 +123,7 @@ export default function AdminModel3D() {
   ]
 
   return (
-    <AdminLayout title="Modelos 3D" subtitle="Administra los modelos 3D y diseños creados">
+    <AdminLayout title="Diseños 3D" subtitle="Administra los modelos 3D y diseños creados">
       <div className="admin-toolbar">
         <div className="admin-toolbar-left" />
         <div className="admin-toolbar-right">

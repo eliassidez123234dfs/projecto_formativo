@@ -114,6 +114,39 @@ export default function AdminCloudinary() {
     loadPage(page)
   }
 
+  const getPageNumbers = () => {
+    if (totalPages <= 10) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    const pages = []
+    pages.push(1)
+
+    let start = Math.max(2, currentPage - 2)
+    let end = Math.min(totalPages - 1, currentPage + 2)
+
+    if (currentPage <= 4) {
+      end = Math.min(totalPages - 1, 6)
+    } else if (currentPage >= totalPages - 3) {
+      start = Math.max(2, totalPages - 5)
+    }
+
+    if (start > 2) {
+      pages.push('ellipsis-start')
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+
+    if (end < totalPages - 1) {
+      pages.push('ellipsis-end')
+    }
+
+    pages.push(totalPages)
+    return pages
+  }
+
   return (
     <AdminLayout
       title="Gestor Cloudinary"
@@ -228,7 +261,7 @@ export default function AdminCloudinary() {
             </div>
           )}
 
-          {/* Paginación con páginas y cursores */}
+          {/* Paginación dinamicamente calculada y bidireccional */}
           {totalPages > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
               <button
@@ -239,18 +272,27 @@ export default function AdminCloudinary() {
                 Anterior
               </button>
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
-                  <button
-                    key={page}
-                    className={`btn btn-sm ${page === currentPage ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => goToPage(page)}
-                    disabled={loading}
-                    aria-current={page === currentPage ? 'page' : undefined}
-                  >
-                    {page}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {getPageNumbers().map(p => {
+                  if (typeof p === 'string') {
+                    return (
+                      <span key={p} style={{ padding: '0 4px', color: 'var(--color-gray-500)', fontSize: 14 }}>
+                        ...
+                      </span>
+                    )
+                  }
+                  return (
+                    <button
+                      key={p}
+                      className={`btn btn-sm ${p === currentPage ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => goToPage(p)}
+                      disabled={loading}
+                      aria-current={p === currentPage ? 'page' : undefined}
+                    >
+                      {p}
+                    </button>
+                  )
+                })}
               </div>
 
               <button
@@ -261,8 +303,8 @@ export default function AdminCloudinary() {
                 Siguiente
               </button>
 
-              <span className="pagination-info" style={{ marginLeft: 'auto' }}>
-                {resources.length} recursos · {totalCount} totales · página {currentPage} de {totalPages}
+              <span className="pagination-info" style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-gray-600)' }}>
+                {resources.length} recursos mostrados · {totalCount} totales · página {currentPage} de {totalPages}
               </span>
             </div>
           )}

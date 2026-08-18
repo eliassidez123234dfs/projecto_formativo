@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useSnapshot } from "valtio";
 
 import state from "../store";
-import { download } from "../assets";
 import { reader, uploadCanvasToCloudinary, createModel3D } from "../config/helpers";
 import { EditorTabs, FilterTabs, DecalTypes } from "../config/constants";
 import { fadeAnimation, slideAnimation } from "../config/motion";
@@ -21,6 +20,7 @@ const Customizer = ({ onOrderCreated }) => {
   const [cloudinaryUrl, setCloudinaryUrl] = useState("");
   const [cloudinaryStatus, setCloudinaryStatus] = useState("");
   const [isUploadingToCloudinary, setIsUploadingToCloudinary] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Función para cambiar tamaño
   const handleScale = (amount) => {
@@ -104,6 +104,7 @@ const Customizer = ({ onOrderCreated }) => {
             ))}
             <button
               className="download-btn"
+              title="Enviar diseño"
               onClick={async () => {
                 if (isUploadingToCloudinary) return;
                 setCloudinaryStatus("Subiendo a Cloudinary...");
@@ -127,8 +128,10 @@ const Customizer = ({ onOrderCreated }) => {
                       is_approved: false,
                     });
                     setCloudinaryStatus("Guardado en Models3D: id " + (saved.id || "(sin id)"));
+                    setShowSuccessModal(true);
                   } catch (backendError) {
                     setCloudinaryStatus(backendError.message || "Error guardando en Models3D");
+                    setShowSuccessModal(true);
                   }
                 } catch (error) {
                   setCloudinaryStatus(error.message || "Error al subir a Cloudinary");
@@ -138,22 +141,52 @@ const Customizer = ({ onOrderCreated }) => {
               }}
               disabled={isUploadingToCloudinary}
             >
-              <img src={download} alt="upload" className="w-3/5 h-3/5 object-contain" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3/5 h-3/5">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             </button>
           </motion.div>
-          {cloudinaryUrl && (
-            <div className="mt-4 rounded-2xl bg-slate-900/90 p-4 text-xs text-slate-200">
-              <p className="font-semibold text-slate-100">Cloudinary URL</p>
-              <a href={cloudinaryUrl} target="_blank" rel="noreferrer" className="break-all text-cyan-300">
-                {cloudinaryUrl}
-              </a>
-            </div>
-          )}
-          {cloudinaryStatus && !cloudinaryUrl && (
-            <div className="mt-4 rounded-2xl bg-slate-900/90 p-4 text-xs text-slate-200">
-              {cloudinaryStatus}
-            </div>
-          )}
+
+          {/* Modal / Notificación Superior Izquierda */}
+          <AnimatePresence>
+            {showSuccessModal && (
+              <motion.div
+                initial={{ opacity: 0, x: -50, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -50, scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className="fixed top-4 left-4 z-50 max-w-sm rounded-2xl p-4 shadow-2xl glassmorphism border border-emerald-500/40 bg-slate-900/90 text-white backdrop-blur-md"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg">
+                    ✓
+                  </div>
+                  <div className="flex-1 pr-1">
+                    <h4 className="text-sm font-bold text-emerald-400">Diseño enviado satisfactoriamente</h4>
+                    <p className="text-xs text-slate-300 mt-1">El diseño 3D ha sido subido y guardado correctamente.</p>
+                    {cloudinaryUrl && (
+                      <a
+                        href={cloudinaryUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block text-[11px] text-cyan-300 hover:underline mt-2 break-all"
+                      >
+                        Ver en Cloudinary →
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowSuccessModal(false)}
+                    className="text-slate-400 hover:text-white text-lg font-bold leading-none px-1 py-0.5 rounded"
+                    title="Cerrar"
+                  >
+                    ×
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>
