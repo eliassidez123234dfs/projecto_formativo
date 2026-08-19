@@ -19,7 +19,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 # 4. Configurar variables de entorno
-# Editar backend/.env con los valores correspondientes
+# Copiar .env.example a .env en la RAÍZ del proyecto y completar los valores
 
 # 5. Ejecutar migraciones
 python manage.py makemigrations # solo la primera vez
@@ -48,9 +48,9 @@ cd frontend
 npm install
 npm install-scripts approve --all
 
-# 3. Configurar variables de entorn o
-# Editar frontend/.env si es necesario
-# VITE_API_URL=http://localhost:8000/api/
+# 3. Configurar variables de entorno
+# El frontend lee el .env de la RAÍZ del proyecto (configurado en vite.config.js con envDir)
+# No hace falta frontend/.env
 
 # 4. Iniciar servidor de desarrollo
 npm run dev -- --host
@@ -65,7 +65,7 @@ El frontend estara disponible en: `http://127.0.0.1:5173/`
 cd microservices/Tshirt3D
 
 # 2. Configurar variables de entorno
-# Crea un archivo `.env` en la carpeta `microservices/Tshirt3D` con estas variables si es necesario:
+# Copiar microservices/Tshirt3D/.env.example a microservices/Tshirt3D/.env (archivo propio del editor):
 # VITE_CLOUDINARY_CLOUD_NAME=tu_cloud_name
 # VITE_CLOUDINARY_UPLOAD_PRESET=tu_upload_preset
 # VITE_CLOUDINARY_URL=https://api.cloudinary.com/v1_1/tu_cloud_name/image/upload
