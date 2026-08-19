@@ -136,7 +136,6 @@ export default function AdminLayout({ children, title, subtitle }) {
     { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
     { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard },
     { label: 'Diseños 3D', href: '/admin-model3d', icon: Icons.Box },
-    { label: 'Editor 3D', href: 'http://localhost:5174/', icon: Icons.Box, external: true },
     { label: 'Cloudinary', href: '/admin-cloudinary', icon: Icons.Cloud },
   ]
 
@@ -154,7 +153,7 @@ export default function AdminLayout({ children, title, subtitle }) {
   }
 
   return (
-    <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '260px 1fr' : '60px 1fr' }}>
+    <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '220px 1fr' : '54px 1fr' }}>
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-text">

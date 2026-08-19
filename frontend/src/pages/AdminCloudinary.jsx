@@ -7,7 +7,6 @@ import { fetchCloudinaryResources, deleteCloudinaryResources } from '../services
 const TABS = [
   { value: 'image', label: 'Imágenes' },
   { value: 'raw', label: 'Archivos (3D)' },
-  { value: 'video', label: 'Videos' },
 ]
 
 export default function AdminCloudinary() {
@@ -150,7 +149,7 @@ export default function AdminCloudinary() {
   return (
     <AdminLayout
       title="Gestor Cloudinary"
-      subtitle="Todos los recursos de Cloudinary: imágenes, archivos 3D y videos (no solo los de camisas)"
+      subtitle="Gestiona las imágenes y archivos 3D almacenados en Cloudinary"
     >
       <div className="card">
         <div className="card-body">
@@ -228,52 +227,54 @@ export default function AdminCloudinary() {
           ) : resources.length === 0 ? (
             <div className="empty-state"><p>No hay recursos que coincidan con la búsqueda.</p></div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
-              {resources.map(res => (
-                <div
-                  key={res.public_id}
-                  style={{
-                    border: `1px solid ${res.is_referenced ? 'var(--color-success, #28a745)' : 'var(--color-gray-300)'}`,
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    background: 'var(--color-white, #fff)',
-                  }}
-                >
-                  <div style={{ height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5', overflow: 'hidden' }}>
-                    {resourceType === 'image' ? (
-                      <img src={res.thumbnail} alt={res.public_id} loading="lazy" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: 8 }}>
-                        <div style={{ fontSize: 30 }}>{resourceType === 'video' ? '🎬' : '📦'}</div>
-                        <div style={{ fontSize: 11 }}>{(res.format || '').toUpperCase()}</div>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ padding: '8px 10px', fontSize: 12 }}>
-                    <span
-                      className={res.is_referenced ? 'badge badge-activo' : 'badge badge-inactivo'}
-                    >
-                      {res.is_referenced ? 'En uso en BD' : 'Libre'}
-                    </span>
-                    <div style={{ wordBreak: 'break-all', fontFamily: 'monospace', fontSize: 11, color: '#555', marginTop: 4 }}>{res.public_id}</div>
-                    <div style={{ color: '#777' }}>
-                      {res.width}x{res.height} · {res.size_mb} MB · {res.format}
-                    </div>
-                    <label style={{ display: 'block', marginTop: 6, cursor: 'pointer' }}>
-                      <input type="checkbox" checked={selected.includes(res.public_id)} onChange={() => toggleSelect(res.public_id)} />
-                      <span style={{ marginLeft: 6 }}>Seleccionar</span>
-                    </label>
-                    <button
-                      className="btn btn-sm btn-ghost"
-                      style={{ color: 'var(--color-error)', marginTop: 4, width: '100%' }}
-                      onClick={() => handleDelete([res.public_id])}
-                      disabled={deleting}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </div>
-              ))}
+            <div style={{ overflowX: 'auto' }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 56 }}>Vista</th>
+                    <th>Public ID</th>
+                    <th>Dimensiones</th>
+                    <th>Tamaño</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resources.map(res => (
+                    <tr key={res.public_id}>
+                      <td>
+                        {resourceType === 'image' ? (
+                          <img src={res.thumbnail} alt={res.public_id} loading="lazy" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover', display: 'block' }} />
+                        ) : (
+                          <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: 6, background: 'var(--color-bg-tertiary)', color: 'var(--color-text-muted)', fontSize: 10 }}>
+                            <span aria-hidden="true" style={{ fontSize: 20 }}>📦</span>
+                            {(res.format || '').toUpperCase()}
+                          </span>
+                        )}
+                      </td>
+                      <td><code>{res.public_id}</code></td>
+                      <td>{res.width}x{res.height}</td>
+                      <td>{res.size_mb} MB · {res.format}</td>
+                      <td>
+                        <span className={`badge ${res.is_referenced ? 'badge-activo' : 'badge-inactivo'}`}>
+                          {res.is_referenced ? 'En uso en BD' : 'Libre'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            <input type="checkbox" checked={selected.includes(res.public_id)} onChange={() => toggleSelect(res.public_id)} />
+                            Seleccionar
+                          </label>
+                          <button className="btn btn-sm btn-ghost" type="button" style={{ color: 'var(--color-error)' }} onClick={() => handleDelete([res.public_id])} disabled={deleting}>
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
