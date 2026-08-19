@@ -29,19 +29,52 @@
 # ==============================================================================
 
 from django.db import models
+from django.contrib.auth.models import BaseUserManager
 from django.core.validators import EmailValidator
 from django.utils import timezone
 import secrets
 
 
 # ── Manager personalizado ──
-# Proporciona get_by_natural_key() para compatibilidad con el sistema de
-# autenticación de Django (auth.User). Permite que el modelo Usuario sea
-# usado como backend de autenticación con USERNAME_FIELD = 'usuario'.
-class UsuarioManager(models.Manager):
-    """Manager personalizado con get_by_natural_key para compatibilidad con el sistema de autenticación de Django."""
+# Proporciona create_user(), create_superuser() y get_by_natural_key()
+# para compatibilidad total con el comando `createsuperuser` y autenticación de Django.
+class UsuarioManager(BaseUserManager):
+    """Manager personalizado con create_user, create_superuser y get_by_natural_key para compatibilidad con la autenticación de Django."""
     def get_by_natural_key(self, username):
         return self.get(usuario=username)
+
+    def create_user(self, usuario, correo=None, password=None, contrasena=None, **extra_fields):
+        if not usuario:
+            raise ValueError('El campo usuario es obligatorio')
+        if not correo:
+            raise ValueError('El campo correo es obligatorio')
+        
+        pwd = password or contrasena
+        correo = self.normalize_email(correo)
+        extra_fields.setdefault('estado', 'Activo')
+        extra_fields.setdefault('rol', 'Usuario')
+        extra_fields.setdefault('email_verificado', True)
+        
+        user = self.model(
+            usuario=usuario,
+            correo=correo,
+            **extra_fields
+        )
+        if pwd:
+            user.contrasena = pwd
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, usuario, correo=None, password=None, contrasena=None, **extra_fields):
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('rol', 'Administrador')
+        extra_fields.setdefault('estado', 'Activo')
+        extra_fields.setdefault('email_verificado', True)
+
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('El superusuario debe tener is_superuser=True.')
+
+        return self.create_user(usuario, correo, password=password, contrasena=contrasena, **extra_fields)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,6 +156,7 @@ class Usuario(models.Model):
 
     # Django auth required attributes
     USERNAME_FIELD = 'usuario'
+    PASSWORD_FIELD = 'contrasena'
     REQUIRED_FIELDS = ['correo']
     is_active = True
 

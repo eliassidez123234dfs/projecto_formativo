@@ -12,6 +12,7 @@ USERS = [
         "rol": "Administrador",
         "estado": "Activo",
         "email_verificado": True,
+        "is_superuser": True,
     },
     {
         "usuario": "juanperez",
@@ -71,9 +72,13 @@ class Command(BaseCommand):
                     "rol": udata["rol"],
                     "estado": udata["estado"],
                     "email_verificado": udata["email_verificado"],
+                    "is_superuser": udata.get("is_superuser", False),
                     "fecha_registro": timezone.now(),
                 },
             )
+            if not created and udata.get("is_superuser"):
+                user.is_superuser = True
+                user.save()
             if created:
                 created_list.append((udata["usuario"], udata["correo"], udata["contrasena"], udata["rol"]))
 

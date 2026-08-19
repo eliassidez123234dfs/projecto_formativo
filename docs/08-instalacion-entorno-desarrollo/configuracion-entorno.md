@@ -30,7 +30,7 @@ python manage.py migrate
 python manage.py createsuperuser
 
 # 7. Poblar base de datos con datos de prueba (opcional)
-python manage.py seed_products
+python manage.py seed_all
 
 # 8. Iniciar servidor de desarrollo
 python manage.py runserver
@@ -110,6 +110,8 @@ python manage.py test
 
 # Seed de datos de prueba
 python manage.py seed_products
+python manage.py seed_users
+python manage.py seed_all # los dos comandos anteriores juntos hacen lo mismo que este
 
 # Verificar el proyecto
 python manage.py check
