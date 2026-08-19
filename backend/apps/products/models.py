@@ -17,6 +17,7 @@ from __future__ import annotations
 import decimal
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -75,6 +76,7 @@ class Product(models.Model):
 	approved_at = models.DateTimeField(null=True, blank=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
+	images: Any
 
 	class Meta:
 		ordering = ['-created_at']

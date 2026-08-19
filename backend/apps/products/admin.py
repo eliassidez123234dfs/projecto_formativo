@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.conf import settings
 
 from .models import Product, ProductAudit, ProductImage, Variant
 
@@ -25,11 +26,17 @@ class ProductAuditInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+	change_list_template = 'admin/products/product/change_list.html'
 	list_display = ('name', 'base_price', 'total_stock', 'is_active', 'is_approved', 'creator', 'created_at', 'updated_at')
 	list_filter = ('is_active', 'is_approved', 'created_at')
 	search_fields = ('name', 'description')
 	readonly_fields = ('creator', 'approved_by', 'approved_at')
 	inlines = [ProductImageInline, VariantInline, ProductAuditInline]
+
+	def changelist_view(self, request, extra_context=None):
+		extra_context = extra_context or {}
+		extra_context['FRONTEND_URL'] = settings.FRONTEND_URL
+		return super().changelist_view(request, extra_context=extra_context)
 
 	def save_model(self, request, obj, form, change):
 		before_data = {}

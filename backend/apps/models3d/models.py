@@ -98,6 +98,22 @@ class Model3D(models.Model):
         super().save(*args, **kwargs)
 
 
+class CloudinaryResource(models.Model):
+    """
+    Modelo "fantasma" (managed=False) usado únicamente para registrar en el
+    admin un apartado que lista y gestiona TODOS los recursos de Cloudinary
+    (imágenes, archivos 3D raw, videos) sin crear tabla en la base de datos.
+    El listado se construye en tiempo real contra la Admin API de Cloudinary.
+    """
+    public_id = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        managed = False
+        app_label = 'models3d'
+        verbose_name = 'Recurso Cloudinary'
+        verbose_name_plural = 'Gestor Cloudinary'
+
+
 class Model3DImage(models.Model):
     """Imagen de vista previa de un modelo 3D, almacenada en Cloudinary.
     

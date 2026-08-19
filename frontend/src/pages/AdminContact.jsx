@@ -59,6 +59,7 @@ export default function AdminContact() {
     { value: stats.total - stats.unread, label: 'Leídos', color: 'success' },
   ]
 
+  console.log('MENSAJE SELECCIONADO: ', viewMsg)
   return (
     <AdminLayout title="Contacto" subtitle="Mensajes recibidos del formulario de contacto">
       {modal && (
@@ -94,6 +95,7 @@ export default function AdminContact() {
         ) : (
           <>
             <table className="admin-table">
+
               <thead>
                 <tr>
                   <th>ID</th>
@@ -105,6 +107,7 @@ export default function AdminContact() {
                   <th>Acciones</th>
                 </tr>
               </thead>
+
               <tbody>
                 {messages.map(m => (
                   <tr key={m.id}>
@@ -120,7 +123,9 @@ export default function AdminContact() {
                     <td>{m.fecha_envio ? new Date(m.fecha_envio).toLocaleDateString() : '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>
+
                         <button className="btn btn-sm btn-ghost" onClick={() => setViewMsg(m)}>Ver</button>
+
                         {!m.leido && (
                           <button className="btn btn-sm btn-ghost" onClick={() => marcarLeido(m.id)}>
                             Marcar leído

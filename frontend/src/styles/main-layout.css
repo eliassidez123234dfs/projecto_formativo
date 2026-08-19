@@ -30,9 +30,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 20px 16px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  min-height: 72px;
+  min-height: 60px;
 }
 
 .sidebar-brand-icon {
@@ -72,7 +72,7 @@
 
 .sidebar-nav {
   flex: 1;
-  padding: 12px 8px;
+  padding: 8px 6px;
   overflow-y: auto;
 }
 
@@ -81,7 +81,7 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   color: rgba(255, 255, 255, 0.25);
-  padding: 16px 12px 6px;
+  padding: 10px 10px 4px;
   font-weight: 600;
 }
 
@@ -92,14 +92,14 @@
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 9px;
+  padding: 7px 10px;
   margin-bottom: 2px;
   color: rgba(255, 255, 255, 0.55);
   text-decoration: none;
   border-radius: var(--radius-lg);
   transition: all var(--transition-fast);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   border-left: 2px solid transparent;
   cursor: pointer;
@@ -118,8 +118,8 @@
 }
 
 .nav-item-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -128,13 +128,13 @@
 }
 
 .nav-item-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 .sidebar.collapsed .nav-item {
   justify-content: center;
-  padding: 10px 8px;
+  padding: 8px 6px;
 }
 
 .sidebar.collapsed .nav-item-icon {
@@ -152,7 +152,7 @@
 }
 
 .sidebar-footer {
-  padding: 12px;
+  padding: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -186,14 +186,14 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 8px;
+  padding: 5px;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   border-radius: var(--radius-lg);
   transition: all var(--transition-fast);
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .sidebar-toggle-btn:hover {
@@ -202,15 +202,15 @@
 }
 
 .sidebar.collapsed .sidebar-toggle-btn {
-  width: 40px;
-  margin: 0 auto 8px;
+  width: 36px;
+  margin: 0 auto 5px;
 }
 
 .sidebar-user {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px;
+  padding: 6px;
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: background var(--transition-fast);

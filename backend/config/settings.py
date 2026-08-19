@@ -27,6 +27,7 @@
 # =============================================================================
 
 from pathlib import Path
+from typing import Any
 import os
 import sys
 
@@ -36,7 +37,7 @@ import sys
 # evitando datos sensibles en el repositorio.
 import environ
 
-env = environ.Env()
+env: Any = environ.Env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 environ.Env.read_env(BASE_DIR.parent / '.env')
@@ -445,6 +446,9 @@ CORS_ALLOWED_ORIGINS = env.list(
         'http://localhost:5174',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://192.168.1.93:5173',
+        'http://192.168.137.7:5173',
     ]
 )
 CORS_ALLOW_CREDENTIALS = True
@@ -489,18 +493,26 @@ BACKEND_URL = env('BACKEND_URL', default='http://localhost:8000')
 
 # =============================================================================
 #  CORREO ELECTRÓNICO — EmailService
-#  En desarrollo (sin EMAIL_HOST_USER) los correos se imprimen en consola
-#  (EmailBackend=console). En producción se usa SMTP con TLS.
+#  Soporta EMAIL_BACKEND=console|smtp o la clase Django completa en .env.
 #  Usado por EmailService (services/email_service.py) para:
 #  - Verificación de email al registrarse (RF-003)
 #  - Recuperación de contraseña (RF-009)
 #  - Notificaciones de administración (RF-018, RF-023)
 #  - Notificaciones de contacto (RF-031)
 # =============================================================================
-if DEBUG and not env('EMAIL_HOST_USER', default=''):
+_email_backend_env = env('EMAIL_BACKEND', default='').strip()
+if _email_backend_env.lower() == 'console':
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+elif _email_backend_env.lower() == 'smtp':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+elif _email_backend_env:
+    EMAIL_BACKEND = _email_backend_env
 else:
-    EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+    if env('EMAIL_HOST_USER', default=''):
+        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    else:
+        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
@@ -550,11 +562,25 @@ PASSWORD_REQUIRE_SPECIAL = True
 #  Sin esta configuración, Django rechazaría solicitudes POST del frontend
 #  con error 403 CSRF. Incluye IPs locales de desarrollo y puertos Vite/React.
 # =============================================================================
+CORS_ORIGIN_WHITELIST = env.list(
+    'CORS_ORIGIN_WHITELIST',
+    default=[
+        'http://127.0.0.1:5173',
+        'http://localhost:5173',
+        'http://127.0.0.1:5174',
+        'http://localhost:5174',
+        'http://192.168.1.93:5173',
+        'http://192.168.137.7:5173',
+    ]
+)
+
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
     default=[
         'http://127.0.0.1:5173',
         'http://localhost:5173',
+        'http://127.0.0.1:5174',
+        'http://localhost:5174',
         'http://192.168.1.93:5173',
         'http://192.168.137.7:5173',
     ]

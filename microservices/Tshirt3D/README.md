@@ -69,7 +69,7 @@ Desde `microservices/Tshirt3D`:
 npm run dev
 ```
 
-Abre el navegador en la URL que muestre Vite, normalmente `http://127.0.0.1:5173/`.
+Abre el navegador en la URL que muestre Vite, normalmente `http://127.0.0.1:5174/`.
 
 ## Flujo de uso
 

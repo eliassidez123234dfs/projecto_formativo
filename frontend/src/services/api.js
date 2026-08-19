@@ -540,7 +540,16 @@ export const fetchModels3D = async (params = {}) => {
   return response.data;
 };
 
-/** Crea un modelo 3D (admin). */
+export const fetchModel3DList = async () => {
+  const response = await api.get('models3d/models/');
+  return response.data;
+};
+
+export const fetchModel3D = async (id) => {
+  const response = await api.get(`models3d/models/${id}/`);
+  return response.data;
+};
+
 export const createModel3D = async (data) => {
   const response = await api.post('models3d/models/', data);
   return response.data;
@@ -597,4 +606,18 @@ export const fetchProductImages = async (params = {}) => {
 /** Elimina una imagen de producto por su ID directo. */
 export const deleteProductImageById = async (id) => {
   await api.delete(`products/images/${id}/`);
+};
+
+// ─────────── GESTOR CLOUDINARY (admin) ───────────
+export const fetchCloudinaryResources = async (params = {}) => {
+  const response = await api.get('models3d/cloudinary/', { params });
+  return response.data;
+};
+
+export const deleteCloudinaryResources = async (publicIds, resourceType = 'image') => {
+  const response = await api.post('models3d/cloudinary/delete/', {
+    public_ids: publicIds,
+    resource_type: resourceType,
+  });
+  return response.data;
 };

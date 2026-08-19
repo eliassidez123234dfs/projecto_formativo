@@ -11,6 +11,20 @@ const Icons = {
       <rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   ),
+  Home: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 11.5 12 4l9 7.5" />
+      <path d="M5 10.5V20h14v-9.5" />
+      <path d="M9 20v-6h6v6" />
+    </svg>
+  ),
+  Store: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h16l-1 4H5L4 7Z" />
+      <path d="M6 11v8h12v-8" />
+      <path d="M9 15h6" />
+    </svg>
+  ),
   Users: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -84,6 +98,18 @@ const Icons = {
       <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
+  Box: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  ),
+  Cloud: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+    </svg>
+  ),
 }
 
 export default function AdminLayout({ children, title, subtitle }) {
@@ -100,6 +126,8 @@ export default function AdminLayout({ children, title, subtitle }) {
 
   const menuItems = [
     { label: 'Dashboard', href: '/admin', icon: Icons.Dashboard },
+    { label: 'Landing', href: '/', icon: Icons.Home },
+    { label: 'Catálogo', href: '/catalog', icon: Icons.Store },
     { label: 'Productos', href: '/admin-products', icon: Icons.Products },
     { label: 'Aprobaciones', href: '/admin-products/approval', icon: Icons.CheckCircle },
     { label: 'Usuarios', href: '/admin-users', icon: Icons.Users },
@@ -107,9 +135,13 @@ export default function AdminLayout({ children, title, subtitle }) {
     { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },
     { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
     { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard },
+    { label: 'Diseños 3D', href: '/admin-model3d', icon: Icons.Box },
+    { label: 'Editor 3D', href: 'http://127.0.0.1:5174/', icon: Icons.Box, external: true },
+    { label: 'Cloudinary', href: '/admin-cloudinary', icon: Icons.Cloud },
   ]
 
   const isActive = (href) => {
+    if (href.startsWith('http')) return false
     if (href === '/admin') return location.pathname === '/admin'
     return location.pathname.startsWith(href)
   }
@@ -122,7 +154,7 @@ export default function AdminLayout({ children, title, subtitle }) {
   }
 
   return (
-    <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '260px 1fr' : '60px 1fr' }}>
+    <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '220px 1fr' : '54px 1fr' }}>
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-text">
@@ -134,17 +166,36 @@ export default function AdminLayout({ children, title, subtitle }) {
         {sidebarOpen && <div className="nav-section-label">Navegación</div>}
 
         <nav className="sidebar-nav">
-          {menuItems.map(item => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={`nav-item ${isActive(item.href) ? 'active' : ''}`}
-              title={!sidebarOpen ? item.label : ''}
-            >
-              <span className="nav-item-icon"><item.icon /></span>
-              {sidebarOpen && <span className="nav-label">{item.label}</span>}
-            </Link>
-          ))}
+          {menuItems.map(item => {
+            const className = `nav-item ${isActive(item.href) ? 'active' : ''}`
+            const title = !sidebarOpen ? item.label : ''
+
+            if (item.external) {
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={className}
+                  title={title}
+                >
+                  <span className="nav-item-icon"><item.icon /></span>
+                  {sidebarOpen && <span className="nav-label">{item.label}</span>}
+                </a>
+              )
+            }
+
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={className}
+                title={title}
+              >
+                <span className="nav-item-icon"><item.icon /></span>
+                {sidebarOpen && <span className="nav-label">{item.label}</span>}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="sidebar-footer">

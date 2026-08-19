@@ -10,7 +10,7 @@ cd backend
 
 # 2. Crear y activar entorno virtual
 python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
+# source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate   # Windows
 
 # 3. Actualizar pip e instalar dependencias
@@ -19,10 +19,10 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 # 4. Configurar variables de entorno
-# Editar backend/.env con los valores correspondientes
+# Copiar .env.example a .env en la RAÍZ del proyecto y completar los valores
 
 # 5. Ejecutar migraciones
-# python manage.py makemigrations # solo la primera vez
+python manage.py makemigrations # solo la primera vez
 # python manage.py showmigrations
 python manage.py migrate
 
@@ -46,16 +46,43 @@ cd frontend
 
 # 2. Instalar dependencias
 npm install
+npm install-scripts approve --all
 
 # 3. Configurar variables de entorno
-# Editar frontend/.env si es necesario
-# VITE_API_URL=http://localhost:8000/api/
+# El frontend lee el .env de la RAÍZ del proyecto (configurado en vite.config.js con envDir)
+# No hace falta frontend/.env
 
 # 4. Iniciar servidor de desarrollo
 npm run dev -- --host
 ```
 
-El frontend estara disponible en: `http://localhost:5173/`
+El frontend estara disponible en: `http://127.0.0.1:5173/`
+
+### Microservicio de Editor 3D (Arquitectura propia, aunque usa mismo Backend)
+
+```bash
+# 1. Navegar al directorio del editor
+cd microservices/Tshirt3D
+
+# 2. Configurar variables de entorno
+# Copiar microservices/Tshirt3D/.env.example a microservices/Tshirt3D/.env (archivo propio del editor):
+# VITE_CLOUDINARY_CLOUD_NAME=tu_cloud_name
+# VITE_CLOUDINARY_UPLOAD_PRESET=tu_upload_preset
+# VITE_CLOUDINARY_URL=https://api.cloudinary.com/v1_1/tu_cloud_name/image/upload
+# VITE_MODELS3D_API_URL=http://127.0.0.1:8000/api/models3d/models/
+# VITE_API_URL=http://127.0.0.1:8000/api/orders/
+
+# 3. Backend (Django) ya deberia estar activado en otra terminal como se explico antes.
+
+# 2. Instalar dependencias
+npm install
+npm install-scripts approve --all
+
+# 4. Iniciar servidor de desarrollo
+npm run dev -- --host
+```
+
+Abre el navegador en la URL que muestre Vite, normalmente `http://127.0.0.1:5174/`
 
 ## 24.2 Ejecucion con Docker Compose
 
@@ -65,8 +92,9 @@ docker compose up --build
 ```
 
 Esto iniciara:
-- Backend en `http://localhost:8000/`
-- Frontend en `http://localhost:5173/`
+- Backend en `http://127.0.0.1:8000/`
+- Frontend en `http://127.0.0.1:5173/`
+- Microservicio Editor 3D en `http://127.0.0.1:5174/`
 
 ### Comandos utiles de Docker
 
@@ -147,10 +175,10 @@ Credenciales: las del superusuario creado con `createsuperuser`.
 
 | Componente | URL (desarrollo) |
 |-----------|------------------|
-| Frontend | `http://localhost:5173` |
-| Backend API | `http://localhost:8000/api/` |
-| Admin Django | `http://localhost:8000/admin/` |
-| Editor 3D | `http://localhost:5174` |
+| Frontend | `http://127.0.0.1:5173` |
+| Backend API | `http://127.0.0.1:8000/api/` |
+| Admin Django | `http://127.0.0.1:8000/admin/` |
+| Editor 3D | `http://127.0.0.1:5174` |
 
 ## 24.7 Base de Datos
 
@@ -195,3 +223,25 @@ Remove-Item -Path db.sqlite3 -Force
 python manage.py migrate
 python manage.py seed_all
 ```
+
+## 24.9 Configuracion de Envio de Correos (Consola vs SMTP Real)
+
+En `.env`, puedes alternar cómo se envían los enlaces de verificación de correo y recuperación de contraseña:
+
+### Modo 1: Enviar a la Terminal (Consola - Ideal para desarrollo)
+```env
+EMAIL_BACKEND=console
+```
+Los enlaces de verificación aparecerán directamente en la consola/terminal donde se ejecuta `python manage.py runserver`.
+
+### Modo 2: Enviar a Correos Reales (SMTP)
+```env
+EMAIL_BACKEND=smtp
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu_correo@gmail.com
+EMAIL_HOST_PASSWORD=tu_contraseña_de_aplicacion
+DEFAULT_FROM_EMAIL=tu_correo@gmail.com
+```
+Los correos se enviarán de verdad a la bandeja de entrada del usuario registrado.

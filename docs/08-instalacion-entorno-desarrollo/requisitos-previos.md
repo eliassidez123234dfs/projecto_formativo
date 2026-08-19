@@ -66,11 +66,12 @@ cp .env.example .env
 
 ## 23.5 Estructura de Archivos .env
 
-El proyecto utiliza multiples archivos `.env`:
+El proyecto utiliza **dos** archivos `.env`:
 
 | Archivo | Ubicacion | Proposito |
 |---------|-----------|-----------|
-| `.env` | Raiz del proyecto | Variables generales (Docker Compose) |
-| `backend/.env` | `backend/` | Variables especificas del backend |
-| `backend/config/.env` | `backend/config/` | Variables de configuracion de Django |
-| `frontend/.env` | `frontend/` | Variables del frontend (Vite) |
+| `.env` | Raiz del proyecto | **Unica fuente para backend + frontend + Docker Compose** (Django lee `BASE_DIR.parent/.env`) |
+| `microservices/Tshirt3D/.env` | Microservicio Editor 3D | Variables propias del editor (uso de rutas `/api/orders/` y `/api/models3d/models/`) |
+
+> No se necesita `.env` en `backend/` ni en `frontend/`: el backend lee el de la raiz
+> y el frontend (Vite) esta configurado con `envDir` apuntando a la raiz del proyecto.

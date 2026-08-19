@@ -1,12 +1,15 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from django.core.exceptions import ValidationError
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 from rest_framework import status
-from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.models3d.api.cloudinary_views import CloudinaryResourceAPIView
 from apps.models3d.models import Model3D, Model3DImage
 from apps.users.models import Usuario
 
@@ -32,7 +35,7 @@ def _get_tokens(user):
     return {"access": str(refresh.access_token), "refresh": str(refresh)}
 
 
-# ─── Model Tests ────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇ Model Tests ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 
 class Model3DModelTests(TestCase):
@@ -147,7 +150,7 @@ class Model3DImageModelTests(TestCase):
         self.assertFalse(Model3DImage.objects.filter(id=img_id).exists())
 
 
-# ─── API Tests ──────────────────────────────────────────────────────────────
+# ÔöÇÔöÇÔöÇ API Tests ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 
 class Model3DAPITests(TestCase):
@@ -271,3 +274,37 @@ class Model3DImageAPITests(TestCase):
         url = reverse(NS + "model3d-add-preview-image", args=[self.model.id])
         response = self.client.post(url, {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class CloudinaryResourceAPIViewTests(TestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.admin = Usuario.objects.create(
+            usuario='admin',
+            correo='admin@example.com',
+            contrasena='hashed-password',
+            estado='Activo',
+            rol='Administrador',
+        )
+
+    @patch('apps.models3d.api.cloudinary_views.list_resources')
+    def test_includes_total_count_for_pagination(self, mock_list_resources):
+        mock_list_resources.return_value = {
+            'resources': [
+                {'public_id': 'a', 'resource_type': 'image', 'bytes': 1024},
+                {'public_id': 'b', 'resource_type': 'image', 'bytes': 2048},
+            ],
+            'next_cursor': 'cursor-2',
+            'total_count': 25,
+            'error': None,
+        }
+
+        request = self.factory.get('/api/models3d/cloudinary/?resource_type=image&per_page=2')
+        force_authenticate(request, user=self.admin)
+
+        response = CloudinaryResourceAPIView.as_view()(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['total_count'], 25)
+        self.assertTrue(response.data['has_next'])
+        self.assertEqual(response.data['next_cursor'], 'cursor-2')
