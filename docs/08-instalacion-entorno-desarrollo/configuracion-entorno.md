@@ -92,8 +92,9 @@ docker compose up --build
 ```
 
 Esto iniciara:
-- Backend en `http://localhost:8000/`
+- Backend en `http://127.0.0.1:8000/`
 - Frontend en `http://127.0.0.1:5173/`
+- Microservicio Editor 3D en `http://127.0.0.1:5174/`
 
 ### Comandos utiles de Docker
 
@@ -220,3 +221,25 @@ Remove-Item -Path db.sqlite3 -Force
 python manage.py migrate
 python manage.py seed_all
 ```
+
+## 24.9 Configuracion de Envio de Correos (Consola vs SMTP Real)
+
+En `.env`, puedes alternar cómo se envían los enlaces de verificación de correo y recuperación de contraseña:
+
+### Modo 1: Enviar a la Terminal (Consola - Ideal para desarrollo)
+```env
+EMAIL_BACKEND=console
+```
+Los enlaces de verificación aparecerán directamente en la consola/terminal donde se ejecuta `python manage.py runserver`.
+
+### Modo 2: Enviar a Correos Reales (SMTP)
+```env
+EMAIL_BACKEND=smtp
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu_correo@gmail.com
+EMAIL_HOST_PASSWORD=tu_contraseña_de_aplicacion
+DEFAULT_FROM_EMAIL=tu_correo@gmail.com
+```
+Los correos se enviarán de verdad a la bandeja de entrada del usuario registrado.

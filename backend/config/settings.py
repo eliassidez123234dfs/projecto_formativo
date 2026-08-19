@@ -272,11 +272,20 @@ else:
 FRONTEND_URL = env('FRONTEND_URL', default='http://127.0.0.1:5173')
 BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8000')
 
-# Email configuration
-if DEBUG and not env('EMAIL_HOST_USER', default=''):
+# Email configuration (Soporta 'console', 'smtp' o clase completa en .env)
+_email_backend_env = env('EMAIL_BACKEND', default='').strip()
+if _email_backend_env.lower() == 'console':
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+elif _email_backend_env.lower() == 'smtp':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+elif _email_backend_env:
+    EMAIL_BACKEND = _email_backend_env
 else:
-    EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+    if env('EMAIL_HOST_USER', default=''):
+        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    else:
+        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)

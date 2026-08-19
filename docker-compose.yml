@@ -32,6 +32,22 @@ services:
     depends_on:
       - backend
 
+  tshirt3d:
+    build:
+      context: ./microservices/Tshirt3D
+      dockerfile: Dockerfile
+    container_name: proyecto_tshirt3d
+    working_dir: /app
+    volumes:
+      - ./microservices/Tshirt3D:/app
+      - /app/node_modules
+    ports:
+      - '5174:5174'
+    env_file:
+      - .env
+    depends_on:
+      - backend
+
 volumes:
   backend_media:
   backend_static:
