@@ -3,14 +3,17 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { buildApiUrl } from '../services/api'
 
-const ProfessionalTshirtSVG = () => (
-  <svg viewBox="0 0 200 180" width="200" height="180" xmlns="http://www.w3.org/2000/svg">
-    <path d="M30,40 L0,70 L30,80 L30,170 L170,170 L170,80 L200,70 L170,40 L140,20 Q100,35 60,20 Z"
-      fill="#DC2626" />
-    <path d="M60,20 Q100,50 140,20 L140,45 Q100,65 60,45 Z"
-      fill="#B91C1C" />
-    <rect x="88" y="85" width="24" height="24" rx="3" fill="rgba(255,255,255,0.25)" />
-  </svg>
+const ProfessionalTshirtImage = () => (
+  <img
+    src="/white-tshirt.png"
+    alt="Camiseta blanca personalizada"
+    style={{
+      width: 'min(84%, 420px)',
+      height: 'auto',
+      objectFit: 'contain',
+      filter: 'drop-shadow(0 0 8px rgba(45, 45, 45, 0.58)) drop-shadow(0 18px 18px rgba(90, 20, 30, 0.24))',
+    }}
+  />
 )
 
 const features = [
@@ -69,7 +72,9 @@ export const Landing = () => {
   return (
     <div style={{
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      minHeight: '100vh', background: 'var(--color-bg)', color: 'var(--color-text)',
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f8fafc 0%, #fff1f2 48%, #f1f5f9 100%)',
+      backgroundAttachment: 'fixed', color: 'var(--color-text)',
     }}>
       <Header />
 
@@ -78,7 +83,15 @@ export const Landing = () => {
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: 'clamp(24px, 4vw, 64px)', alignItems: 'center',
       }}>
-        <div>
+        <div style={{
+          padding: 'clamp(24px, 4vw, 40px)',
+          background: 'rgba(255, 255, 255, 0.52)',
+          border: '1px solid rgba(255, 255, 255, 0.8)',
+          borderRadius: 20,
+          boxShadow: '0 18px 40px rgba(30, 30, 30, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(18px) saturate(135%)',
+          WebkitBackdropFilter: 'blur(18px) saturate(135%)',
+        }}>
           <span style={{
             display: 'inline-block', padding: '4px 14px', background: 'var(--color-primary-light)',
             color: '#991b1b', borderRadius: 20, fontSize: 12, fontWeight: 600,
@@ -135,7 +148,7 @@ export const Landing = () => {
           alignItems: 'center', justifyContent: 'center',
           border: '1px solid var(--color-border)',
         }}>
-          <ProfessionalTshirtSVG />
+          <ProfessionalTshirtImage />
         </div>
       </section>
 
@@ -150,13 +163,15 @@ export const Landing = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
             {features.map((f, i) => (
               <div key={i} style={{
-                padding: 28, border: '1px solid var(--color-border)', borderRadius: 12,
-                background: 'var(--color-bg)', textAlign: 'center',
+                padding: 28, border: '1px solid rgba(255, 255, 255, 0.78)', borderRadius: 16,
+                background: 'rgba(255, 255, 255, 0.5)', textAlign: 'center',
                 transition: 'transform 0.2s, box-shadow 0.2s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                boxShadow: '0 14px 32px rgba(30, 30, 30, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
+                backdropFilter: 'blur(16px) saturate(130%)',
+                WebkitBackdropFilter: 'blur(16px) saturate(130%)',
               }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)' }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 18px 36px rgba(90, 20, 30, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9)' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 14px 32px rgba(30, 30, 30, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85)' }}
               >
                 <div style={{ marginBottom: 16, display: 'inline-flex' }}>{f.icon}</div>
                 <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{f.title}</h3>
@@ -179,15 +194,18 @@ export const Landing = () => {
             display: 'flex', justifyContent: 'center',
           }}>
             <form onSubmit={handleSubmitContacto} style={{
-              background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 12,
+              background: 'rgba(255, 255, 255, 0.52)', border: '1px solid rgba(255, 255, 255, 0.8)', borderRadius: 16,
               padding: 28, display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: 420,
+              boxShadow: '0 16px 36px rgba(30, 30, 30, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(18px) saturate(135%)',
+              WebkitBackdropFilter: 'blur(18px) saturate(135%)',
             }}>
               {message && <div style={{ padding: '10px 14px', background: 'var(--color-success-light)', color: '#065f46', borderRadius: 8, fontSize: 13 }}>{message}</div>}
               {errors.general && <div style={{ padding: '10px 14px', background: 'var(--color-error-light)', color: '#991b1b', borderRadius: 8, fontSize: 13 }}>{errors.general}</div>}
-              <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Tu nombre" required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
-              <input type="email" name="correo" value={formData.correo} onChange={handleChange} placeholder="tu@email.com" required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
-              <input type="text" name="asunto" value={formData.asunto} onChange={handleChange} placeholder="Asunto" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
-              <textarea name="mensaje" value={formData.mensaje} onChange={handleChange} placeholder="Tu mensaje..." rows={4} required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, outline: 'none', resize: 'vertical', minHeight: 100 }} />
+              <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Tu nombre" required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.85)', background: 'rgba(255, 255, 255, 0.42)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
+              <input type="email" name="correo" value={formData.correo} onChange={handleChange} placeholder="tu@email.com" required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.85)', background: 'rgba(255, 255, 255, 0.42)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
+              <input type="text" name="asunto" value={formData.asunto} onChange={handleChange} placeholder="Asunto" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.85)', background: 'rgba(255, 255, 255, 0.42)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
+              <textarea name="mensaje" value={formData.mensaje} onChange={handleChange} placeholder="Tu mensaje..." rows={4} required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.85)', background: 'rgba(255, 255, 255, 0.42)', color: 'var(--color-text)', fontSize: 14, outline: 'none', resize: 'vertical', minHeight: 100 }} />
               <button type="submit" disabled={loading} style={{
                 padding: '12px', borderRadius: 8, border: 'none',
                 background: loading ? 'var(--color-text-muted)' : 'var(--color-primary)',
@@ -204,7 +222,8 @@ export const Landing = () => {
 
       <section style={{
         padding: 'clamp(32px, 5vw, 64px) clamp(16px, 3vw, 24px)', textAlign: 'center',
-        borderTop: '1px solid var(--color-border)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.72)',
+        background: 'rgba(255, 255, 255, 0.2)',
       }}>
         <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 24px)', fontWeight: 800, marginBottom: 8 }}>
           ¿Listo para empezar?
@@ -220,7 +239,7 @@ export const Landing = () => {
         </Link>
       </section>
 
-      <footer style={{ background: '#0f172a', color: '#94a3b8', padding: '48px 24px 24px' }}>
+      <footer style={{ background: 'rgba(15, 23, 42, 0.88)', color: '#cbd5e1', padding: '48px 24px 24px', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 32, marginBottom: 32 }}>
             <div>
