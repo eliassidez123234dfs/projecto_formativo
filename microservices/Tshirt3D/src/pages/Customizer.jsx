@@ -66,7 +66,7 @@ const Customizer = ({ onOrderCreated }) => {
             type="button"
             className="editor-back-btn"
             onClick={() => {
-              window.location.href = 'http://localhost:5173/admin';
+              window.location.href = 'http://127.0.0.1:5173/admin';
             }}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}

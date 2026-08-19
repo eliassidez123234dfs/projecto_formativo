@@ -249,6 +249,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5174',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
     'http://192.168.1.93:5173',
     'http://192.168.137.7:5173',
 ]
@@ -268,8 +269,8 @@ else:
     CSRF_COOKIE_SECURE = True
 
 # URLs para enlaces en emails
-FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
-BACKEND_URL = env('BACKEND_URL', default='http://localhost:8000')
+FRONTEND_URL = env('FRONTEND_URL', default='http://127.0.0.1:5173')
+BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8000')
 
 # Email configuration
 if DEBUG and not env('EMAIL_HOST_USER', default=''):
@@ -301,6 +302,8 @@ CORS_ORIGIN_WHITELIST = env.list(
     default=[
         'http://127.0.0.1:5173',
         'http://localhost:5173',
+        'http://127.0.0.1:5174',
+        'http://localhost:5174',
         'http://192.168.1.93:5173',
         'http://192.168.137.7:5173',
     ]
@@ -312,6 +315,8 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=[
         'http://127.0.0.1:5173',
         'http://localhost:5173',
+        'http://127.0.0.1:5174',
+        'http://localhost:5174',
         'http://192.168.1.93:5173',
         'http://192.168.137.7:5173',
     ]

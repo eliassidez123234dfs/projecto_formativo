@@ -56,7 +56,7 @@ npm install-scripts approve --all
 npm run dev -- --host
 ```
 
-El frontend estara disponible en: `http://localhost:5173/`
+El frontend estara disponible en: `http://127.0.0.1:5173/`
 
 ### Microservicio de Editor 3D (Arquitectura propia, aunque usa mismo Backend)
 
@@ -93,7 +93,7 @@ docker compose up --build
 
 Esto iniciara:
 - Backend en `http://localhost:8000/`
-- Frontend en `http://localhost:5173/`
+- Frontend en `http://127.0.0.1:5173/`
 
 ### Comandos utiles de Docker
 
@@ -172,10 +172,10 @@ Credenciales: las del superusuario creado con `createsuperuser`.
 
 | Componente | URL (desarrollo) |
 |-----------|------------------|
-| Frontend | `http://localhost:5173` |
-| Backend API | `http://localhost:8000/api/` |
-| Admin Django | `http://localhost:8000/admin/` |
-| Editor 3D | `http://localhost:5174` |
+| Frontend | `http://127.0.0.1:5173` |
+| Backend API | `http://127.0.0.1:8000/api/` |
+| Admin Django | `http://127.0.0.1:8000/admin/` |
+| Editor 3D | `http://127.0.0.1:5174` |
 
 ## 24.7 Base de Datos
 

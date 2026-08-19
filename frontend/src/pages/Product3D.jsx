@@ -53,7 +53,7 @@ export const Product3D = () => {
   const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor);
 
   const openEditor = () => {
-    const base = 'http://localhost:5174/';
+    const base = 'http://127.0.0.1:5174/';
     const qs = new URLSearchParams({ mode });
     if (id) qs.set('productId', id);
     if (selectedVariant) {

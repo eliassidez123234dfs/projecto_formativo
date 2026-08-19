@@ -14,3 +14,9 @@ celery==5.4.0 ## para tareas asincrónicas (email)
 setuptools==78.1.0 ## necesario para pkg_resources en Python 3.12
 gunicorn==23.0.0 ## servidor WSGI para producción
 django-ratelimit==4.1.0 ## para limitar el número de requests por IP
+redis>=5.0.0 # Celery dependencies
+reportlab>=4.0.0 # PDF generation
+# smtplib is part of Python standard library
+# smtplib==4.1.0 # Email (SMTP) configuration
+# pdfkit dependencies
+# wkhtmltopdf (system dependency, not a Python package)
