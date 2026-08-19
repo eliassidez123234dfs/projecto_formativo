@@ -49,6 +49,9 @@ environ.Env.read_env(BASE_DIR.parent / '.env')
 #  ALLOWED_HOSTS: Lista blanca de dominios que pueden servir la app.
 # =============================================================================
 
+# ── MODO DE OPERACIÓN ──
+ENVIRONMENT = env('ENVIRONMENT', default='development')
+
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env.bool('DEBUG', default=False)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
@@ -146,21 +149,22 @@ INSTALLED_APPS = DJANGO_APPS + PROJECT_APPS + THIRD_PARTY_APPS
 
 # =============================================================================
 #  CACHÉ — REDIS (PRODUCCIÓN) / MEMORIA LOCAL (DESARROLLO)
-#  En producción se usa Redis como caché distribuida. Esto acelera:
-#  - Consultas frecuentes a la base de datos (caché de querysets)
-#  - Sesiones de usuario (cached_db: Redis + PostgreSQL para persistencia)
-#  - Almacenamiento temporal de datos de sesión
-#  En desarrollo se usa LocMemCache (caché en memoria del proceso).
-#  IGNORE_EXCEPTIONS=True evita que fallos de Redis incapaciten la app.
+#  Configuración flexible según SESSION_BACKEND:
+#  - 'redis': usa Redis como caché y sesiones
+#  - 'cached_db': caché Redis + persistencia en DB
+#  - 'django_db': solo base de datos Django (sin Redis)
 #
 #  RN-020: Tolerancia a fallos del sistema de caché.
 # =============================================================================
-if 'REDIS_URL' in env:
+SESSION_BACKEND = env('SESSION_BACKEND', default='django_db')
+
+if SESSION_BACKEND in ['redis', 'cached_db']:
+    REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
     INSTALLED_APPS += ['django_redis']
     CACHES = {
         'default': {
             'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': env('REDIS_URL'),
+            'LOCATION': REDIS_URL,
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
                 'IGNORE_EXCEPTIONS': True,
@@ -168,7 +172,10 @@ if 'REDIS_URL' in env:
             'KEY_PREFIX': 'projecto_formativo',
         }
     }
-    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+    if SESSION_BACKEND == 'cached_db':
+        SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+    else:
+        SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 else:
     CACHES = {
         'default': {
@@ -240,10 +247,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 AUTH_USER_MODEL = 'users.Usuario'
 
 # =============================================================================
-#  BASE DE DATOS PRINCIPAL — PostgreSQL (PROD) / SQLite (DEV)
-#  Si DATABASE_URL está definida (ej: Neon en producción), se usa PostgreSQL
-#  con ATOMIC_REQUESTS=True (cada vista dentro de una transacción).
-#  En desarrollo local se usa SQLite por simplicidad (sin servidor externo).
+#  BASE DE DATOS PRINCIPAL — Configuración flexible
+#  DB_TYPE: sqlite | postgres_local | postgres_docker | neon
+#   - 'sqlite': base de datos local SQLite (desarrollo rápido)
+#   - 'postgres_local': PostgreSQL instalado localmente
+#   - 'postgres_docker': PostgreSQL en contenedor Docker
+#   - 'neon': PostgreSQL en la nube (Neon)
 #
 #  REQUERIMIENTOS:
 #  - RI-001 a RI-019: Persistencia de usuarios, tokens, auditoría
@@ -252,17 +261,34 @@ AUTH_USER_MODEL = 'users.Usuario'
 #  - RI-031: Persistencia de modelos 3D
 #
 #  PATRÓN DE DISEÑO: Repository (acceso a DB via ORM Django).
-#  Django ORM implementa el patrón Active Record: cada modelo =
-#  una tabla SQL, cada instancia = una fila, cada método save/delete =
-#  operaciones CRUD.
 # =============================================================================
 
-if env('DATABASE_URL', default=''):
+DB_TYPE = env('DB_TYPE', default='sqlite')
+
+if DB_TYPE == 'sqlite':
     DATABASES = {
-        'default': env.db('DATABASE_URL'),
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-    DATABASES['default']['ATOMIC_REQUESTS'] = True
+elif DB_TYPE in ['postgres_local', 'postgres_docker', 'neon']:
+    DATABASE_URL = env('DATABASE_URL', default='')
+    if DATABASE_URL:
+        DATABASES = {
+            'default': env.db('DATABASE_URL'),
+        }
+        DATABASES['default']['ATOMIC_REQUESTS'] = True
+    else:
+        # Fallback a SQLite si no hay DATABASE_URL
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
 else:
+    # Fallback por defecto
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -524,6 +550,10 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
 
 # =============================================================================
 #  MONGODB — BASE DE DATOS NO RELACIONAL (POLYGLOT PERSISTENCE)
+#  Configuración flexible según USE_MONGODB:
+#  - 'true': habilita MongoDB para diseños 3D, logs, carritos
+#  - 'false': usa solo Django ORM (PostgreSQL/SQLite)
+#
 #  Complementa a PostgreSQL para datos no estructurados o con esquema variable:
 #  - saved_designs:  Configuraciones completas de diseños 3D (JSON anidado).
 #  - audit_logs:     Logs de eventos del sistema (Event Sourcing).
@@ -531,14 +561,14 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
 #  - community_templates: Plantillas 3D compartidas por la comunidad.
 #
 #  PATRÓN DE DISEÑO: Polyglot Persistence / CQRS parcial.
-#  - PostgreSQL: datos relacionales con integridad referencial (usuarios,
-#    productos, pedidos).
-#  - MongoDB: datos de alta volatilidad o estructura variable (diseños,
-#    carritos abandonados, logs masivos).
-#  - La conexión se maneja con patrón Singleton (mongodb.py líneas 18-57).
 # =============================================================================
-MONGODB_URI = env('MONGODB_URI', default='')
-MONGODB_NAME = env('MONGODB_NAME', default='projecto_formativo')
+USE_MONGODB = env.bool('USE_MONGODB', default=False)
+if USE_MONGODB:
+    MONGODB_URI = env('MONGODB_URI', default='mongodb://localhost:27017/projecto_formativo')
+    MONGODB_NAME = env('MONGODB_NAME', default='projecto_formativo')
+else:
+    MONGODB_URI = ''
+    MONGODB_NAME = ''
 
 # =============================================================================
 #  REGLAS DE CONTRASEÑA — RN-001
@@ -616,6 +646,10 @@ WOMPI_REDIRECT_URL = env('WOMPI_REDIRECT_URL', default=f'{FRONTEND_URL}/checkout
 
 # =============================================================================
 #  CLOUDINARY — ALMACENAMIENTO MULTIMEDIA EN LA NUBE (RF-042)
+#  Configuración flexible según USE_CLOUDINARY:
+#  - 'true': usa Cloudinary para almacenamiento multimedia
+#  - 'false': usa almacenamiento local
+#
 #  Reemplaza el almacenamiento local de archivos multimedia por Cloudinary:
 #  - Imágenes de productos (ProductImage)
 #  - Modelos 3D (Model3D) en formato GLB/GLTF
@@ -623,23 +657,19 @@ WOMPI_REDIRECT_URL = env('WOMPI_REDIRECT_URL', default=f'{FRONTEND_URL}/checkout
 #  
 #  Ventajas: CDN global, transformaciones de imagen (redimensionar, recortar),
 #  respaldo automático, URLs optimizadas para caché.
-#  
-#  Comportamiento condicional:
-#  - Si cloudinary está instalado y las credenciales son válidas:
-#    STORAGES["default"] = MediaCloudinaryStorage
-#  - Si no (falta de credenciales, entorno de test):
-#    Se usa el almacenamiento local (Django FileSystemStorage).
 # =============================================================================
+USE_CLOUDINARY = env.bool('USE_CLOUDINARY', default=True)
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default=''),
+    'API_KEY': env('CLOUDINARY_API_KEY', default=''),
+    'API_SECRET': env('CLOUDINARY_API_SECRET', default=''),
+}
+
 try:
     import cloudinary
     import cloudinary.uploader
     import cloudinary.api
-
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default=''),
-        'API_KEY': env('CLOUDINARY_API_KEY', default=''),
-        'API_SECRET': env('CLOUDINARY_API_SECRET', default=''),
-    }
 
     cloudinary.config(
         cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
@@ -648,7 +678,7 @@ try:
         secure=True,
     )
 
-    if CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY'] and 'test' not in sys.argv:
+    if USE_CLOUDINARY and CLOUDINARY_STORAGE['CLOUD_NAME'] and CLOUDINARY_STORAGE['API_KEY'] and 'test' not in sys.argv:
         STORAGES = {
             "default": {
                 "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
@@ -657,18 +687,98 @@ try:
                 "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
             },
         }
-
-    DATABASES['default']['ATOMIC_REQUESTS'] = True
+    else:
+        # Fallback a almacenamiento local
+        STORAGES = {
+            "default": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            },
+        }
 except ImportError:
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default=''),
-        'API_KEY': env('CLOUDINARY_API_KEY', default=''),
-        'API_SECRET': env('CLOUDINARY_API_SECRET', default=''),
+    # Fallback si cloudinary no está instalado
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
     }
 
 # -------------------- Logging / Monitoreo de errores --------------------
-LOGS_DIR = BASE_DIR / 'logs'
+# Configuración flexible según LOG_OUTPUT y LOG_LEVEL
+# LOG_OUTPUT: console | file | both
+# LOG_LEVEL: DEBUG | INFO | WARNING | ERROR | CRITICAL
+LOG_OUTPUT = env('LOG_OUTPUT', default='console')
+LOG_LEVEL = env('LOG_LEVEL', default='INFO')
+LOG_DIR = env('LOG_DIR', default='logs')
+
+LOGS_DIR = BASE_DIR / LOG_DIR
 LOGS_DIR.mkdir(exist_ok=True)
+
+# Configurar handlers según LOG_OUTPUT
+handlers_config = {
+    'console': {
+        'class': 'logging.StreamHandler',
+        'formatter': 'verbose',
+    },
+}
+
+if LOG_OUTPUT in ['file', 'both']:
+    handlers_config['app_file'] = {
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': str(LOGS_DIR / 'app.log'),
+        'maxBytes': 5 * 1024 * 1024,
+        'backupCount': 3,
+        'formatter': 'verbose',
+        'encoding': 'utf-8',
+    }
+    handlers_config['errors_file'] = {
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': str(LOGS_DIR / 'errors.log'),
+        'maxBytes': 5 * 1024 * 1024,
+        'backupCount': 5,
+        'formatter': 'verbose',
+        'encoding': 'utf-8',
+    }
+    handlers_config['requests_file'] = {
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': str(LOGS_DIR / 'requests.log'),
+        'maxBytes': 5 * 1024 * 1024,
+        'backupCount': 3,
+        'formatter': 'verbose',
+        'encoding': 'utf-8',
+    }
+    handlers_config['client_errors_file'] = {
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': str(LOGS_DIR / 'client_errors.log'),
+        'maxBytes': 5 * 1024 * 1024,
+        'backupCount': 5,
+        'formatter': 'verbose',
+        'encoding': 'utf-8',
+    }
+
+# Configurar loggers según LOG_OUTPUT
+django_handlers = []
+django_request_handlers = []
+django_server_handlers = []
+client_errors_handlers = []
+root_handlers = []
+
+if LOG_OUTPUT in ['console', 'both']:
+    django_handlers.append('console')
+    client_errors_handlers.append('console')
+    root_handlers.append('console')
+
+if LOG_OUTPUT in ['file', 'both']:
+    django_handlers.append('app_file')
+    django_request_handlers.extend(['errors_file', 'requests_file'])
+    django_server_handlers.append('requests_file')
+    client_errors_handlers.append('client_errors_file')
+    root_handlers.append('app_file')
 
 LOGGING = {
     'version': 1,
@@ -679,68 +789,31 @@ LOGGING = {
             'style': '{',
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'app_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOGS_DIR / 'app.log'),
-            'maxBytes': 5 * 1024 * 1024,
-            'backupCount': 3,
-            'formatter': 'verbose',
-            'encoding': 'utf-8',
-        },
-        'errors_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOGS_DIR / 'errors.log'),
-            'maxBytes': 5 * 1024 * 1024,
-            'backupCount': 5,
-            'formatter': 'verbose',
-            'encoding': 'utf-8',
-        },
-        'requests_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOGS_DIR / 'requests.log'),
-            'maxBytes': 5 * 1024 * 1024,
-            'backupCount': 3,
-            'formatter': 'verbose',
-            'encoding': 'utf-8',
-        },
-        'client_errors_file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOGS_DIR / 'client_errors.log'),
-            'maxBytes': 5 * 1024 * 1024,
-            'backupCount': 5,
-            'formatter': 'verbose',
-            'encoding': 'utf-8',
-        },
-    },
+    'handlers': handlers_config,
     'loggers': {
         'django': {
-            'handlers': ['console', 'app_file'],
-            'level': 'INFO',
+            'handlers': django_handlers if django_handlers else ['console'],
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['errors_file', 'requests_file'],
+            'handlers': django_request_handlers if django_request_handlers else ['console'],
             'level': 'WARNING',
             'propagate': False,
         },
         'django.server': {
-            'handlers': ['requests_file'],
-            'level': 'INFO',
+            'handlers': django_server_handlers if django_server_handlers else ['console'],
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         'client_errors': {
-            'handlers': ['client_errors_file', 'console'],
-            'level': 'INFO',
+            'handlers': client_errors_handlers if client_errors_handlers else ['console'],
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         '': {
-            'handlers': ['console', 'app_file'],
-            'level': 'INFO',
+            'handlers': root_handlers if root_handlers else ['console'],
+            'level': LOG_LEVEL,
         },
     },
 }
