@@ -39,7 +39,7 @@ class ContactoListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contacto
         fields = [
-            'id', 'nombre', 'correo', 'asunto', 'fecha_envio', 'leido'
+            'id', 'nombre', 'correo', 'asunto', 'mensaje', 'fecha_envio', 'leido'
         ]
 
 

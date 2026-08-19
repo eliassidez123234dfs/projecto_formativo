@@ -10,7 +10,7 @@ cd backend
 
 # 2. Crear y activar entorno virtual
 python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
+# source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate   # Windows
 
 # 3. Actualizar pip e instalar dependencias
@@ -22,7 +22,7 @@ pip install -r requirements.txt
 # Editar backend/.env con los valores correspondientes
 
 # 5. Ejecutar migraciones
-# python manage.py makemigrations # solo la primera vez
+python manage.py makemigrations # solo la primera vez
 # python manage.py showmigrations
 python manage.py migrate
 
