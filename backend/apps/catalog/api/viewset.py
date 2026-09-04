@@ -19,6 +19,7 @@ from rest_framework.response import Response
 
 from apps.catalog.models import CatalogSession, Category, PopularSearch, SearchHistory
 from apps.products.models import Product
+from config.cache_utils import cache_view_action
 
 from .serializers import (
     CatalogPagination,
@@ -40,7 +41,7 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
     Soporta búsqueda textual, filtros combinables, ordenación, paginación,
     registro de sesión, historial y búsquedas populares."""
     queryset = Product.objects.filter(is_active=True, is_approved=True).prefetch_related(
-        'images', 'variants', 'categories'
+        'images', 'variants', 'categories', 'categories__category', 'reviews'
     )
     pagination_class = CatalogPagination
 
@@ -148,6 +149,7 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = CatalogProductSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @cache_view_action(timeout=300, prefix='catalog:retrieve')
     def retrieve(self, request, *args, **kwargs):
         """Detalle de un producto del catálogo."""
         instance = self.get_object()
@@ -199,12 +201,14 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         }
 
     @action(detail=False, methods=['get'], url_path='filters')
+    @cache_view_action(timeout=600, prefix='catalog:filters')
     def filters(self, request):
         """Endpoint para obtener los filtros disponibles del catálogo
         sin incluir la lista de productos."""
         return Response(self.get_available_filters())
 
     @action(detail=False, methods=['get'], url_path='popular-searches')
+    @cache_view_action(timeout=600, prefix='catalog:popular')
     def popular_searches(self, request):
         """Retorna las búsquedas más populares (top 20) para sugerencias
         de autocompletado en el frontend."""
@@ -225,6 +229,7 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='featured')
+    @cache_view_action(timeout=300, prefix='catalog:featured')
     def featured(self, request):
         """Productos destacados: activos, aprobados, con stock e imágenes.
         Limitado a los 12 más recientes. Para sección "Destacados" del frontend."""
@@ -237,6 +242,7 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='deals')
+    @cache_view_action(timeout=300, prefix='catalog:deals')
     def deals(self, request):
         """Productos en oferta: los 8 más recientes con stock disponible.
         Para sección "Ofertas" del frontend."""
@@ -255,6 +261,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
 
     @action(detail=True, methods=['get'], url_path='products')
+    @cache_view_action(timeout=300, prefix='catalog:cat_products')
     def products(self, request, pk=None):
         """Retorna los productos activos y aprobados de una categoría específica.
         Acepta los mismos filtros que CatalogViewSet (min_price, max_price,
@@ -264,7 +271,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
             categories__category=category,
             is_active=True,
             is_approved=True
-        ).prefetch_related('images', 'variants')
+        ).prefetch_related('images', 'variants', 'categories__category', 'reviews')
         
         # ── Filtros adicionales sobre la categoría ──
         serializer = CatalogSearchSerializer(data=request.query_params)

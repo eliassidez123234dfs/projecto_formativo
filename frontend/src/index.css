@@ -99,8 +99,38 @@
 
 body {
   font-family: var(--font-body);
-  background: var(--white);
-  color: var(--black);
+  background: var(--color-bg, var(--white));
+  color: var(--color-text, var(--black));
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+/* =========================================
+   MODO OSCURO — Paleta de tienda (fondo/texto)
+   Sobrescribe las variables claras de :root para que
+   tarjetas, secciones y texto cambien correctamente.
+   ========================================= */
+[data-theme="dark"] {
+  --red:        #ef4444;
+  --red-dark:   #dc2626;
+  --red-light:  #450a0a;
+
+  --black:      #f5f5f5;   /* texto principal (no negro en oscuro) */
+  --gray-dark:  #e5e5e5;
+  --gray-mid:   #c9c9c9;
+  --gray-line:  #2e2e2e;   /* líneas / bordes */
+  --gray-soft:  #1c1c1c;   /* fondos suaves de tarjetas */
+  --gray-muted: #a3a3a3;   /* texto atenuado */
+  --white:      #111111;   /* fondo de página */
+
+  --color-gray-50:    #0e0e0e;
+  --color-gray-100:   #111111;
+  --color-gray-200:   #1c1c1c;
+  --color-gray-300:   #2c2c2c;
+  --color-gray-400:   #4a4a4a;
+  --color-gray-500:   #666666;
+  --color-gray-600:   #a3a3a3;
+  --color-gray-700:   #cfcfcf;
+  --color-gray-800:   #e5e5e5;
+  --color-gray-900:   #f5f5f5;
 }

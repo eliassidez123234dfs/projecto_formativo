@@ -27,7 +27,7 @@ export const AdminImages = () => {
   if (loading) return <div className="loading">Cargando imágenes...</div>
 
   return (
-    <MainLayout title="Imágenes Cloudinary" subtitle="Administra las imágenes de productos subidas a Cloudinary">
+    <AdminLayout title="Imágenes Cloudinary" subtitle="Administra las imágenes de productos subidas a Cloudinary">
     <div className="admin-images">
       <div className="content-header-inline">
         <h2 style={{ margin: 0, fontSize: 18 }}>Imágenes Cloudinary</h2>
@@ -103,6 +103,6 @@ export const AdminImages = () => {
         }
       `}</style>
     </div>
-    </MainLayout>
+    </AdminLayout>
   )
 }

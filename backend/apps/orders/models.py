@@ -1,4 +1,4 @@
-﻿"""
+"""
 Módulo de modelos para la gestión de pedidos.
 Define Order (ciclo de vida completo: pendiente → pagado → producción → enviado
 → entregado/cancelado), Invoice (facturación) y OrderItem (líneas de detalle

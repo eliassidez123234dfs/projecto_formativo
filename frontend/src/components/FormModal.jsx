@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import '../styles/form-modal.css'
 
 export default function FormModal({ isOpen, title, onClose, onSubmit, fields, loading = false, error = null }) {

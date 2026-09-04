@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { updateAdminUser } from '../services/api'
 import FormModal from './FormModal'
 

@@ -25,6 +25,13 @@
  */
 import axios from 'axios';
 import { logClientError } from '../utils/logger';
+import {
+  getAccessToken,
+  getCurrentUser,
+  getStoredRefreshToken,
+  setTokens,
+  clearAuth,
+} from './authService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/';
 export const buildApiUrl = (endpoint) => `${API_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
@@ -99,6 +106,14 @@ const sessionApi = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
+
+/**
+ * Cliente para operaciones de carrito.
+ * Reutiliza el cliente autenticado (JWT) para las operaciones de carrito,
+ * ya que el backend identifica el carrito por el usuario autenticado o
+ * por la cookie de sesión anónima.
+ */
+const cartClient = () => api;
 
 // Adjunta el JWT access token a cada petición saliente del cliente api
 api.interceptors.request.use((config) => {
@@ -475,7 +490,8 @@ export const fetchPaymentStatus = async (reference) => {
 /** Obtiene todas las reseñas de un producto. */
 export const fetchProductReviews = async (productId) => {
   const response = await publicApi.get('products/reviews/', { params: { product: productId } });
-  return response.data;
+  const data = response.data;
+  return Array.isArray(data) ? data : (data?.results || []);
 };
 
 /** Crea una nueva reseña de producto (solo usuarios autenticados). */

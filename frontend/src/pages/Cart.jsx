@@ -8,10 +8,8 @@
 //        resumen de totales; navegación a catálogo o checkout;
 //        modal Toast para feedback de operaciones
 // ---------------------------------------------------------------
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { Button } from '../components/Button';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { fetchProductDetail } from '../services/api';
 import { Header } from '../components/Header';
-import { Button } from '../components/Button';
-import { useCart } from '../context/CartContext';
+import { Button } from '../components/ui';
 import ErrorState from '../components/ErrorState';
 
 const EDITOR_URL = import.meta.env.VITE_3D_EDITOR_URL || 'http://localhost:5174'
@@ -12,19 +11,17 @@ const EDITOR_URL = import.meta.env.VITE_3D_EDITOR_URL || 'http://localhost:5174'
 export const Product3D = () => {
   const { id } = useParams();
   const { search } = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(search);
   const mode = params.get('mode') || 'view';
   const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
-  const { cart } = useCart();
 
   useEffect(() => {
     const loadProduct = async () => {
       try {
-        setLoading(true);
         const data = await fetchProductDetail(id);
         setProduct(data);
         const firstAvailable = data.variants?.find((v) => v.stock > 0);
@@ -34,12 +31,11 @@ export const Product3D = () => {
         }
       } catch (err) {
         setError(err);
-      } finally {
-        setLoading(false);
       }
     };
+    loadProduct();
+  }, [id]);
 
-  const editorUrl = `${EDITOR_URL}?mode=${mode}${id ? `&productId=${id}` : ''}`
   const iframeUrl = `${EDITOR_URL}/preview?productId=${id}`
 
   const sizes = [...new Set(product?.variants?.map(v => v.size) || [])];
@@ -67,7 +63,7 @@ export const Product3D = () => {
 
   return (
     <>
-      <Header cartCount={cart?.total_items || 0} />
+      <Header cartCount={0} />
       <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
         <Link to={`/product/${id}`} style={{ color: 'var(--color-red)', textDecoration: 'none', display: 'inline-block', marginBottom: '1rem' }}>
           ← Volver al producto
@@ -110,7 +106,7 @@ export const Product3D = () => {
             <Button size="lg" onClick={openEditor}>
               Abrir Editor 3D
             </Button>
-            <Button size="lg" variant="outline" onClick={() => window.location.href = '/catalog'}>
+            <Button size="lg" variant="outline" onClick={() => navigate('/catalog')}>
               Volver al catálogo
             </Button>
           </div>
@@ -120,21 +116,15 @@ export const Product3D = () => {
           </div>
         </div>
 
-        {error && <div className="alert alert-danger">{error}</div>}
+        <div style={{ width: '100%', height: 600, borderRadius: 12, overflow: 'hidden', border: '1px solid #ddd', marginTop: '1.5rem' }}>
+          <iframe src={iframeUrl} title="Editor 3D" width="100%" height="100%" style={{ border: 'none' }} />
+        </div>
 
-        {viewMode === '3d' ? (
-          <Product3DViewer height={480} />
-        ) : (
-          <div style={{ width: '100%', height: 600, borderRadius: 12, overflow: 'hidden', border: '1px solid #ddd' }}>
-            <iframe src={iframeUrl} title="Editor 3D" width="100%" height="100%" style={{ border: 'none' }} />
-          </div>
-        )}
-      </Card>
-
-      <div className="text-muted small">
-        <p className="mb-1">💡 El editor 3D completo debe ejecutarse en <code>microservices/Tshirt3D</code> con <code>npm run dev</code>.</p>
-        <p className="mb-0">🔧 Configura la URL en <code>VITE_3D_EDITOR_URL</code> (archivo <code>.env</code>).</p>
+        <div className="text-muted small">
+          <p className="mb-1">💡 El editor 3D completo debe ejecutarse en <code>microservices/Tshirt3D</code> con <code>npm run dev</code>.</p>
+          <p className="mb-0">🔧 Configura la URL en <code>VITE_3D_EDITOR_URL</code> (archivo <code>.env</code>).</p>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

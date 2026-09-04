@@ -12,7 +12,7 @@ export default class ErrorBoundary extends React.Component {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error, info) {
+  componentDidCatch(error, _info) {
     logClientError({ name: 'ErrorBoundary', message: error?.message || 'Error de página', status: null })
   }
 

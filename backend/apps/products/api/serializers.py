@@ -177,10 +177,19 @@ class ProductDetailSerializer(ProductListSerializer):
     total_reviews = serializers.SerializerMethodField()
 
     class Meta(ProductListSerializer.Meta):
-        fields = ProductListSerializer.Meta.fields + ['images', 'variants', 'related_products', 'publication_message']
+        fields = ProductListSerializer.Meta.fields + ['images', 'variants', 'related_products', 'publication_message', 'average_rating', 'total_reviews']
 
     def get_publication_message(self, obj):
         return 'Listo para publicar' if obj.can_be_published else 'Faltan imagen principal o variante con stock'
+
+    def get_average_rating(self, obj):
+        reviews = obj.reviews.all()
+        if not reviews:
+            return None
+        return round(sum(r.rating for r in reviews) / len(reviews), 1)
+
+    def get_total_reviews(self, obj):
+        return obj.reviews.count()
 
     def get_related_products(self, obj):
         related_ids = (

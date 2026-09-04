@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('landing', '0001_initial'),
+        ('landing', '0002_alter_contacto_asunto_alter_contacto_correo_and_more'),
     ]
 
     operations = [

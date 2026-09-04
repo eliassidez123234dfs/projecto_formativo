@@ -142,15 +142,17 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
                   <td>{p.images_count || 0}</td>
                   <td>{p.variants_count || 0}</td>
                   <td>
-                    <span className={`badge ${p.is_active ? 'badge-active' : 'badge-inactive'}`}>
-                      {p.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                    <span className={`badge ${p.is_approved ? 'badge-approved' : 'badge-pending'}`}>
-                      {p.is_approved ? 'Aprobado' : 'Pendiente'}
+                    <span className="status-cell">
+                      <span className={`badge ${p.is_active ? 'badge-active' : 'badge-inactive'}`}>
+                        {p.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                      <span className={`badge ${p.is_approved ? 'badge-approved' : 'badge-pending'}`}>
+                        {p.is_approved ? 'Aprobado' : 'Pendiente'}
+                      </span>
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <div className="action-buttons">
                       <Link to={`/admin-products/detail/${p.id}`} className="btn btn-sm btn-secondary">
                         Detalle
                       </Link>

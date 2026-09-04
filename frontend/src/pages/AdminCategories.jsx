@@ -100,8 +100,10 @@ export const AdminCategories = () => {
                 <td data-label="Productos">{cat.product_count ?? '—'}</td>
                 <td data-label="Activa">{cat.is_active ? '✓' : '✗'}</td>
                 <td data-label="Acciones">
-                  <button className="btn btn-sm btn-outline-primary me-1" onClick={() => handleEdit(cat)}>Editar</button>
-                  <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(cat.id)}>Eliminar</button>
+                  <div className="action-buttons">
+                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(cat)}>Editar</button>
+                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--color-error)' }} onClick={() => handleDelete(cat.id)}>Eliminar</button>
+                  </div>
                 </td>
               </tr>
             ))}

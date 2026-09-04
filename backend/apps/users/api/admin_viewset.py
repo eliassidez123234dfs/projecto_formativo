@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 # Importaciones del proyecto
 # ─────────────────────────────────────────────────────────
 from ..services.email_service import EmailService
+from ..tasks import send_welcome_email_async, send_admin_reset_email_async
 from ..models import (
     Usuario, Token_Verificacion, Log_Auditoria, Historial_Estado_Usuario
 )
@@ -339,9 +340,9 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
                 fecha_expiracion=fecha_expiracion
             )
             
-            # Enviar email con credenciales (RF-018)
+            # Enviar email con credenciales (RF-018) — asíncrono via Celery
             if contrasena_temporal:
-                EmailService.send_welcome_email(usuario, contrasena_temporal)
+                send_welcome_email_async.delay(usuario.id)
             else:
                 EmailService.send_verification_email(usuario, token)
             
@@ -602,8 +603,8 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             fecha_expiracion=fecha_expiracion
         )
         
-        # Enviar email
-        EmailService.send_admin_reset_email(usuario, contrasena_temporal)
+        # Enviar email — asíncrono via Celery
+        send_admin_reset_email_async.delay(usuario.id, contrasena_temporal)
         
         # Registrar en auditoría
         self._registrar_auditoria(

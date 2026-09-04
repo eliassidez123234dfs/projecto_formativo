@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { fetchProductDetail } from '../services/api';
+import { fetchProductDetail, fetchProductReviews, createReview, updateReview } from '../services/api';
+import { getCurrentUser } from '../services/authService';
+import { Header } from '../components/Header';
 import { useCart } from '../context/CartContext';
-import { Button } from '../components/Button';
+import { Button } from '../components/ui';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 import ErrorState from '../components/ErrorState';
@@ -32,6 +34,11 @@ export const ProductDetail = () => {
   const [adding, setAdding] = useState(false);
   const [mainImage, setMainImage] = useState(null);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewLoading, setReviewLoading] = useState(true);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const usuario = getCurrentUser();
 

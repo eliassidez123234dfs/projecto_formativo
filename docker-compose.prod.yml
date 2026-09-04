@@ -1,19 +1,25 @@
-version: '3.8'
+# =============================================================================
+#  docker-compose.prod.yml — RED Estampacion (Produccion)
+#  Seguridad: puertos de BD NO expuestos externamente, usuario no-root
+# =============================================================================
 
 services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+      dockerfile: Dockerfile.prod
+    expose:
+      - "8000"
     env_file:
       - .env
     environment:
       - DEBUG=False
+      - DB_TYPE=postgres_docker
+      - DATABASE_URL=postgres://proyecto_user:proyecto_pass@postgres:5432/projecto_formativo
     volumes:
       - media_data:/app/media
       - static_data:/app/static
+      - backend_logs:/app/logs
     command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
@@ -38,12 +44,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # NO exponer 6379 al exterior — solo accesible desde la red interna
+    expose:
+      - "6379"
+    command: redis-server --requirepass "${REDIS_PASSWORD:-changeme}"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,8 +61,10 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    ports:
-      - "5432:5432"
+    # NO exponer 5432 al exterior — solo accesible desde la red interna
+    # OWASP A05:2021 — Security Misconfiguration
+    expose:
+      - "5432"
     env_file:
       - .env
     environment:
@@ -64,7 +74,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -77,6 +87,7 @@ volumes:
   redis_data:
   media_data:
   static_data:
+  backend_logs:
 
 networks:
   app_network:

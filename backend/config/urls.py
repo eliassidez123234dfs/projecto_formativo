@@ -1,4 +1,4 @@
-﻿# =============================================================================
+# =============================================================================
 #  ARCHIVO: urls.py
 #  PROPÓSITO: Enrutamiento centralizado del proyecto "Red Estampación".
 #             Actúa como Front Controller / Router — todas las peticiones HTTP
@@ -203,11 +203,32 @@ def health_check(request):
     status_code = 200 if overall_status == 'ok' else 503
     return JsonResponse(data, status=status_code)
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  /api/me/ — Endpoint de perfil rápido para restoreSession() del frontend
+#  Retorna los datos del usuario autenticado en formato simple (sin campos
+#  de seguridad extra). Usado por authService.js al renovar el JWT.
+# ─────────────────────────────────────────────────────────────────────────────
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response as DRFResponse
+from rest_framework.decorators import api_view, permission_classes as pc
+
+@api_view(['GET'])
+@pc([IsAuthenticated])
+def me_view(request):
+    from apps.users.api.serializers import UsuarioSerializer
+    serializer = UsuarioSerializer(request.user)
+    return DRFResponse(serializer.data)
+
 urlpatterns = [
     # -------------------------------------------------------------------
     #  Health Check — Supervisión
     # -------------------------------------------------------------------
     path('api/health/', health_check, name='health-check'),
+
+    # -------------------------------------------------------------------
+    #  /api/me/ — Datos del usuario autenticado (restoreSession)
+    # -------------------------------------------------------------------
+    path('api/me/', me_view, name='me'),
 
     # -------------------------------------------------------------------
     #  Panel de Administración Django

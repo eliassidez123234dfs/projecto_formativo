@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Header } from '../components/Header'
+import { useNavigate, Link } from 'react-router-dom'
 import { updateMyProfile, changeMyPassword } from '../services/api'
+import { getCurrentUser } from '../services/authService'
 import '../styles/UserProfile.scss'
 
 // ---------------------------------------------------------------

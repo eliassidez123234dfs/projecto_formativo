@@ -239,3 +239,26 @@
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════
+   HEADER MODERNO (Header.jsx) — Responsive por media queries
+   La navegación de escritorio se oculta < 992px y el toggle
+   hamburguesa se muestra. Sin detección de overflow en JS.
+   ═══════════════════════════════════════ */
+.nav-desktop {
+  display: flex;
+}
+
+.mobile-menu-toggle {
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .nav-desktop {
+    display: none !important;
+  }
+
+  .mobile-menu-toggle {
+    display: block;
+  }
+}

@@ -43,38 +43,29 @@ class UsuarioManager(BaseUserManager):
     def get_by_natural_key(self, username):
         return self.get(usuario=username)
 
-    def create_user(self, usuario, correo=None, password=None, contrasena=None, **extra_fields):
+    def _create_user(self, usuario, correo, password=None, contrasena=None, **extra_fields):
         if not usuario:
             raise ValueError('El campo usuario es obligatorio')
         if not correo:
             raise ValueError('El campo correo es obligatorio')
-        
         pwd = password or contrasena
-        correo = self.normalize_email(correo)
-        extra_fields.setdefault('estado', 'Activo')
+        usuario_obj = self.model(usuario=usuario, correo=correo, contrasena=pwd, **extra_fields)
+        usuario_obj.save(using=self._db)
+        return usuario_obj
+
+    def create_user(self, usuario, correo=None, password=None, contrasena=None, **extra_fields):
+        extra_fields.setdefault('estado', 'Inactivo')
         extra_fields.setdefault('rol', 'Usuario')
-        extra_fields.setdefault('email_verificado', True)
-        
-        user = self.model(
-            usuario=usuario,
-            correo=correo,
-            **extra_fields
-        )
-        if pwd:
-            user.contrasena = pwd
-        user.save(using=self._db)
-        return user
+        extra_fields.setdefault('is_superuser', False)
+        extra_fields.setdefault('email_verificado', False)
+        return self._create_user(usuario, correo, password=password, contrasena=contrasena, **extra_fields)
 
     def create_superuser(self, usuario, correo=None, password=None, contrasena=None, **extra_fields):
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('rol', 'Administrador')
         extra_fields.setdefault('estado', 'Activo')
+        extra_fields.setdefault('rol', 'Administrador')
+        extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('email_verificado', True)
-
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('El superusuario debe tener is_superuser=True.')
-
-        return self.create_user(usuario, correo, password=password, contrasena=contrasena, **extra_fields)
+        return self._create_user(usuario, correo, password=password, contrasena=contrasena, **extra_fields)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -192,7 +192,7 @@ export default function AdminModel3D() {
                     </td>
                     <td style={{ fontSize: 13 }}>{new Date(item.updated_at).toLocaleDateString()}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <div className="action-buttons">
                         <button className="btn btn-sm btn-secondary" onClick={() => openEdit(item)}>Editar</button>
                         <button className="btn btn-sm btn-ghost" style={{ color: 'var(--color-error)' }} onClick={() => handleDelete(item)}>Eliminar</button>
                       </div>
