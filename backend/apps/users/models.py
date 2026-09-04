@@ -1,7 +1,31 @@
 from django.db import models
 from django.core.validators import EmailValidator
+from django.contrib.auth.hashers import check_password, make_password
 from django.utils import timezone
 import secrets
+
+
+class UsuarioManager(models.Manager):
+    def get_by_natural_key(self, correo):
+        return self.get(correo__iexact=correo)
+
+    def create_user(self, correo, usuario, password=None, **extra_fields):
+        if not correo:
+            raise ValueError('El correo es obligatorio.')
+        if not usuario:
+            raise ValueError('El nombre de usuario es obligatorio.')
+
+        user = self.model(correo=correo.lower(), usuario=usuario, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, correo, usuario, password=None, **extra_fields):
+        extra_fields.setdefault('rol', 'Administrador')
+        extra_fields.setdefault('estado', 'Activo')
+        extra_fields.setdefault('email_verificado', True)
+        return self.create_user(correo, usuario, password, **extra_fields)
+
 
 # Clase de usuarios para el modelo de la base de datos del usuario bien estructurado
 # Patron Active Record
@@ -46,6 +70,7 @@ class Usuario(models.Model):
     # Campos requeridos por Django para AUTH_USER_MODEL
     USERNAME_FIELD = 'correo'
     REQUIRED_FIELDS = ['usuario']
+    objects = UsuarioManager()
 
     # clase meta para poder poner indexes y mejorar la busquedad de lo siguiente de acuerdo a la matrix
     class Meta:
@@ -64,6 +89,20 @@ class Usuario(models.Model):
     @property
     def is_anonymous(self):
         return False
+
+    @property
+    def is_staff(self):
+        return self.rol == 'Administrador' and not self.eliminado
+
+    @property
+    def is_superuser(self):
+        return self.is_staff
+
+    def set_password(self, raw_password):
+        self.contrasena = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.contrasena)
 
     # funcion para mostrar en el backend los nombres de usuario y los de correo
     def __str__(self):

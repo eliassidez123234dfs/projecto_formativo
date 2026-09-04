@@ -132,6 +132,52 @@
   min-width: 120px;
 }
 
+.publish-confirm-modal {
+  border-top: 4px solid #2563eb;
+}
+
+.publish-confirm-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius-lg);
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.publish-confirm-alert strong {
+  display: block;
+  font-size: 15px;
+  color: #1e3a8a;
+}
+
+.publish-confirm-alert p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #1e40af;
+}
+
+.publish-confirm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.publish-confirm-action {
+  background: #2563eb;
+}
+
 @media (max-width: 480px) {
   .form-modal-backdrop {
     padding: 0;

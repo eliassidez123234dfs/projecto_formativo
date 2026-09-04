@@ -4,6 +4,7 @@ import InfoModal, { formatChecklist } from './InfoModal'
 import Pagination from './Pagination'
 import Spinner from './Spinner'
 import ErrorState from './ErrorState'
+import '../styles/form-modal.css'
 import { formatCOP } from '../utils/format'
 import { fetchProducts, fetchProductChecklist, publishProduct } from '../services/api'
 
@@ -52,12 +53,18 @@ async function safeChecklist(productId, onResult) {
 export default function ProductList({ refreshKey, onEdit, onToggle }) {
   const { data, loading, page, setPage, q, setQ, error } = useProducts(refreshKey)
   const [publishing, setPublishing] = useState(null)
+  const [publishConfirmation, setPublishConfirmation] = useState(null)
   const [modal, setModal] = useState(null)
   const [checklistModal, setChecklistModal] = useState(null)
   const totalPages = Math.max(1, Math.ceil((data.count || 0) / 20))
 
   function handlePublish(productId) {
-    if (!confirm('¿Publicar este producto? Se activará y aprobará automáticamente.')) return
+    setPublishConfirmation(productId)
+  }
+
+  function confirmPublish() {
+    const productId = publishConfirmation
+    setPublishConfirmation(null)
     setPublishing(productId)
     publishProduct(productId)
       .then(d => {
@@ -78,6 +85,29 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
 
   return (
     <>
+      {publishConfirmation && (
+        <div className="form-modal-backdrop" onClick={() => setPublishConfirmation(null)}>
+          <div className="form-modal publish-confirm-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="publish-confirm-title">
+            <div className="form-modal-header">
+              <h2 id="publish-confirm-title">Publicar producto</h2>
+              <button className="form-modal-close" type="button" onClick={() => setPublishConfirmation(null)} aria-label="Cerrar">✕</button>
+            </div>
+            <div className="form-modal-body">
+              <div className="publish-confirm-alert">
+                <span className="publish-confirm-icon" aria-hidden="true">!</span>
+                <div>
+                  <strong>¿Publicar este producto?</strong>
+                  <p>Se activará y aprobará automáticamente.</p>
+                </div>
+              </div>
+              <div className="form-modal-footer">
+                <button className="btn btn-secondary" type="button" onClick={() => setPublishConfirmation(null)}>Cancelar</button>
+                <button className="btn btn-primary publish-confirm-action" type="button" onClick={confirmPublish}>Publicar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {modal && <InfoModal type={modal.type} title={modal.title} message={modal.message} checklist={modal.checklist} onClose={() => setModal(null)} />}
       {checklistModal?.checklist && <InfoModal type="info" title="Checklist del producto" message="" checklist={checklistModal.checklist} onClose={() => setChecklistModal(null)} />}
       {checklistModal?.error && <InfoModal type="error" title="Error" message={checklistModal.error} onClose={() => setChecklistModal(null)} />}
