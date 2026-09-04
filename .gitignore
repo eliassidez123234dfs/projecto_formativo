@@ -165,6 +165,7 @@ static_root/
 .env
 .env.*
 !.env.example
+!.env.template
 
 # Logs y archivos de proceso
 *.log
@@ -450,6 +451,8 @@ backend/.pytest_cache/
 backend/*.db
 backend/media/
 backend/static/
+backend/.env
+backend/config/.env
 
 # Microservicios
 microservices/*/node_modules/

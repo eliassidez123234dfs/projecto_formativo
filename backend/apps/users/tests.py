@@ -17,7 +17,6 @@ from apps.carts.models import Cart, CartItem
 from apps.products.models import Product, Variant
 
 from .models import (
-    Cambio_Email,
     Historial_Estado_Usuario,
     Log_Auditoria,
     Token_Verificacion,
@@ -226,52 +225,6 @@ class TokenVerificacionModelTests(TestCase):
         uid = t.id
         self.usuario.delete()
         self.assertFalse(Token_Verificacion.objects.filter(id=uid).exists())
-
-
-class CambioEmailModelTests(TestCase):
-    def setUp(self):
-        self.usuario = _create_user()
-        self.token = Token_Verificacion.objects.create(
-            usuario=self.usuario, tipo="Cambio_Email",
-            fecha_expiracion=timezone.now() + timedelta(hours=24),
-        )
-
-    def test_create_cambio_email(self):
-        c = Cambio_Email.objects.create(
-            usuario=self.usuario,
-            email_anterior="old@test.com",
-            email_nuevo="new@test.com",
-            token=self.token,
-        )
-        self.assertEqual(c.email_anterior, "old@test.com")
-        self.assertEqual(c.email_nuevo, "new@test.com")
-        self.assertFalse(c.verificado)
-        self.assertIsNone(c.fecha_verificacion)
-
-    def test_cambio_email_str(self):
-        c = Cambio_Email.objects.create(
-            usuario=self.usuario,
-            email_anterior="old@test.com",
-            email_nuevo="new@test.com",
-            token=self.token,
-        )
-        self.assertIn("testuser", str(c))
-        self.assertIn("old@test.com", str(c))
-        self.assertIn("new@test.com", str(c))
-
-    def test_verificado_flag(self):
-        c = Cambio_Email.objects.create(
-            usuario=self.usuario,
-            email_anterior="old@test.com",
-            email_nuevo="new@test.com",
-            token=self.token,
-        )
-        c.verificado = True
-        c.fecha_verificacion = timezone.now()
-        c.save()
-        c.refresh_from_db()
-        self.assertTrue(c.verificado)
-        self.assertIsNotNone(c.fecha_verificacion)
 
 
 class HistorialEstadoUsuarioModelTests(TestCase):

@@ -40,7 +40,11 @@ from ..models import Usuario
 # añadiendo verificación de token_version y soporte de cookies).
 # ─────────────────────────────────────────────────────────────────────────────
 class UsuarioJWTAuthentication(JWTAuthentication):
-    """JWT Authentication personalizado. Usa el modelo Usuario en lugar del auth.User por defecto, verifica token_version para invalidación remota de JWT y soporta autenticación vía header Authorization o cookie httpOnly."""
+    """JWT Authentication personalizado. Usa el modelo Usuario en lugar del auth.User por defecto, verifica token_version para invalidación remota de JWT y soporta autenticación vía header Authorization o cookie httpOnly.
+
+    Además, en cada request autenticado verifica que el usuario
+    no esté Inactivo o Bloqueado, para revocar access tokens
+    inmediatamente sin esperar a que expiren."""
 
     # ── get_user: recupera el usuario desde el JWT validado ──
     # 1. Extrae user_id del token (USER_ID_CLAIM, por defecto 'user_id').
@@ -61,10 +65,17 @@ class UsuarioJWTAuthentication(JWTAuthentication):
         except Usuario.DoesNotExist:
             raise AuthenticationFailed('User not found', code='user_not_found')
 
-        # Verificar que la versión del token coincida con la del usuario
+# Verificar que la versión del token coincida con la del usuario
         token_ver = validated_token.get('token_version', 0)
         if token_ver != user.token_version:
             raise AuthenticationFailed('Token invalidated', code='token_invalidated')
+
+        # Verificar estado del usuario en cada request (revocación inmediata)
+        if user.estado in ('Inactivo', 'Bloqueado'):
+            raise AuthenticationFailed(
+                'Tu cuenta está desactivada o bloqueada.',
+                code='user_disabled'
+            )
 
         return user
 

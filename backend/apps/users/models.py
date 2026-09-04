@@ -7,10 +7,8 @@
 #                                (Administrador/Usuario), estados (Activo/
 #                                Inactivo/Bloqueado), soft-delete y token_version
 #                                para invalidación remota de JWT.
-#   Token_Verificacion (RI-009) → Token criptográfico para verificación de email,
-#                                recuperación de contraseña y cambio de correo.
-#   Cambio_Email (RI-010)       → Solicitud de cambio de correo con trazabilidad
-#                                del email anterior y nuevo.
+#   Token_Verificacion (RI-009) → Token criptográfico para verificación de email
+#                                y recuperación de contraseña.
 #   Historial_Estado_Usuario    → Auditoría de cada transición de estado
 #          (RI-018)              (Activo ↔ Inactivo ↔ Bloqueado).
 #   Log_Auditoria (RI-019)      → Registro de acciones administrativas con
@@ -151,7 +149,7 @@ class Usuario(models.Model):
     # Se usa en lugar de una tabla independiente para simplificar el modelo.
     admin_eliminador = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='usuarios_eliminados')
 
-    # Use custom manager
+# Use custom manager
     objects = UsuarioManager()
 
     # Django auth required attributes
@@ -206,14 +204,12 @@ class Usuario(models.Model):
 # ─────────────────────────────────────────────────────────────────────────────
 # Modelo: Token_Verificacion (RI-009)
 # ─────────────────────────────────────────────────────────────────────────────
-# Token criptográfico de un solo uso. Se utiliza en tres flujos distintos:
+# Token criptográfico de un solo uso. Se utiliza en dos flujos distintos:
 #
 #   1. Verificacion_Email:    confirma la dirección de correo al registrarse
 #                              (el usuario nace en estado Inactivo hasta verificar).
 #   2. Recuperacion_Password:  permite restablecer la contraseña olvidada
 #                              (ventana de expiración: 1 hora, RN-005).
-#   3. Cambio_Email:           autoriza la modificación del correo asociado
-#                              a la cuenta (RI-010).
 #
 # Propiedades de seguridad:
 #   - token generado con secrets.token_urlsafe (32 bytes, 43 chars base64).
@@ -222,13 +218,10 @@ class Usuario(models.Model):
 #   - Índice compuesto (usuario + tipo) para búsquedas eficientes por flujo.
 # ─────────────────────────────────────────────────────────────────────────────
 class Token_Verificacion(models.Model):
-    """Token de verificación de email, recuperación de contraseña y cambio de email (RI-009). Se usa en tres flujos: confirmación de cuenta, restablecimiento de contraseña y cambio de correo."""
+    """Token de verificación de email y recuperación de contraseña (RI-009). Se usa en dos flujos: confirmación de cuenta y restablecimiento de contraseña."""
     
-    # ── Tipos de token ──
-    # Verificacion_Email:   confirma la dirección de correo al registrarse.
-    # Recuperacion_Password: permite restablecer la contraseña olvidada.
-    # Cambio_Email:         autoriza la modificación del correo asociado.
-    TIPO_CHOICES = (('Verificacion_Email', 'Verificación de Email'), ('Recuperacion_Password', 'Recuperación de Contraseña'), ('Cambio_Email', 'Cambio de Email'),)
+# Tipo de token el cual se requiera utilizar en el caso de aplicarse
+    TIPO_CHOICES = (('Verificacion_Email', 'Verificación de Email'), ('Recuperacion_Password', 'Recuperación de Contraseña'),)
     
     id = models.AutoField(primary_key=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='tokens_verificacion') # nombre para identificar
@@ -251,62 +244,7 @@ class Token_Verificacion(models.Model):
         return f"{self.usuario.usuario} - {self.tipo}"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Modelo: Cambio_Email (RI-010)
-# ─────────────────────────────────────────────────────────────────────────────
-# Solicitud de cambio de dirección de correo electrónico.
-#
-# Separado de Token_Verificacion para conservar el registro completo del cambio
-# (email_anterior → email_nuevo) incluso después de que el token expire o se
-# marque como usado. Esto permite:
-#   - Trazabilidad forense de cambios de correo.
-#   - Revertir el cambio si es necesario.
-#   - Notificar al email anterior sobre la modificación.
-#
-# El flujo completo es:
-#   1. Usuario solicita cambio → se crea registro en Cambio_Email + Token.
-#   2. Usuario verifica con token → verificado=True, fecha_verificacion.
-#   3. El correo del usuario se actualiza al email_nuevo.
-# ─────────────────────────────────────────────────────────────────────────────
-class Cambio_Email(models.Model):
-    """Solicitud de cambio de email (RI-010). Conserva el registro completo del cambio (email anterior → nuevo) y su estado de verificación."""
-    
-    id = models.AutoField(primary_key=True)
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='cambios_email')
-    email_anterior = models.EmailField()
-    email_nuevo = models.EmailField()
-    token = models.ForeignKey(Token_Verificacion, on_delete=models.CASCADE)
-    fecha_solicitud = models.DateTimeField(auto_now_add=True)
-    verificado = models.BooleanField(default=False)
-    fecha_verificacion = models.DateTimeField(null=True, blank=True)
-    
-    class Meta:
-        db_table = 'cambios_email'
-        indexes = [
-            models.Index(fields=['usuario', 'verificado']),
-        ]
-    
-    def __str__(self):
-        return f"{self.usuario.usuario}: {self.email_anterior} -> {self.email_nuevo}"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Modelo: Historial_Estado_Usuario (RI-018)
-# ─────────────────────────────────────────────────────────────────────────────
-# Auditoría de cambios de estado del usuario. Cada transición entre
-# Activo / Inactivo / Bloqueado se registra con:
-#   - estado_anterior / estado_nuevo: los valores antes y después del cambio.
-#   - motivo: texto libre que justifica la transición.
-#   - admin: FK al administrador que ejecutó el cambio (SET_NULL si se elimina).
-#   - fecha_cambio: timestamp automático de la transición.
-#
-# Propósito: formar una traza de auditoría completa, no repudiable y con
-# responsibleabilidad (quién cambió, cuándo, por qué y a qué estado).
-#
-# Restricciones de negocio:
-#   - RN-021: cada cambio de estado DEBE registrarse en este modelo.
-#   - RN-022: al bloquear/desactivar se incrementa token_version del usuario.
-# ─────────────────────────────────────────────────────────────────────────────
+# Clase para ver el estado del usuario actual que este registrado
 class Historial_Estado_Usuario(models.Model):
     """Auditoría de cambios de estado (Activo/Inactivo/Bloqueado) de usuarios (RI-018). Cada transición se registra con admin responsable, motivo y timestamp."""
     

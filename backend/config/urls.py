@@ -47,9 +47,8 @@ from config.views import dev_landing, dev_dashboard
 # list, create, retrieve, update, partial_update y destroy, más un api-root
 # que lista todas las rutas disponibles. Sigue el patrón Router de DRF.
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView
 
-from apps.users.api.token_refresh import UsuarioTokenRefreshView
+from apps.users.api.token_refresh import UsuarioTokenObtainPairView, UsuarioTokenRefreshView
 
 # ── ViewSets de Usuarios (RF-001, RF-002, RF-003, RF-005) ──
 # RegistroViewSet:  Registro de nuevos usuarios con validaciones y envío de email.
@@ -234,7 +233,7 @@ urlpatterns = [
     #  token_obtain_pair: emite access + refresh token al iniciar sesión.
     #  token_refresh: renueva el access token usando el refresh token.
     # -------------------------------------------------------------------
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/', UsuarioTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', UsuarioTokenRefreshView.as_view(), name='token_refresh'),
 
     # -------------------------------------------------------------------

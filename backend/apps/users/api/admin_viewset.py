@@ -43,6 +43,7 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 logger = logging.getLogger(__name__)
 
@@ -505,11 +506,9 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         
         # Si se desactiva o bloquea, invalidar tokens (RN-022)
         if nuevo_estado in ['Inactivo', 'Bloqueado']:
-            from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
-            from django.utils import timezone as tz
             usuario.token_version += 1
             usuario.save(update_fields=['token_version'])
-            OutstandingToken.objects.filter(user_id=usuario.id).delete()
+            self._blacklist_user_tokens(usuario)
         
         # Registrar en auditoría
         self._registrar_auditoria(
@@ -651,7 +650,11 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         usuario.eliminado = True
         usuario.fecha_eliminacion = timezone.now()
         usuario.admin_eliminador = request.user
+        usuario.estado = 'Inactivo'
         usuario.save()
+        
+        # Invalidar todos los tokens del usuario eliminado
+        self._blacklist_user_tokens(usuario)
         
         # Registrar en auditoría
         self._registrar_auditoria(
@@ -778,3 +781,24 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
+    
+    def _blacklist_user_tokens(self, usuario):
+        """Invalidar todos los refresh tokens activos de un usuario (RN-022).
+        
+        Los refresh tokens se agregan a la blacklist para que no puedan
+        usarse para obtener nuevos access tokens.
+        
+        LIMITACIÓN: Los access tokens ya emitidos siguen válidos hasta
+        su expiración natural (15 min por defecto). No existe un mecanismo
+        estándar en SimpleJWT para revocar access tokens en caliente.
+        """
+        outstanding_tokens = OutstandingToken.objects.filter(user=usuario)
+        blacklisted = 0
+        for token in outstanding_tokens:
+            _, created = BlacklistedToken.objects.get_or_create(token=token)
+            if created:
+                blacklisted += 1
+        logger.info(
+            'Tokens blacklisteados para usuario %s (id=%s): %d tokens',
+            usuario.usuario, usuario.id, blacklisted
+        )

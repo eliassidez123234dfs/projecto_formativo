@@ -122,6 +122,7 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'cloudinary_storage',
     'cloudinary',
 ]
@@ -430,7 +431,6 @@ REST_FRAMEWORK = {
 #  - REFRESH_TOKEN_LIFETIME=7días: permite renovar sin pedir credenciales.
 #  - ROTATE_REFRESH_TOKENS=True: cada renovación genera un nuevo refresh.
 #  - BLACKLIST_AFTER_ROTATION=True: el refresh anterior se invalida (logout).
-#  - UPDATE_LAST_LOGIN: registra fecha_ultima_sesion en cada login.
 #  - ALGORITHM=HS256: HMAC con SHA-256, simétrico (firmado con SECRET_KEY).
 #  - token_version: campo personalizado en Usuario que permite invalidar
 #    TODOS los tokens de un usuario (cambio de estado, bloqueo).
@@ -443,7 +443,9 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
+    # False: Usuario no tiene campo `last_login`; fecha_ultima_sesion se
+    # actualiza en UsuarioTokenObtainPairSerializer (token_refresh.py).
+    'UPDATE_LAST_LOGIN': False,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,

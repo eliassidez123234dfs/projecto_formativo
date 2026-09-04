@@ -61,9 +61,10 @@ def viewset_ratelimit(**kwargs):
         return wrapper
     return decorator
 
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, status, permissions, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
@@ -75,7 +76,7 @@ from apps.carts.models import Cart
 
 from ..services.email_service import EmailService
 from ..models import (
-    Usuario, Token_Verificacion, Cambio_Email, 
+    Usuario, Token_Verificacion, 
     Log_Auditoria, Historial_Estado_Usuario
 )
 from .serializers import (
@@ -108,6 +109,7 @@ class RegistroViewSet(viewsets.ViewSet):
     Todos los endpoints son de acceso público (AllowAny).
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AnonRateThrottle]
     
     # ────────────────────────────────────────────────────────
     # POST /api/registro/registro/   (RF-001)
@@ -346,6 +348,7 @@ class LoginViewSet(viewsets.ViewSet):
     Maneja migración del carrito anónimo al autenticado al iniciar sesión.
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AnonRateThrottle]
     
     # ────────────────────────────────────────────────────────
     # POST /api/login/login/   (RF-008, RF-011)
@@ -485,13 +488,15 @@ class LoginViewSet(viewsets.ViewSet):
 #   - cambiar_password:   POST   → cambiar contraseña (requiere actual).
 #
 # Filtra usuarios con eliminado=False (soft-delete).
+# Solo accede al perfil propio vía @action; no expone CRUD.
 # ─────────────────────────────────────────────────────────────────────────────
-class UsuarioViewSet(viewsets.ModelViewSet):
+class UsuarioViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """
     ViewSet para gestión del perfil del usuario autenticado (RF-010).
     Expone: perfil, actualizar_perfil, cambiar_password.
     Requiere autenticación (IsAuthenticated).
     Filtra usuarios eliminados lógicamente.
+    Solo permite acceder al perfil propio vía @action; no expone CRUD.
     """
     queryset = Usuario.objects.filter(eliminado=False)
     serializer_class = UsuarioSerializer

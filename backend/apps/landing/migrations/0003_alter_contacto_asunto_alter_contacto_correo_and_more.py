@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('landing', '0001_initial'),
+        ('landing', '0002_alter_contacto_options'),
     ]
 
     operations = [
