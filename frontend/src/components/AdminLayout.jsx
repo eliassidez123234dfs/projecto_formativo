@@ -135,7 +135,6 @@ export default function AdminLayout({ children, title, subtitle }) {
     { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },
     { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
     { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard },
-    { label: 'Diseños 3D', href: '/admin-model3d', icon: Icons.Box },
     { label: 'Editor 3D', href: 'http://127.0.0.1:5174/', icon: Icons.Box, external: true },
     { label: 'Cloudinary', href: '/admin-cloudinary', icon: Icons.Cloud },
   ]

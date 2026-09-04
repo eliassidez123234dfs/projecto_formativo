@@ -29,7 +29,6 @@ import AdminAudit from './pages/AdminAudit';
 import AdminOrders from './pages/AdminOrders';
 import AdminOrderDetail from './pages/AdminOrderDetail';
 import AdminProductApproval from './pages/AdminProductApproval';
-import AdminModel3D from './pages/AdminModel3D';
 import AdminCloudinary from './pages/AdminCloudinary';
 import UserProfile from './pages/UserProfile';
 import CheckoutPage from './pages/CheckoutPage';
@@ -72,7 +71,6 @@ function App() {
               <Route path="/admin-orders/:id" element={<AdminOrderDetail />} />
               <Route path="/admin-products/approval" element={<AdminProductApproval />} />
               <Route path="/admin-audit" element={<AdminAudit />} />
-              <Route path="/admin-model3d" element={<AdminModel3D />} />
               <Route path="/admin-cloudinary" element={<AdminCloudinary />} />
             </Route>
             <Route path="/checkout" element={<CheckoutPage />} />
