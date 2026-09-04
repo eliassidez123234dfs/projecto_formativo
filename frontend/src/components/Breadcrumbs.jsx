@@ -65,14 +65,14 @@ export const Breadcrumbs = ({ pageTitle }) => {
         .breadcrumbs {
           display: flex;
           align-items: center;
-          gap: 6px;
-          padding: 8px 0;
-          font-size: 0.8rem;
+          gap: 4px;
+          padding: 6px 0;
+          font-size: 0.72rem;
           color: var(--color-text-muted, #9CA3AF);
           flex-wrap: wrap;
         }
         .breadcrumb-sep {
-          margin: 0 4px;
+          margin: 0 3px;
           color: var(--color-border, #D1D5DB);
         }
         .breadcrumb-link {

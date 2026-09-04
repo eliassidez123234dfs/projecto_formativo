@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
@@ -15,7 +15,7 @@ export const Category = () => {
   const [filters, setFilters] = useState({ q: '', min_price: '', max_price: '', ordering: '', page: 1 });
   const [pageInfo, setPageInfo] = useState(null);
   const [categoryName, setCategoryName] = useState('Categoría');
-  const { cart } = useCart();
+  const { addItem } = useCart();
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -46,7 +46,7 @@ export const Category = () => {
     setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
   };
 
-  const handleAddToCart = async (product) => {
+  const _handleAddToCart = async (product) => {
     const variantId = product.variants?.[0]?.id;
     if (!variantId) { toast.error('Este producto no tiene variantes disponibles'); return }
     try {

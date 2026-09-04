@@ -1,9 +1,37 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import { buildApiUrl } from '../services/api'
-import { isAuthenticated, getCurrentUser } from '../services/authService'
+import { isAuthenticated } from '../services/authService'
+import { SwatchPanel } from '../components/SwatchPanel'
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
+import heroImg from '../assets/hero.png'
 
 const Product3DViewer = lazy(() => import('../components/Product3DViewer'))
+
+// Swatches del "mini editor" del hero: paleta de marca Rojo/Negro/Gris.
+const HERO_SWATCHES = [
+  { value: '#dc2626', label: 'Rojo' },
+  { value: '#111111', label: 'Negro' },
+  { value: '#9ca3af', label: 'Gris' },
+  { value: '#f5f5f5', label: 'Blanco' },
+]
+
+const HERO_CHECKS = ['Editor 3D', 'Tiempo real', 'Pago seguro']
+
+// En móvil no cargamos el modelo 3D completo: mostramos una imagen estática.
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia('(max-width: 767px)').matches
+  })
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const handler = (e) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
 
 const features = [
   {
@@ -28,6 +56,31 @@ const ICON_MAP = {
   shield: <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>,
   truck: <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
 }
+
+const testimonials = [
+  {
+    name: 'Valentina R.',
+    role: 'Compradora frecuente',
+    quote: 'El editor 3D es increíble. Pude ver exactamente cómo quedaría mi diseño antes de pedirlo y quedó perfecto.',
+  },
+  {
+    name: 'Andrés M.',
+    role: 'Estudiante de diseño',
+    quote: 'La calidad del estampado es superior a lo que esperaba. Los colores no se agrietan ni se destiñen con los lavados.',
+  },
+  {
+    name: 'Sofía G.',
+    role: 'Emprendedora',
+    quote: 'Pedí camisetas personalizadas para mi marca y el proceso fue rapidísimo. En 48 horas ya las tenía en la puerta.',
+  },
+]
+
+const stats = [
+  { value: '4.9/5', label: 'Valoración promedio' },
+  { value: '2,500+', label: 'Pedidos entregados' },
+  { value: '48h', label: 'Tiempo de envío' },
+  { value: '24/7', label: 'Editor disponible' },
+]
 
 function StarRating({ rating, total_reviews }) {
   if (rating == null) return null
@@ -62,6 +115,11 @@ function FeaturedCard({ product }) {
 
 export const Landing = () => {
   const [loggedIn] = useState(() => isAuthenticated())
+  const isMobile = useIsMobile()
+  const prefersReducedMotion = usePrefersReducedMotion()
+  const [shirtColor, setShirtColor] = useState(null)
+  const [spin, setSpin] = useState(true)
+  const rotate = spin && !prefersReducedMotion
   const [formData, setFormData] = useState({ nombre: '', correo: '', asunto: '', mensaje: '' })
   const [sending, setSending] = useState(false)
   const [message, setMessage] = useState('')
@@ -69,6 +127,14 @@ export const Landing = () => {
 
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [featuredLoading, setFeaturedLoading] = useState(true)
+  const [tIndex, setTIndex] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTIndex(i => (i + 1) % testimonials.length)
+    }, 6000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -114,24 +180,47 @@ export const Landing = () => {
     <div className="landing">
       <section id="inicio" className="hero container" style={{ paddingTop: '80px' }}>
         <div className="hero-content">
-          <span className="hero-badge">Plataforma de Gestión</span>
+          <span className="hero-badge">Tienda Virtual con Personalización 3D</span>
           <h1>Bienvenido a <span className="highlight">RED</span></h1>
           <p>Tu plataforma de personalización de camisetas con edición 3D en tiempo real.</p>
           <div className="hero-cta">
-            {loggedIn ? (
-              <Link to="/catalog" className="btn btn-primary">Ver Catálogo</Link>
-            ) : (
-              <>
-                <Link to="/login" className="btn btn-primary">Iniciar Sesión</Link>
-                <Link to="/register" className="btn btn-outline-primary">Crear Cuenta</Link>
-              </>
-            )}
+            <Link to="/catalog" className="btn btn-primary">Ver Catálogo</Link>
+            {!loggedIn && <Link to="/register" className="btn btn-outline-primary">Crear Cuenta</Link>}
           </div>
+          <ul className="hero-checks">
+            {HERO_CHECKS.map((item) => (
+              <li key={item}>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="hero-visual">
-          <Suspense fallback={<div className="hero-visual-placeholder"><span className="text-muted">Cargando visor 3D...</span></div>}>
-            <Product3DViewer height="100%" autoRotate={true} />
-          </Suspense>
+          {isMobile ? (
+            <div className="hero-visual-mobile">
+              <img src={heroImg} alt="Camiseta RED personalizable" className="hero-visual-img" />
+            </div>
+          ) : (
+            <div className="hero-viewer">
+              <div className="hero-canvas">
+                <Suspense fallback={<div className="hero-visual-placeholder"><span className="text-muted">Cargando visor 3D...</span></div>}>
+                  <Product3DViewer height="100%" autoRotate={rotate} color={shirtColor} enableZoom={false} />
+                </Suspense>
+              </div>
+              <SwatchPanel colors={HERO_SWATCHES} value={shirtColor} onChange={setShirtColor} label="Color de la camiseta" />
+              <span className="hero-3d-badge">Editor 3D en tiempo real</span>
+              <button
+                type="button"
+                className={`hero-360 ${rotate ? 'hero-360--active' : ''}`}
+                onClick={() => setSpin(s => !s)}
+                aria-label={rotate ? 'Desactivar rotación' : 'Activar rotación'}
+                aria-pressed={rotate}
+              >360°</button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -149,6 +238,52 @@ export const Landing = () => {
                 <p>{f.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="trust-bar">
+        <div className="container trust-bar-grid">
+          {stats.map((s, i) => (
+            <div key={i} className="trust-stat">
+              <div className="trust-value">{s.value}</div>
+              <div className="trust-label">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="testimonios" className="testimonials">
+        <div className="container">
+          <div className="section-header">
+            <h2>Lo que dicen nuestros clientes</h2>
+            <p>Personas reales, camisetas reales, diseños únicos</p>
+          </div>
+          <div className="testimonial-carousel">
+            <div className="testimonial-track" style={{ transform: `translateX(-${tIndex * 100}%)` }}>
+              {testimonials.map((t, i) => (
+                <div key={i} className="testimonial-slide">
+                  <span className="testimonial-quote">“{t.quote}”</span>
+                  <div className="testimonial-author">
+                    <div className="testimonial-avatar">{t.name.charAt(0)}</div>
+                    <div>
+                      <div className="testimonial-name">{t.name}</div>
+                      <div className="testimonial-role">{t.role}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="testimonial-dots">
+              {testimonials.map((_, i) => (
+                <button
+                  key={i}
+                  className={`testimonial-dot ${i === tIndex ? 'active' : ''}`}
+                  onClick={() => setTIndex(i)}
+                  aria-label={`Testimonio ${i + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -211,31 +346,6 @@ export const Landing = () => {
         <p>Únete a nuestra plataforma y descubre todas las funcionalidades.</p>
         <Link to="/register" className="btn btn-primary btn-lg">Crear Cuenta Gratis</Link>
       </section>
-
-      <footer className="footer">
-        <div className="container">
-          <div className="footer-content">
-            <div className="footer-section">
-              <h3>Sobre Nosotros</h3>
-              <a href="#about">Acerca de</a>
-              <a href="#blog">Blog</a>
-            </div>
-            <div className="footer-section">
-              <h3>Soporte</h3>
-              <a href="#faq">FAQ</a>
-              <a href="#contact">Contacto</a>
-            </div>
-            <div className="footer-section">
-              <h3>Legal</h3>
-              <a href="#privacy">Privacidad</a>
-              <a href="#terms">Términos</a>
-            </div>
-          </div>
-          <div className="footer-bottom">
-            <p>&copy; {new Date().getFullYear()} RED. Todos los derechos reservados.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

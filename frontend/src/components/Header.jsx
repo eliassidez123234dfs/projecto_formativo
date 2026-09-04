@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { CartContext } from '../context/CartContext'
 import { useTheme } from '../context/ThemeContext'
 import { isAuthenticated, clearAuth, getCurrentUser, restoreSession, subscribe } from '../services/authService'
+import '../styles/header.css'
 
 export const Header = ({ floating }) => {
   const navigate = useNavigate()
@@ -12,10 +13,8 @@ export const Header = ({ floating }) => {
   const cartCount = cart?.items?.length ?? 0
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [overflow, setOverflow] = useState(false)
   const menuRef = useRef(null)
   const btnRef = useRef(null)
-  const navRef = useRef(null)
   const [, setTick] = useState(0)
   const loggedIn = isAuthenticated()
   const usuario = getCurrentUser()
@@ -29,17 +28,6 @@ export const Header = ({ floating }) => {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
-
-  useEffect(() => {
-    const checkOverflow = () => {
-      if (navRef.current) {
-        setOverflow(navRef.current.scrollWidth > navRef.current.clientWidth)
-      }
-    }
-    checkOverflow()
-    window.addEventListener('resize', checkOverflow)
-    return () => window.removeEventListener('resize', checkOverflow)
-  }, [loggedIn, cartCount])
 
   useEffect(() => {
     setMobileOpen(false)
@@ -68,7 +56,7 @@ export const Header = ({ floating }) => {
     left: 0,
     right: 0,
     zIndex: 100,
-    background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 60%, rgba(255,255,255,0.85))',
+    background: 'var(--color-bg-glass)',
     backdropFilter: 'blur(8px)',
     borderBottom: '1px solid var(--color-border)',
   } : {
@@ -78,8 +66,6 @@ export const Header = ({ floating }) => {
     background: 'var(--color-bg)',
     borderBottom: '1px solid var(--color-border)',
   }
-
-  const showHamburger = overflow || mobileOpen
 
   return (
     <header style={headerStyle}>
@@ -94,8 +80,8 @@ export const Header = ({ floating }) => {
           RED
         </Link>
 
-        <nav ref={navRef} className="nav-desktop" style={{
-          display: 'flex', alignItems: 'center', gap: 24, overflow: 'hidden',
+        <nav className="nav-desktop" style={{
+          alignItems: 'center', gap: 24, overflow: 'visible',
         }}>
           <Link to="/catalog" style={{
             color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 500, textDecoration: 'none',
@@ -276,7 +262,6 @@ export const Header = ({ floating }) => {
           className="mobile-menu-toggle"
           onClick={() => setMobileOpen(!mobileOpen)}
           style={{
-            display: showHamburger ? 'block' : 'none',
             background: 'none', border: 'none', fontSize: 24, cursor: 'pointer',
             color: 'var(--color-text)', padding: 8,
           }}

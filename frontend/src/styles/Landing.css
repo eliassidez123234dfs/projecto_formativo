@@ -2,6 +2,22 @@
   background-color: var(--color-bg);
 }
 
+.landing .container {
+  max-width: 1200px;
+  padding-left: var(--spacing-3xl);
+  padding-right: var(--spacing-3xl);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .landing .container {
+    padding-left: var(--spacing-xl);
+    padding-right: var(--spacing-xl);
+  }
+}
+
+
 /* ═══════════════════════════════════════
    HERO
    ═══════════════════════════════════════ */
@@ -141,6 +157,135 @@
 }
 
 /* ═══════════════════════════════════════
+   BARRA DE CONFIANZA
+   ═══════════════════════════════════════ */
+.trust-bar {
+  padding: var(--spacing-2xl) 0;
+  border-bottom: 1px solid var(--color-gray-200);
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-gray-50) 100%);
+}
+
+.trust-bar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-xl);
+  text-align: center;
+}
+
+.trust-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.trust-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  line-height: 1.1;
+}
+
+.trust-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-gray-500);
+}
+
+/* ═══════════════════════════════════════
+   TESTIMONIOS (CAROUSEL)
+   ═══════════════════════════════════════ */
+.testimonials {
+  padding: var(--spacing-4xl) 0;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.testimonial-carousel {
+  max-width: 720px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.testimonial-track {
+  display: flex;
+  transition: transform var(--transition-slow);
+}
+
+.testimonial-slide {
+  min-width: 100%;
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-xl);
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.testimonial-quote {
+  font-size: var(--font-size-lg);
+  line-height: 1.7;
+  color: var(--color-gray-600);
+  font-style: italic;
+  max-width: 540px;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.testimonial-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+}
+
+.testimonial-name {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.testimonial-role {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
+.testimonial-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: var(--spacing-lg);
+}
+
+.testimonial-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--color-gray-300);
+  cursor: pointer;
+  padding: 0;
+  transition: all var(--transition-fast);
+}
+
+.testimonial-dot.active {
+  background: var(--color-primary);
+  width: 24px;
+}
+
+/* ═══════════════════════════════════════
    PRODUCTOS DESTACADOS
    ═══════════════════════════════════════ */
 .featured-products {
@@ -268,18 +413,18 @@
 
 .success-message {
   padding: var(--spacing-md);
-  background: #F0FDF4;
-  border: 1px solid #DCFCE7;
-  color: #166534;
+  background: var(--color-success-light);
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
 }
 
 .error-message {
   padding: var(--spacing-md);
-  background: #FEF2F2;
-  border: 1px solid #FECACA;
-  color: #991B1B;
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
 }
@@ -328,10 +473,10 @@
    FOOTER
    ═══════════════════════════════════════ */
 .footer {
-  background-color: var(--color-gray-900);
-  color: var(--color-gray-300);
+  background-color: var(--color-footer-bg);
+  color: var(--color-footer-text);
   padding: var(--spacing-4xl) 0 var(--spacing-2xl);
-  border-top: 1px solid var(--color-gray-800);
+  border-top: 1px solid var(--color-footer-border);
 }
 
 .footer-content {
@@ -342,7 +487,7 @@
 }
 
 .footer-section h3 {
-  color: var(--color-white);
+  color: var(--color-footer-heading);
   margin-bottom: var(--spacing-lg);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
@@ -350,7 +495,7 @@
 
 .footer-section a {
   display: block;
-  color: var(--color-gray-300);
+  color: var(--color-footer-text);
   margin-bottom: var(--spacing-sm);
   font-size: var(--font-size-sm);
   transition: color var(--transition-base);
@@ -362,7 +507,7 @@
 }
 
 .footer-bottom {
-  border-top: 1px solid var(--color-gray-800);
+  border-top: 1px solid var(--color-footer-border);
   padding-top: var(--spacing-xl);
   display: flex;
   justify-content: space-between;
@@ -373,7 +518,7 @@
 
 .footer-bottom p {
   margin: 0;
-  color: var(--color-gray-400);
+  color: var(--color-footer-muted);
   font-size: var(--font-size-sm);
 }
 
@@ -412,6 +557,23 @@
     gap: var(--spacing-xl);
   }
 
+  .trust-bar-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+
+  .testimonials {
+    padding: var(--spacing-2xl) 0;
+  }
+
+  .testimonial-slide {
+    padding: var(--spacing-lg);
+  }
+
+  .testimonial-quote {
+    font-size: var(--font-size-base);
+  }
+
   .featured-products {
     padding: var(--spacing-2xl) 0;
   }
@@ -446,6 +608,16 @@
   }
 }
 
+@media (max-width: 480px) {
+  .trust-bar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-visual {
+    height: 220px;
+  }
+}
+
 [data-theme="dark"] .landing {
   --color-gray-50: var(--color-bg-tertiary);
   --color-gray-100: var(--color-bg-secondary);
@@ -454,6 +626,15 @@
   --color-gray-400: var(--color-text-muted);
   --color-gray-500: var(--color-text-muted);
   --color-gray-600: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .trust-bar {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-bg-secondary) 100%);
+}
+
+[data-theme="dark"] .testimonial-slide {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
 }
 
 [data-theme="dark"] .success-message {
@@ -481,4 +662,214 @@
 
 [data-theme="dark"] .contact-form .form-control:focus {
   border-color: var(--color-primary);
+}
+
+/* ═══════════════════════════════════════
+   FALLBACK MÓVIL DEL VISOR 3D
+   En pantallas < 768px se muestra una imagen estática
+   para no descargar el modelo .glb en el hero.
+   ═══════════════════════════════════════ */
+.hero-visual-mobile {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-bg-secondary), var(--color-bg-tertiary));
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.hero-visual-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 24px;
+}
+
+/* ═══════════════════════════════════════
+   HERO UNIFICADO — Viewer 3D + chips
+   Card del visor con dot-grid y glow, swatches de color,
+   badge "Editor 3D" y botón 360°.
+   ═══════════════════════════════════════ */
+.hero-visual {
+  position: relative;
+}
+
+.hero-viewer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-viewer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, var(--color-text-muted) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.16;
+}
+
+.hero-viewer::after {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 42%, rgba(220, 38, 38, 0.16), transparent 65%);
+}
+
+.hero-canvas {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-visual-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Checks de confianza ── */
+.hero-checks {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 0;
+  margin: var(--spacing-xl) 0 0;
+}
+
+.hero-checks li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-gray-600);
+}
+
+.hero-checks svg {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border-radius: 50%;
+  padding: 3px;
+  box-sizing: content-box;
+}
+
+/* ── Swatches de color ── */
+.swatch-panel {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-glass);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(6px);
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.swatch:hover {
+  transform: scale(1.12);
+}
+
+.swatch--active {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 3px var(--color-primary);
+}
+
+.swatch:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* ── Badge "Editor 3D en tiempo real" ── */
+.hero-3d-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+}
+
+/* ── Botón 360° ── */
+.hero-360 {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-glass);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.hero-360:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.hero-360--active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.hero-360:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ── Responsive: 2 columnas en escritorio; en móvil (default) el
+      viewer va DEBAJO del copy (regla base de responsive.css) ── */
+@media (min-width: 992px) {
+  .hero {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .hero-cta {
+    flex-direction: row !important;
+  }
+
+  .hero-cta .btn {
+    width: auto !important;
+  }
 }

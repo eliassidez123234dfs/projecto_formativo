@@ -18,6 +18,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 from apps.users.services.email_service import EmailService
+from apps.landing.tasks import send_contact_notification_async  # noqa: F401 — imported for availability
 
 from ..models import Contacto
 from .serializers import (
@@ -97,7 +98,15 @@ class ContactoViewSet(viewsets.ModelViewSet):
             contacto = serializer.save(ip_origen=ip_origen)
             
             # Enviar email al admin de forma asíncrona (RF-032, RN-032)
-            EmailService.send_contact_notification(contacto)
+            # La tarea Celery ejecuta en un worker separado, no bloquea la respuesta.
+            send_contact_notification_async.delay(
+                contacto_id=contacto.id,
+                nombre=contacto.nombre,
+                correo=contacto.correo,
+                asunto=contacto.asunto or '',
+                mensaje=contacto.mensaje,
+                fecha_envio=contacto.fecha_envio.isoformat(),
+            )
             
             return Response({
                 'mensaje': 'Mensaje enviado exitosamente. Nos contactaremos pronto.',

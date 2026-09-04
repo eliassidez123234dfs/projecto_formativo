@@ -3,31 +3,73 @@
  * Muestra productos, variantes, cantidades y subtotales. Permite cambiar
  * el estado de la orden asociada o reprocesarla si fue cancelada.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { fetchAdminCartDetail } from '../services/api'
+import { fetchAdminCartDetail, updateOrderStatus } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
+import toast from 'react-hot-toast'
+
+const STATUS_STYLES = {
+  pendiente: { bg: '#fef3c7', color: '#92400e' },
+  pagado: { bg: '#d1fae5', color: '#065f46' },
+  produccion: { bg: '#dbeafe', color: '#1e40af' },
+  enviado: { bg: '#e0e7ff', color: '#3730a3' },
+  entregado: { bg: '#d1fae5', color: '#065f46' },
+  cancelado: { bg: '#fee2e2', color: '#991b1b' },
+}
+
+const STATUS_OPTIONS = [
+  { value: 'pendiente', label: 'Pendiente' },
+  { value: 'pagado', label: 'Pagado' },
+  { value: 'produccion', label: 'Producción' },
+  { value: 'enviado', label: 'Enviado' },
+  { value: 'entregado', label: 'Entregado' },
+  { value: 'cancelado', label: 'Cancelado' },
+]
 
 export default function AdminCartDetail() {
   const { id } = useParams()
   const [cart, setCart] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    let mounted = true
-    async function load() {
-      try {
-        const data = await fetchAdminCartDetail(id)
-        if (mounted) setCart(data)
-      } catch (err) { if (mounted) { setCart(null); setError(err) } }
-      finally { if (mounted) setLoading(false) }
-    }
-    load()
-    return () => { mounted = false }
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await fetchAdminCartDetail(id)
+      setCart(data)
+    } catch (err) { setCart(null); setError(err) }
+    finally { setLoading(false) }
   }, [id])
+
+  useEffect(() => { load() }, [load])
+
+  const handleStatusChange = useCallback(async (newStatus) => {
+    if (!cart?.order_id) return
+    setSaving(true)
+    try {
+      await updateOrderStatus(cart.order_id, newStatus)
+      setCart(prev => prev ? { ...prev, order_status: newStatus } : prev)
+      toast.success('Estado actualizado')
+    } catch { toast.error('Error al actualizar estado') }
+    finally { setSaving(false) }
+  }, [cart?.order_id])
+
+  const handleReprocess = useCallback(async () => {
+    if (!cart?.order_id) return
+    setSaving(true)
+    try {
+      await updateOrderStatus(cart.order_id, 'pendiente')
+      setCart(prev => prev ? { ...prev, order_status: 'pendiente' } : prev)
+      toast.success('Pedido reactivado')
+    } catch { toast.error('Error al reactivar pedido') }
+    finally { setSaving(false) }
+  }, [cart?.order_id])
+
+  const canEditStatus = cart?.order_status && !['pagado', 'entregado'].includes(cart.order_status)
 
   if (loading) return <AdminLayout><div className="card"><div className="empty-state"><p>Cargando...</p></div></div></AdminLayout>
   if (!cart) return <AdminLayout><ErrorState status={error ? undefined : 404} error={error} module="detalle de carrito" /></AdminLayout>

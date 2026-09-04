@@ -17,6 +17,12 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class CatalogProductSerializer(serializers.ModelSerializer):
+    """Serializer del catálogo optimizado contra N+1 queries.
+
+    Todas las relaciones se resuelven en UNA pasada en Python sobre las
+    colecciones precargadas con `prefetch_related` (variants, images,
+    categories, reviews). No se vuelve a consultar la BD por campo, lo que
+    reduce drásticamente el tiempo de respuesta de la lista del catálogo."""
     main_image = serializers.SerializerMethodField()
     available_sizes = serializers.SerializerMethodField()
     available_colors = serializers.SerializerMethodField()
@@ -36,25 +42,35 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description', 'base_price', 'is_active', 'is_approved',
             'main_image', 'available_sizes', 'available_colors', 'color_hexes', 'variants',
-            'min_price', 'max_price', 'total_stock', 'categories', 'created_at', 'updated_at'
+            'min_price', 'max_price', 'total_stock', 'stock_total', 'categories', 'variants_summary',
+            'average_rating', 'total_reviews', 'created_at', 'updated_at'
         ]
 
+    def _variants(self, obj):
+        """Variantes precargadas (usa la caché de prefetch_related, sin SQL)."""
+        return list(obj.variants.all())
+
+    def _variants_with_stock(self, obj):
+        """Variantes con stock > 0, derivadas de las precargadas."""
+        return [v for v in self._variants(obj) if v.stock and v.stock > 0]
+
     def get_main_image(self, obj):
-        image = obj.main_image
-        if not image:
+        images = list(obj.images.all())
+        if not images:
             return None
+        main = next((im for im in images if im.is_main), images[0])
         request = self.context.get('request')
-        url = image.image_url
+        url = main.image_url
         return request.build_absolute_uri(url) if request else url
 
     def get_available_sizes(self, obj):
-        return list(obj.variants.filter(stock__gt=0).values_list('size', flat=True).distinct())
+        return sorted({v.size for v in self._variants_with_stock(obj) if v.size})
 
     def get_available_colors(self, obj):
-        return list(obj.variants.filter(stock__gt=0).values_list('color', flat=True).distinct())
+        return sorted({v.color for v in self._variants_with_stock(obj) if v.color})
 
     def get_color_hexes(self, obj):
-        return dict(obj.variants.filter(stock__gt=0).values_list('color', 'color_hex').distinct())
+        return {v.color: v.color_hex for v in self._variants_with_stock(obj) if v.color and v.color_hex}
 
     def get_variants(self, obj):
         return [
@@ -65,26 +81,52 @@ class CatalogProductSerializer(serializers.ModelSerializer):
                 'color_hex': variant.color_hex,
                 'stock': variant.stock,
             }
-            for variant in obj.variants.all().order_by('size', 'color')
+            for variant in sorted(self._variants(obj), key=lambda v: (v.size or '', v.color or ''))
         ]
 
     def get_min_price(self, obj):
-        variants = list(obj.variants.filter(stock__gt=0))
+        variants = self._variants_with_stock(obj)
         if not variants:
             return obj.base_price
         return min(variant.effective_price for variant in variants)
 
     def get_max_price(self, obj):
-        variants = list(obj.variants.filter(stock__gt=0))
+        variants = self._variants_with_stock(obj)
         if not variants:
             return obj.base_price
         return max(variant.effective_price for variant in variants)
 
     def get_total_stock(self, obj):
-        return obj.total_stock
+        return sum(v.stock or 0 for v in self._variants(obj))
+
+    def get_stock_total(self, obj):
+        return self.get_total_stock(obj)
 
     def get_categories(self, obj):
-        return [pc.category.name for pc in obj.categories.all()]
+        return [pc.category.name for pc in obj.categories.all() if pc.category]
+
+    def get_variants_summary(self, obj):
+        sizes = {}
+        colors = {}
+        total = 0
+        for variant in self._variants(obj):
+            sizes[variant.size] = sizes.get(variant.size, 0) + (variant.stock or 0)
+            colors[variant.color] = colors.get(variant.color, 0) + (variant.stock or 0)
+            total += variant.stock or 0
+        return {
+            'sizes': sizes,
+            'colors': colors,
+            'total_stock': total,
+        }
+
+    def get_average_rating(self, obj):
+        reviews = list(obj.reviews.all())
+        if not reviews:
+            return None
+        return round(sum(r.rating for r in reviews) / len(reviews), 1)
+
+    def get_total_reviews(self, obj):
+        return len(list(obj.reviews.all()))
 
 
 class SearchHistorySerializer(serializers.ModelSerializer):

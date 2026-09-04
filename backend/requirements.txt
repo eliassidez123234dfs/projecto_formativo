@@ -1,3 +1,6 @@
+# RED Estampación — Dependencias backend
+# Paquetes declarativos. La raíz requirements.txt es el freeze canónico (pip freeze).
+
 # Django Core & REST Framework
 Django==5.2.13
 djangorestframework==3.16.1
@@ -8,6 +11,7 @@ django-ckeditor==6.7.3
 django-js-asset==3.1.2
 django-ratelimit==4.1.0
 django-storages==1.14.6
+django-redis>=5.4
 
 # Cloud Storage & Media
 cloudinary==1.44.2
@@ -18,9 +22,9 @@ reportlab>=4.0.0
 # Database & Async Task Queue
 psycopg2-binary==2.9.12
 pymongo==4.17.0
+dnspython==2.8.0
 celery==5.4.0
 redis>=5.0.0
-django-redis>=5.4
 amqp==5.3.1
 billiard==4.2.4
 kombu==5.6.2

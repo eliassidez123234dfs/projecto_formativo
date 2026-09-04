@@ -122,7 +122,7 @@ export default function AdminContact() {
                     </td>
                     <td>{m.fecha_envio ? new Date(m.fecha_envio).toLocaleDateString() : '—'}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div className="action-buttons">
 
                         <button className="btn btn-sm btn-ghost" onClick={() => setViewMsg(m)}>Ver</button>
 

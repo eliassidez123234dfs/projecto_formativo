@@ -12,8 +12,11 @@ Toda la documentación del proyecto está en **[`docs/`](./docs/README.md)**, or
 | [Arquitectura](./docs/05-arquitectura/) | Stack tecnológico, estructura, diseño visual |
 | [API](./docs/07-api/) | Endpoints REST, autenticación, contratos |
 | [Instalación](./docs/08-instalacion-entorno-desarrollo/) | Guías de configuración y puesta en marcha |
-| [Roadmap](./docs/roadmap.md) | Plan de evolución del proyecto |
-| [Checklist Producción](./docs/production-checklist.md) | Preparación para despliegue |
+| [Despliegue](./docs/09-despliegue/) | Checklist de producción y guía de despliegue |
+| [Pruebas](./docs/10-pruebas/) | Estrategia de testing y escenarios BDD |
+| [Gestión de Proyecto](./docs/11-gestion-proyecto/) | Contributing, workflow Git, Taiga |
+| [Historial](./docs/12-historial/) | Bitácora, changelog y roadmap |
+| [Administración](./docs/13-admin/) | Estado del panel admin y pendientes |
 
 ## Stack
 

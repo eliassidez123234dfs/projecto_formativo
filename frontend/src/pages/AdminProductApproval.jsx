@@ -160,7 +160,7 @@ export default function AdminProductApproval() {
                     </td>
                     <td>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div className="action-buttons">
                         <button
                           className="btn btn-sm btn-primary"
                           disabled={processing === p.id || !p.ready_to_publish}

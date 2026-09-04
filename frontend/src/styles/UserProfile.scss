@@ -263,13 +263,13 @@
 
   &--success {
     background: var(--color-success-light);
-    color: #065f46;
+    color: var(--color-success);
     border: 1px solid var(--color-success);
   }
 
   &--error {
     background: var(--color-error-light);
-    color: #991b1b;
+    color: var(--color-error);
     border: 1px solid var(--color-error);
   }
 }

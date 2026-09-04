@@ -75,6 +75,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from apps.carts.models import Cart
 
 from ..services.email_service import EmailService
+from ..tasks import send_password_reset_email_async, send_welcome_email_async, send_admin_reset_email_async
 from ..models import (
     Usuario, Token_Verificacion, 
     Log_Auditoria, Historial_Estado_Usuario
@@ -266,10 +267,11 @@ class RegistroViewSet(viewsets.ViewSet):
                 fecha_expiracion=fecha_expiracion
             )
             
-            if not EmailService.send_password_reset_email(usuario, token):
-                return Response({
-                    'error': 'No se pudo enviar el correo de recuperación. Intenta más tarde.'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # RN-005: el token se genera con secrets.token_urlsafe(32) y tiene
+            # una ventana de expiración limitada. No se revela si el correo existe
+            # o no (evita enumeración de usuarios).
+            # Envío asíncrono via Celery: no bloquea la respuesta HTTP.
+            send_password_reset_email_async.delay(usuario.id, token.token)
             
             return Response({
                 'mensaje': 'Se ha enviado un enlace de recuperación a tu correo.'
@@ -393,12 +395,17 @@ class LoginViewSet(viewsets.ViewSet):
 
                 if session_cart:
                     if user_cart:
-                        # Fusionar carrito de sesión en carrito del usuario
-                        for item in session_cart.items.all():
-                            existing = user_cart.items.filter(product=item.product, variant=item.variant).first()
-                            if existing:
-                                existing.quantity += item.quantity
-                                existing.save()
+                        # Fusionar carrito de sesión en carrito del usuario.
+                        # Pre-cargar items del usuario para evitar N+1 queries.
+                        existing_items = {
+                            (item.product_id, item.variant_id): item
+                            for item in user_cart.items.select_related('product', 'variant').all()
+                        }
+                        for item in session_cart.items.select_related('product', 'variant').all():
+                            key = (item.product_id, item.variant_id)
+                            if key in existing_items:
+                                existing_items[key].quantity += item.quantity
+                                existing_items[key].save()
                             else:
                                 item.cart = user_cart
                                 item.save()
@@ -498,7 +505,9 @@ class UsuarioViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     Filtra usuarios eliminados lógicamente.
     Solo permite acceder al perfil propio vía @action; no expone CRUD.
     """
-    queryset = Usuario.objects.filter(eliminado=False)
+    queryset = Usuario.objects.filter(eliminado=False).select_related(
+        'admin_desbloqueador', 'admin_eliminador'
+    )
     serializer_class = UsuarioSerializer
     permission_classes = [permissions.IsAuthenticated]
     

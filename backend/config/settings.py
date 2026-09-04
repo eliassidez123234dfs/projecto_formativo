@@ -188,6 +188,27 @@ else:
 
 
 # =============================================================================
+#  CELERY — TAREAS ASÍNCRONAS
+#  Delegate tareas pesadas a workers separados para no bloquear el
+#  hilo principal de Django (envío de emails, procesamiento 3D, auditoría).
+#  OWASP A04:2021 — Reduce superficie de ataque al procesar input offline.
+#  OWASP A05:2021 — Broker solo accesible dentro de la red Docker.
+# =============================================================================
+
+CELERY_BROKER_URL = env('REDIS_URL', default='redis://localhost:6379/1')
+CELERY_RESULT_BACKEND = env('REDIS_URL', default='redis://localhost:6379/1')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'America/Bogota'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 300          # 5 min máximo por tarea
+CELERY_TASK_SOFT_TIME_LIMIT = 240     # Warning a los 4 min
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1 # Prefetch justo 1 tarea (fair scheduling)
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 100  # Reciclar worker después de 100 tareas
+
+
+# =============================================================================
 #  MIDDLEWARE — CADENA DE PROCESAMIENTO HTTP
 #  Cada middleware es un "filtro" por el que pasa toda petición/respuesta.
 #  El orden es CRUCIAL: las capas externas (seguridad, CORS, request ID)
@@ -439,7 +460,9 @@ REST_FRAMEWORK = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    # RN-013: Access token corto (15 min) para limitar ventana de uso si es robado.
+    # OWASP API2:2023 — Broken Authentication
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -498,6 +521,10 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
+
+# Redirect HTTP a HTTPS en produccion (OWASP A02:2021 - Cryptographic Failures)
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # SameSite/ Secure cookies: HTTP (dev) -> Lax, HTTPS (prod) -> None + Secure
 if DEBUG:

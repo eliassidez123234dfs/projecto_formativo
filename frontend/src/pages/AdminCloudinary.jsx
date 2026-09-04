@@ -154,7 +154,7 @@ export default function AdminCloudinary() {
       <div className="card">
         <div className="card-body">
           {/* Categorías y filtros rápidos */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center', borderBottom: '1px solid var(--color-gray-200, #e2e8f0)', paddingBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center', borderBottom: '1px solid var(--color-gray-200, #e2e8f0)', paddingBottom: 12 }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-gray-700)', marginRight: 4 }}>Categorías:</span>
             {TABS.map(t => (
               <button
@@ -170,6 +170,7 @@ export default function AdminCloudinary() {
               type="button"
               className={`btn btn-sm ${q === 'camisa' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => { setResourceType('image'); setQ(q === 'camisa' ? '' : 'camisa'); }}
+              title="Filtrar por camisas"
             >
               👕 Camisas
             </button>
@@ -177,8 +178,9 @@ export default function AdminCloudinary() {
               type="button"
               className={`btn btn-sm ${q === 'tshirtify_designs' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => { setResourceType('image'); setQ(q === 'tshirtify_designs' ? '' : 'tshirtify_designs'); }}
+              title="Filtrar carpeta /tshirtify_designs/"
             >
-              🎨 Diseños 3D (/tshirtify_designs/)
+              🎨 Diseños 3D
             </button>
           </div>
 
@@ -261,7 +263,7 @@ export default function AdminCloudinary() {
                         </span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="action-buttons">
                           <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                             <input type="checkbox" checked={selected.includes(res.public_id)} onChange={() => toggleSelect(res.public_id)} />
                             Seleccionar

@@ -116,7 +116,7 @@ export default function UserList({ filters, onPageChange, onSaved }) {
                 </td>
                 <td>{new Date(u.fecha_registro).toLocaleDateString()}</td>
                 <td>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  <div className="action-buttons">
                     <button className="btn btn-sm btn-secondary" onClick={() => setEditingUser(u)}>
                       Editar
                     </button>

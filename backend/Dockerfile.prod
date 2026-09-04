@@ -1,20 +1,51 @@
-# Build stage
+# =============================================================================
+#  Dockerfile.prod — Backend Django (RED Estampacion)
+#  Multi-stage build con usuario no-root (OWASP A05:2021)
+# =============================================================================
+
+# ── Build stage ──
 FROM python:3.12-slim AS builder
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
 
-# Production stage
+# ── Production stage ──
 FROM python:3.12-slim
+
+# Crear usuario sin privilegios (OWASP A05:2021 - Security Misconfiguration)
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev curl && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/wheels /wheels
 RUN pip install --no-cache /wheels/*
+
 COPY . .
 RUN python manage.py collectstatic --noinput
+
+# Crear directorio de logs y dar permisos al usuario no-root
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
+
+# Crear directorio de media con permisos
+RUN mkdir -p /app/media && chown -R appuser:appuser /app/media
+
+# Cambiar ownership del directorio de la app
+RUN chown -R appuser:appuser /app
+
+# Cambiar a usuario no-root
+USER appuser
+
 EXPOSE 8000
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120"]

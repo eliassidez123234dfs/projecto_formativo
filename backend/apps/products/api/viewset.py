@@ -25,6 +25,7 @@ from rest_framework.pagination import PageNumberPagination
 
 from apps.users.api.admin_viewset import AdminPermission
 from apps.products.models import Product, ProductAudit, ProductImage, Variant, Review
+from config.cache_utils import cache_view_action
 
 from .review_serializers import ReviewSerializer
 from .serializers import (
@@ -452,7 +453,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=False, methods=['get'], url_path='search')
-
+    @cache_view_action(timeout=180, prefix='products:search')
     def search(self, request):
         """Búsqueda avanzada con filtros combinables (RF-052).
         Busca en nombre, descripción, talla y color. Filtros adicionales:
@@ -519,6 +520,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     El usuario se asigna automáticamente desde request.user al crear."""
     queryset = Review.objects.select_related('user').all()
     serializer_class = ReviewSerializer
+    pagination_class = None
 
     def get_queryset(self):
         """Filtra reseñas por producto si se pasa el parámetro 'product'."""

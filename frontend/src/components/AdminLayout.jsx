@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { getCurrentUser, clearAuth } from '../services/authService'
 import './admin.css'
 
 const Icons = {
@@ -110,6 +111,19 @@ const Icons = {
       <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
     </svg>
   ),
+  Designs: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z" />
+      <polyline points="12 22 12 12" />
+      <polyline points="12 12 20 7.5" />
+    </svg>
+  ),
+  Edit3D: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12c2-4 4-6 9-6s7 2 9 6c-2 4-4 6-9 6s-7-2-9-6z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  ),
 }
 
 export default function AdminLayout({ children, title, subtitle }) {
@@ -118,11 +132,26 @@ export default function AdminLayout({ children, title, subtitle }) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try { return localStorage.getItem('sidebarOpen') !== 'false' } catch { return true }
   })
-  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+  const [isMobile, setIsMobile] = useState(() => {
+    try { return window.innerWidth <= 768 } catch { return false }
+  })
+  const usuario = getCurrentUser()
 
   useEffect(() => {
-    try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch {}
+    try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch { /* ignore */ }
   }, [sidebarOpen])
+
+  useEffect(() => {
+    function onResize() {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false)
+  }, [isMobile])
 
   const menuItems = [
     { label: 'Dashboard', href: '/admin', icon: Icons.Dashboard },
@@ -147,15 +176,27 @@ export default function AdminLayout({ children, title, subtitle }) {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('usuario')
+    clearAuth()
     navigate('/login')
   }
 
   return (
-    <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '220px 1fr' : '54px 1fr' }}>
-      <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
+    <div className="main-layout">
+      {/* Overlay backdrop for mobile sidebar */}
+      {isMobile && sidebarOpen && (
+        <div className="sidebar-overlay visible" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Always-visible hamburger button (fixed top-left) */}
+      <button
+        className="sidebar-hamburger"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        <Icons.Menu />
+      </button>
+
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-text">
             <span className="sidebar-brand-name">RED</span>
@@ -166,6 +207,30 @@ export default function AdminLayout({ children, title, subtitle }) {
         {sidebarOpen && <div className="nav-section-label">Navegación</div>}
 
         <nav className="sidebar-nav">
+          <Link
+            to="/"
+            className="nav-item nav-store"
+            title={!sidebarOpen ? 'Volver al inicio' : ''}
+          >
+            <span className="nav-item-icon"><Icons.Store /></span>
+            {sidebarOpen && <span className="nav-label">Volver a la tienda</span>}
+          </Link>
+
+          {sidebarOpen && <div className="nav-section-label">Herramientas 3D</div>}
+
+        <a
+          href={import.meta.env.VITE_3D_EDITOR_URL || 'http://localhost:5174'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="nav-item nav-editor3d"
+          title={!sidebarOpen ? 'Editor 3D' : ''}
+        >
+          <span className="nav-item-icon"><Icons.Edit3D /></span>
+          {sidebarOpen && <span className="nav-label">Editor 3D</span>}
+        </a>
+
+        {sidebarOpen && <div className="nav-section-label">Navegación</div>}
+
           {menuItems.map(item => {
             const className = `nav-item ${isActive(item.href) ? 'active' : ''}`
             const title = !sidebarOpen ? item.label : ''
@@ -196,7 +261,7 @@ export default function AdminLayout({ children, title, subtitle }) {
               </Link>
             )
           })}
-        </nav>
+      </nav>
 
         <div className="sidebar-footer">
           <button
@@ -223,13 +288,6 @@ export default function AdminLayout({ children, title, subtitle }) {
 
       <div className="main-content">
         <div className="content-header">
-          <button
-            className="mobile-sidebar-toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Toggle menu"
-          >
-            <Icons.Menu />
-          </button>
           <div className="header-text">
             {title && <h1>{title}</h1>}
             {subtitle && <p className="subtitle">{subtitle}</p>}

@@ -1,6 +1,67 @@
 # Configuracion del Entorno de Desarrollo
 
-## 24.1 Ejecucion sin Docker
+## Requisitos previos
+
+- Git
+- Python 3.11 o superior
+- Node.js 18 o superior
+- npm 10 o superior
+- Docker y Docker Compose (opcional)
+
+## Clonar el repositorio
+
+```bash
+git clone <URL_DEL_REPOSITORIO>
+cd proyecto_formativo
+```
+
+## Variables de entorno
+
+Copie el archivo de ejemplo y adapte los valores a su entorno:
+
+```bash
+cp .env.example .env
+```
+
+### Variables de entorno principales — Backend
+
+| Variable | Descripción |
+|----------|-------------|
+| `SECRET_KEY` | Clave secreta de Django |
+| `DEBUG` | `True` para desarrollo, `False` para producción |
+| `ALLOWED_HOSTS` | Hosts permitidos separados por coma |
+| `FRONTEND_URL` | URL base del frontend |
+| `DATABASE_URL` | URL de conexión a PostgreSQL (opcional, usa SQLite por defecto) |
+| `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USE_TLS` | Configuración de correo |
+| `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | Credenciales de correo |
+| `DEFAULT_FROM_EMAIL` | Remitente por defecto |
+| `CLOUDINARY_URL` | URL de Cloudinary para almacenamiento de imágenes |
+
+### Variables de entorno principales — Frontend
+
+| Variable | Descripción |
+|----------|-------------|
+| `VITE_API_URL` | URL base de la API backend (ej: `http://localhost:8000/api/`) |
+| `VITE_MEDIA_URL` | URL base para archivos multimedia |
+
+## Seed Data (Datos de Ejemplo)
+
+Para poblar la base de datos con productos, categorías y un usuario admin de ejemplo:
+
+```bash
+cd backend
+python manage.py loaddata
+python manage.py load_sample_data
+python manage.py seed_all
+```
+
+Esto crea:
+- Categorías (Camisetas, Hoodies, Gorras, etc.)
+- Productos de ejemplo con variantes (tallas, colores)
+- Imágenes de muestra (si configuraste Cloudinary)
+- Un superusuario: `admin@test.com` / `admin123`
+
+## 1. Ejecucion sin Docker
 
 ### Backend (Django)
 
@@ -10,12 +71,12 @@ cd backend
 
 # 2. Crear y activar entorno virtual
 python3 -m venv venv
-# source venv/bin/activate  # Linux/Mac
+source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate   # Windows
 
 # 3. Actualizar pip e instalar dependencias
 python -m pip install --upgrade pip 
-# pip install --upgrade pip
+pip install --upgrade pip
 pip install -r requirements.txt
 
 # 4. Configurar variables de entorno
@@ -23,13 +84,15 @@ pip install -r requirements.txt
 
 # 5. Ejecutar migraciones
 python manage.py makemigrations # solo la primera vez
-# python manage.py showmigrations
+python manage.py showmigrations
 python manage.py migrate
 
 # 6. Crear superusuario (opcional)
 python manage.py createsuperuser
 
 # 7. Poblar base de datos con datos de prueba (opcional)
+python manage.py loaddata
+python manage.py load_sample_data
 python manage.py seed_all
 
 # 8. Iniciar servidor de desarrollo
@@ -84,7 +147,7 @@ npm run dev -- --host
 
 Abre el navegador en la URL que muestre Vite, normalmente `http://127.0.0.1:5174/`
 
-## 24.2 Ejecucion con Docker Compose
+## 2. Ejecucion con Docker Compose
 
 ```bash
 # 1. Desde la raiz del proyecto
@@ -117,7 +180,7 @@ docker exec proyecto_backend python manage.py seed_products
 docker compose build
 ```
 
-## 24.3 Comandos Django Utiles
+## 3. Comandos Django Utiles
 
 ```bash
 # Migraciones
@@ -145,7 +208,7 @@ python manage.py seed_all # los dos comandos anteriores juntos hacen lo mismo qu
 python manage.py check
 ```
 
-## 24.4 Comandos Frontend Utiles
+## 4. Comandos Frontend Utiles
 
 ```bash
 # Desarrollo
@@ -161,7 +224,7 @@ npm run preview
 npm run lint
 ```
 
-## 24.5 Acceso al Panel de Administracion
+## 5. Acceso al Panel de Administracion
 
 Una vez iniciado el servidor, acceder a:
 
@@ -171,7 +234,7 @@ http://localhost:8000/admin/
 
 Credenciales: las del superusuario creado con `createsuperuser`.
 
-## 24.6 Rutas de la Aplicacion
+## 6. Rutas de la Aplicacion
 
 | Componente | URL (desarrollo) |
 |-----------|------------------|
@@ -180,7 +243,7 @@ Credenciales: las del superusuario creado con `createsuperuser`.
 | Admin Django | `http://127.0.0.1:8000/admin/` |
 | Editor 3D | `http://127.0.0.1:5174` |
 
-## 24.7 Base de Datos
+## 7. Base de Datos
 
 | Aspecto | Desarrollo | Produccion |
 |---------|-----------|------------|
@@ -202,7 +265,7 @@ DATABASE_URL=postgres://user:password@host:5432/dbname
 python manage.py migrate
 ```
 
-## 24.8 Resolucion de Problemas Comunes
+## 8. Resolucion de Problemas Comunes
 
 | Problema | Solucion |
 |----------|----------|
@@ -221,6 +284,7 @@ python manage.py flush --noinput
 # Alternativa manual si quieres borrar todo + migrations:
 Remove-Item -Path db.sqlite3 -Force
 python manage.py migrate
+python manage.py loaddata
 python manage.py seed_all
 ```
 
