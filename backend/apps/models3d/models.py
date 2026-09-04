@@ -31,6 +31,10 @@ class Model3D(models.Model):
     file_type = models.CharField(
         max_length=20,
         choices=[
+            ('png', 'PNG'),
+            ('jpg', 'JPG'),
+            ('jpeg', 'JPEG'),
+            ('webp', 'WEBP'),
             ('glb', 'GLB'),
             ('gltf', 'GLTF'),
             ('obj', 'OBJ'),

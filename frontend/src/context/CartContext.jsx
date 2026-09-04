@@ -72,6 +72,10 @@ export const CartProvider = ({ children }) => {
         return { ...prev, items: newItems, total_items: totalItems, total_amount: totalAmount };
       });
     } catch (error) {
+      if (error?.response?.status === 404) {
+        await loadCart();
+        return;
+      }
       throw error;
     }
   };
@@ -86,6 +90,10 @@ export const CartProvider = ({ children }) => {
         return { ...prev, items: newItems, total_items: totalItems, total_amount: totalAmount };
       });
     } catch (error) {
+      if (error?.response?.status === 404) {
+        await loadCart();
+        return;
+      }
       throw error;
     }
   };

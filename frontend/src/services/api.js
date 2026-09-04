@@ -6,12 +6,15 @@ export const buildApiUrl = (endpoint) => `${API_BASE_URL.replace(/\/+$/, '')}/${
 
 function logHttpError(error) {
   const status = error?.response?.status;
+  const requestUrl = error?.config?.url || '';
+  const isStaleCartItem = status === 404 && /cart\/items\/[^/]+\/(quantity|remove)\/?$/.test(requestUrl);
+  if (isStaleCartItem) return;
   if (status && status !== 401) {
     logClientError({
       name: 'HTTP',
       message: error?.message || 'Error de red',
       response: { status },
-      config: { url: error?.config?.url },
+      config: { url: requestUrl },
     });
   }
 }
