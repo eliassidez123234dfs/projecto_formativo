@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from datetime import timedelta
@@ -42,7 +42,7 @@ def _get_tokens(user):
     return {"access": str(refresh.access_token), "refresh": str(refresh)}
 
 
-# ─── Model Tests ────────────────────────────────────────────────────────────
+# â”€â”€â”€ Model Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class UsuarioModelTests(TestCase):
@@ -314,12 +314,12 @@ class LogAuditoriaModelTests(TestCase):
 
     def test_log_admin_afectado_null_allowed(self):
         log = Log_Auditoria.objects.create(
-            usuario_admin=self.admin, accion="Acción sin afectado",
+            usuario_admin=self.admin, accion="AcciÃ³n sin afectado",
         )
         self.assertIsNone(log.usuario_afectado)
 
 
-# ─── Serializer Tests ───────────────────────────────────────────────────────
+# â”€â”€â”€ Serializer Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class RegistroSerializerTests(TestCase):
@@ -497,7 +497,7 @@ class LoginSerializerTests(TestCase):
         self.assertFalse(serializer.is_valid())
 
 
-# ─── API Tests ──────────────────────────────────────────────────────────────
+# â”€â”€â”€ API Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class RegistroAPITests(TestCase):
@@ -670,7 +670,7 @@ class LoginAPITests(TestCase):
 
     def test_login_merges_anonymous_cart(self):
         session_cart = Cart.objects.create(session_key="test-session-key")
-        product = Product.objects.create(name="Test Product", description="Test", base_price="25.00", is_active=True, is_approved=True)
+        product = Product.objects.create(name="Test Product", description="Test", base_price="25000.00", is_active=True, is_approved=True)
         v1 = Variant.objects.create(product=product, size="M", color="Negro", stock=10)
         v2 = Variant.objects.create(product=product, size="L", color="Blanco", stock=5)
         CartItem.objects.create(
@@ -839,7 +839,7 @@ class RecuperacionPasswordAPITests(TestCase):
         self.assertEqual(self.usuario.intentos_fallidos, 0)
 
 
-# ─── Admin API Tests ────────────────────────────────────────────────────────
+# â”€â”€â”€ Admin API Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class AdminPermissionTests(TestCase):
@@ -1078,7 +1078,7 @@ class AdminUserCRUDTests(TestCase):
     def test_admin_estado_transition_creates_historial(self):
         user = _create_user(usuario="transitiontest", correo="transition@test.com", estado="Inactivo")
         url = reverse("admin-usuario-cambiar-estado", args=[user.id])
-        self.client.post(url, {"estado": "Activo", "motivo": "Activación manual"}, format="json")
+        self.client.post(url, {"estado": "Activo", "motivo": "ActivaciÃ³n manual"}, format="json")
         historial = Historial_Estado_Usuario.objects.filter(usuario=user)
         self.assertEqual(historial.count(), 1)
         self.assertEqual(historial.first().estado_nuevo, "Activo")

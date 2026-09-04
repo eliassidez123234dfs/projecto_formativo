@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from decimal import Decimal
 
@@ -37,7 +37,7 @@ def _create_order(status=Order.STATUS_PENDING, total="50.00", **kwargs):
     return Order.objects.create(**defaults)
 
 
-# ─── Model Tests ────────────────────────────────────────────────────────────
+# â”€â”€â”€ Model Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class OrderModelTests(TestCase):
@@ -122,7 +122,7 @@ class OrderModelTests(TestCase):
 class OrderItemModelTests(TestCase):
     def setUp(self):
         self.order = _create_order()
-        self.product = Product.objects.create(name="Order Item Prod", description="Desc", base_price="25.00")
+        self.product = Product.objects.create(name="Order Item Prod", description="Desc", base_price="25000.00")
         self.variant = Variant.objects.create(product=self.product, size="M", color="Negro", stock=10)
 
     def test_create_order_item(self):
@@ -180,7 +180,7 @@ class OrderItemModelTests(TestCase):
         self.assertEqual(self.order.items.count(), 2)
 
 
-# ─── Order API Tests ────────────────────────────────────────────────────────
+# â”€â”€â”€ Order API Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class OrderAPITests(TestCase):
@@ -275,7 +275,7 @@ class AdminOrderAPITests(TestCase):
 
     def test_admin_retrieve_order_detail(self):
         order = _create_order()
-        p = Product.objects.create(name="Admin Detail", description="Desc", base_price="25.00")
+        p = Product.objects.create(name="Admin Detail", description="Desc", base_price="25000.00")
         v = Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         OrderItem.objects.create(order=order, product=p, variant=v, quantity=2, unit_price="25.00")
         url = reverse("admin-order-detail", args=[order.id])

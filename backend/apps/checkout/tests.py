@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 import json
@@ -30,14 +30,14 @@ def _get_tokens(user):
 
 
 def _setup_cart(quantity=2, stock=10):
-    product = Product.objects.create(name="Checkout Product", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+    product = Product.objects.create(name="Checkout Product", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
     variant = Variant.objects.create(product=product, size="M", color="Negro", stock=stock)
     cart = Cart.objects.create(session_key="checkout-test-session")
     CartItem.objects.create(cart=cart, product=product, variant=variant, quantity=quantity, unit_price="25.00")
     return cart, product, variant
 
 
-# ─── Serializer Tests ───────────────────────────────────────────────────────
+# â”€â”€â”€ Serializer Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class ShippingSerializerTests(TestCase):
@@ -172,7 +172,7 @@ class ShippingSerializerTests(TestCase):
         self.assertFalse(serializer.is_valid())
 
 
-# ─── Wompi Tests ────────────────────────────────────────────────────────────
+# â”€â”€â”€ Wompi Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class WompiSignatureTests(TestCase):
@@ -229,7 +229,7 @@ class WompiAPITests(TestCase):
         self.assertIsNone(result)
 
 
-# ─── Checkout Flow Tests ───────────────────────────────────────────────────
+# â”€â”€â”€ Checkout Flow Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class CheckoutSummaryTests(TestCase):
@@ -248,7 +248,7 @@ class CheckoutSummaryTests(TestCase):
         session = client.session
         session.save()
         cart = Cart.objects.create(session_key=session.session_key)
-        p = Product.objects.create(name="Summary Prod", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Summary Prod", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         v = Variant.objects.create(product=p, size="M", color="Negro", stock=10)
         CartItem.objects.create(cart=cart, product=p, variant=v, quantity=3, unit_price="25.00")
         url = reverse("checkout-summary")
@@ -264,7 +264,7 @@ class CheckoutInitTests(TestCase):
         session = self.client.session
         session.save()
         self.cart = Cart.objects.create(session_key=session.session_key)
-        self.product = Product.objects.create(name="Init Prod", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        self.product = Product.objects.create(name="Init Prod", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         self.variant = Variant.objects.create(product=self.product, size="M", color="Negro", stock=10)
         CartItem.objects.create(cart=self.cart, product=self.product, variant=self.variant, quantity=2, unit_price="25.00")
 
@@ -436,7 +436,7 @@ class WompiWebhookTests(TestCase):
             customer_name="Webhook User", customer_email="webhook@test.com",
             status=Order.STATUS_PENDING, total=Decimal("50.00"),
         )
-        self.product = Product.objects.create(name="Webhook Prod", description="Desc", base_price="25.00")
+        self.product = Product.objects.create(name="Webhook Prod", description="Desc", base_price="25000.00")
         self.variant = Variant.objects.create(product=self.product, size="M", color="Negro", stock=10)
         OrderItem.objects.create(order=self.order, product=self.product, variant=self.variant, quantity=2, unit_price="25.00")
 

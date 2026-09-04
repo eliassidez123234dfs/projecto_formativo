@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from django.test import TestCase
 from django.urls import reverse
@@ -31,14 +31,14 @@ class CategoryModelTests(TestCase):
 
     def test_product_count_with_products(self):
         c = Category.objects.create(name="With Products")
-        p = Product.objects.create(name="Test", description="Desc", base_price="10.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Test", description="Desc", base_price="100.00", is_active=True, is_approved=True)
         ProductCategory.objects.create(product=p, category=c)
         self.assertEqual(c.product_count, 1)
 
     def test_product_count_only_active_approved(self):
         c = Category.objects.create(name="Mixed")
-        p1 = Product.objects.create(name="Active", description="Desc", base_price="10.00", is_active=True, is_approved=True)
-        p2 = Product.objects.create(name="Inactive", description="Desc", base_price="10.00")
+        p1 = Product.objects.create(name="Active", description="Desc", base_price="100.00", is_active=True, is_approved=True)
+        p2 = Product.objects.create(name="Inactive", description="Desc", base_price="100.00")
         ProductCategory.objects.create(product=p1, category=c)
         ProductCategory.objects.create(product=p2, category=c)
         self.assertEqual(c.product_count, 1)
@@ -47,7 +47,7 @@ class CategoryModelTests(TestCase):
 class ProductCategoryModelTests(TestCase):
     def setUp(self):
         self.category = Category.objects.create(name="Cat1")
-        self.product = Product.objects.create(name="Prod1", description="Desc", base_price="10.00")
+        self.product = Product.objects.create(name="Prod1", description="Desc", base_price="100.00")
 
     def test_create_product_category(self):
         pc = ProductCategory.objects.create(product=self.product, category=self.category)
@@ -129,7 +129,7 @@ class PopularSearchModelTests(TestCase):
         self.assertEqual(PopularSearch.objects.first().query, "camiseta")
 
 
-# ─── API Tests ──────────────────────────────────────────────────────────────
+# â”€â”€â”€ API Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class CatalogAPITests(TestCase):
@@ -137,7 +137,7 @@ class CatalogAPITests(TestCase):
         self.client = APIClient()
 
     def test_catalog_list(self):
-        p = Product.objects.create(name="Catalog Product", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Catalog Product", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         url = reverse("catalog-list")
         response = self.client.get(url, format="json")
@@ -145,7 +145,7 @@ class CatalogAPITests(TestCase):
         self.assertIn("results", response.data)
 
     def test_catalog_list_filters_included(self):
-        p = Product.objects.create(name="Filter Test", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Filter Test", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         url = reverse("catalog-list")
         response = self.client.get(url, format="json")
@@ -153,15 +153,15 @@ class CatalogAPITests(TestCase):
         self.assertIn("popular_searches", response.data)
 
     def test_catalog_only_shows_active_approved(self):
-        Product.objects.create(name="Active", description="Desc", base_price="10.00", is_active=True, is_approved=True)
-        Product.objects.create(name="Inactive", description="Desc", base_price="10.00")
-        Product.objects.create(name="Not Approved", description="Desc", base_price="10.00", is_active=True)
+        Product.objects.create(name="Active", description="Desc", base_price="100.00", is_active=True, is_approved=True)
+        Product.objects.create(name="Inactive", description="Desc", base_price="100.00")
+        Product.objects.create(name="Not Approved", description="Desc", base_price="100.00", is_active=True)
         url = reverse("catalog-list")
         response = self.client.get(url, format="json")
         self.assertEqual(len(response.data["results"]), 1)
 
     def test_catalog_search_by_name(self):
-        p = Product.objects.create(name="Busqueda Test", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Busqueda Test", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         url = reverse("catalog-list")
         response = self.client.get(url, {"q": "Busqueda"}, format="json")
@@ -177,7 +177,7 @@ class CatalogAPITests(TestCase):
     def test_catalog_search_records_history(self):
         session = self.client.session
         session.save()
-        p = Product.objects.create(name="Hist Test", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Hist Test", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         url = reverse("catalog-list")
         self.client.get(url, {"q": "Hist"}, format="json")
@@ -185,9 +185,9 @@ class CatalogAPITests(TestCase):
         self.assertEqual(history_count, 1)
 
     def test_catalog_search_records_popular(self):
-        p = Product.objects.create(name="Popular Test", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Popular Test", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
-        # Crear sesión para que se guarde el historial
+        # Crear sesiÃ³n para que se guarde el historial
         session = self.client.session
         session.save()
         url = reverse("catalog-list")
@@ -196,7 +196,7 @@ class CatalogAPITests(TestCase):
 
     def test_catalog_filter_by_category(self):
         cat = Category.objects.create(name="Electronics")
-        p = Product.objects.create(name="Gadget", description="Desc", base_price="50.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Gadget", description="Desc", base_price="200.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         ProductCategory.objects.create(product=p, category=cat)
         url = reverse("catalog-list")
@@ -205,7 +205,7 @@ class CatalogAPITests(TestCase):
         self.assertEqual(len(response.data["results"]), 1)
 
     def test_catalog_filter_by_size(self):
-        p = Product.objects.create(name="Size Filter", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Size Filter", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="XL", color="Negro", stock=5)
         url = reverse("catalog-list")
         response = self.client.get(url, {"size": "XL"}, format="json")
@@ -213,7 +213,7 @@ class CatalogAPITests(TestCase):
         self.assertEqual(len(response.data["results"]), 1)
 
     def test_catalog_filter_by_color(self):
-        p = Product.objects.create(name="Color Filter", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Color Filter", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Rojo", stock=5)
         url = reverse("catalog-list")
         response = self.client.get(url, {"color": "Rojo"}, format="json")
@@ -221,8 +221,8 @@ class CatalogAPITests(TestCase):
         self.assertEqual(len(response.data["results"]), 1)
 
     def test_catalog_filter_by_price_range(self):
-        Product.objects.create(name="Cheap", description="Desc", base_price="5.00", is_active=True, is_approved=True)
-        p2 = Product.objects.create(name="Expensive", description="Desc", base_price="50.00", is_active=True, is_approved=True)
+        Product.objects.create(name="Cheap", description="Desc", base_price="200.00", is_active=True, is_approved=True)
+        p2 = Product.objects.create(name="Expensive", description="Desc", base_price="200.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p2, size="M", color="Negro", stock=5)
         url = reverse("catalog-list")
         response = self.client.get(url, {"min_price": "10", "max_price": "100"}, format="json")
@@ -230,9 +230,9 @@ class CatalogAPITests(TestCase):
         self.assertEqual(len(response.data["results"]), 1)
 
     def test_catalog_filter_by_has_stock(self):
-        p1 = Product.objects.create(name="In Stock", description="Desc", base_price="10.00", is_active=True, is_approved=True)
+        p1 = Product.objects.create(name="In Stock", description="Desc", base_price="100.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p1, size="M", color="Negro", stock=5)
-        p2 = Product.objects.create(name="No Stock", description="Desc", base_price="10.00", is_active=True, is_approved=True)
+        p2 = Product.objects.create(name="No Stock", description="Desc", base_price="100.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p2, size="M", color="Rojo", stock=0)
         url = reverse("catalog-list")
         response = self.client.get(url, {"has_stock": "true"}, format="json")
@@ -247,7 +247,7 @@ class CatalogDetailTests(TestCase):
         self.client = APIClient()
 
     def test_retrieve_product(self):
-        p = Product.objects.create(name="Detail Test", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Detail Test", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         url = reverse("catalog-detail", args=[p.id])
         response = self.client.get(url, format="json")
@@ -266,7 +266,7 @@ class CatalogFiltersEndpointTests(TestCase):
 
     def test_filters_endpoint(self):
         cat = Category.objects.create(name="Cat1")
-        p = Product.objects.create(name="Filter Test", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Filter Test", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         ProductCategory.objects.create(product=p, category=cat)
         url = reverse("catalog-filters")
@@ -339,7 +339,7 @@ class FeaturedDealsAPITests(TestCase):
         self.client = APIClient()
 
     def test_featured_endpoint(self):
-        p = Product.objects.create(name="Featured", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Featured", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         from apps.products.models import ProductImage
         ProductImage.objects.create(product=p, cloudinary_url="https://cldn.com/img.png")
@@ -349,7 +349,7 @@ class FeaturedDealsAPITests(TestCase):
         self.assertEqual(len(response.data), 1)
 
     def test_deals_endpoint(self):
-        p = Product.objects.create(name="Deal", description="Desc", base_price="15.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Deal", description="Desc", base_price="150.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         url = reverse("catalog-deals")
         response = self.client.get(url, format="json")
@@ -371,7 +371,7 @@ class CategoryAPITests(TestCase):
 
     def test_category_products(self):
         cat = Category.objects.create(name="Test Cat")
-        p = Product.objects.create(name="Cat Product", description="Desc", base_price="25.00", is_active=True, is_approved=True)
+        p = Product.objects.create(name="Cat Product", description="Desc", base_price="25000.00", is_active=True, is_approved=True)
         Variant.objects.create(product=p, size="M", color="Negro", stock=5)
         ProductCategory.objects.create(product=p, category=cat)
         url = reverse("category-products", args=[cat.pk])

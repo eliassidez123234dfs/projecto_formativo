@@ -34,7 +34,7 @@ def _get_tokens(user):
 
 
 def _create_product(name="Cart Product", **kwargs):
-    defaults = dict(name=name, description="Desc", base_price="25.00", is_active=True, is_approved=True)
+    defaults = dict(name=name, description="Desc", base_price="25000.00", is_active=True, is_approved=True)
     defaults.update(kwargs)
     return Product.objects.create(**defaults)
 
