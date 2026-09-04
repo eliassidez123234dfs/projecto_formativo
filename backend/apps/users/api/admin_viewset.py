@@ -9,6 +9,8 @@ from django.conf import settings
 from django.db.models import Q, Case, When, Value, IntegerField
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.hashers import make_password
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 import uuid
 from datetime import timedelta
 import secrets
@@ -383,9 +385,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         
         # Si se desactiva o bloquea, invalidar tokens (RN-022)
         if nuevo_estado in ['Inactivo', 'Bloqueado']:
-            # Aquí se implementaría la invalidación de tokens JWT
-            # Usando django-rest-framework-simplejwt token blacklist
-            pass
+            self._blacklist_user_tokens(usuario)
         
         # Registrar en auditoría
         self._registrar_auditoria(
@@ -483,7 +483,11 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         usuario.eliminado = True
         usuario.fecha_eliminacion = timezone.now()
         usuario.admin_eliminador = request.user
+        usuario.estado = 'Inactivo'
         usuario.save()
+        
+        # Invalidar todos los tokens del usuario eliminado
+        self._blacklist_user_tokens(usuario)
         
         # Registrar en auditoría
         self._registrar_auditoria(
@@ -665,3 +669,24 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
+    
+    def _blacklist_user_tokens(self, usuario):
+        """Invalidar todos los refresh tokens activos de un usuario (RN-022).
+        
+        Los refresh tokens se agregan a la blacklist para que no puedan
+        usarse para obtener nuevos access tokens.
+        
+        LIMITACIÓN: Los access tokens ya emitidos siguen válidos hasta
+        su expiración natural (15 min por defecto). No existe un mecanismo
+        estándar en SimpleJWT para revocar access tokens en caliente.
+        """
+        outstanding_tokens = OutstandingToken.objects.filter(user=usuario)
+        blacklisted = 0
+        for token in outstanding_tokens:
+            _, created = BlacklistedToken.objects.get_or_create(token=token)
+            if created:
+                blacklisted += 1
+        logger.info(
+            'Tokens blacklisteados para usuario %s (id=%s): %d tokens',
+            usuario.usuario, usuario.id, blacklisted
+        )

@@ -6,7 +6,11 @@ from ..models import Usuario
 
 class UsuarioJWTAuthentication(JWTAuthentication):
     """JWT Authentication personalizado que usa el modelo Usuario
-    en lugar del auth.User por defecto."""
+    en lugar del auth.User por defecto.
+    
+    Además, en cada request autenticado verifica que el usuario
+    no esté Inactivo o Bloqueado, para revocar access tokens
+    inmediatamente sin esperar a que expiren."""
 
     def get_user(self, validated_token):
         try:
@@ -18,5 +22,12 @@ class UsuarioJWTAuthentication(JWTAuthentication):
             user = Usuario.objects.get(**{api_settings.USER_ID_FIELD: int(user_id)})
         except Usuario.DoesNotExist:
             raise AuthenticationFailed('User not found', code='user_not_found')
+
+        # Verificar estado del usuario en cada request (revocación inmediata)
+        if user.estado in ('Inactivo', 'Bloqueado'):
+            raise AuthenticationFailed(
+                'Tu cuenta está desactivada o bloqueada.',
+                code='user_disabled'
+            )
 
         return user

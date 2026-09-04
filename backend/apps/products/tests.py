@@ -19,7 +19,7 @@ def build_test_image(name: str = 'test.png', size: tuple[int, int] = (400, 400),
 
 class ProductModelTests(TestCase):
     def test_product_requires_valid_minimum_fields(self):
-        product = Product(name='Camiseta Premium', description='Desc', base_price='25.00')
+        product = Product(name='Camiseta Premium', description='Desc', base_price='25000')
         product.full_clean()
         product.save()
 
@@ -27,12 +27,12 @@ class ProductModelTests(TestCase):
         self.assertFalse(product.can_be_published)
 
     def test_product_rejects_invalid_price(self):
-        product = Product(name='Camiseta Barata', description='Desc', base_price='0')
+        product = Product(name='Camiseta Barata', description='Desc', base_price=0)
         with self.assertRaises(ValidationError):
             product.full_clean()
 
     def test_variant_limits_and_uniqueness(self):
-        product = Product.objects.create(name='Producto Base', description='Desc', base_price='35.00')
+        product = Product.objects.create(name='Producto Base', description='Desc', base_price='35000')
 
         Variant.objects.create(product=product, size='S', color='Negro', stock=5)
         Variant.objects.create(product=product, size='M', color='Negro', stock=5)
@@ -48,7 +48,7 @@ class ProductModelTests(TestCase):
             duplicate.full_clean()
 
     def test_image_requires_main_safe_format_and_resolution(self):
-        product = Product.objects.create(name='Producto Imagen', description='Desc', base_price='40.00')
+        product = Product.objects.create(name='Producto Imagen', description='Desc', base_price='40000')
         image = ProductImage(product=product, image=build_test_image())
         image.full_clean()
         image.save()

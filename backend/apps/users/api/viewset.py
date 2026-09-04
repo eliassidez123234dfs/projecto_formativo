@@ -1,8 +1,9 @@
 import logging
 
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, status, permissions, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
@@ -18,7 +19,7 @@ from apps.carts.models import Cart
 logger = logging.getLogger(__name__)
 
 from ..models import (
-    Usuario, Token_Verificacion, Cambio_Email, 
+    Usuario, Token_Verificacion, 
     Log_Auditoria, Historial_Estado_Usuario
 )
 
@@ -33,6 +34,7 @@ from .serializers import (
 class RegistroViewSet(viewsets.ViewSet):
     """ViewSet para registro de nuevos usuarios (RF-001, RF-003, RF-009)"""
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AnonRateThrottle]
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def registro(self, request):
@@ -225,6 +227,7 @@ class RegistroViewSet(viewsets.ViewSet):
 class LoginViewSet(viewsets.ViewSet):
     """ViewSet para autenticación (RF-008, RF-011, RF-012)"""
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AnonRateThrottle]
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def login(self, request):
@@ -287,8 +290,9 @@ class LoginViewSet(viewsets.ViewSet):
         }, status=status.HTTP_200_OK)
 
 
-class UsuarioViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestión de perfil de usuario (RF-010)"""
+class UsuarioViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    """ViewSet para gestión de perfil de usuario (RF-010).
+    Solo permite acceder al perfil propio via @action, no expone CRUD."""
     queryset = Usuario.objects.filter(eliminado=False)
     serializer_class = UsuarioSerializer
     permission_classes = [permissions.IsAuthenticated]

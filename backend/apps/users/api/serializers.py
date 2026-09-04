@@ -6,7 +6,7 @@ from datetime import timedelta
 import re
 import secrets
 
-from ..models import Usuario, Token_Verificacion, Cambio_Email, Log_Auditoria, Historial_Estado_Usuario
+from ..models import Usuario, Token_Verificacion, Log_Auditoria, Historial_Estado_Usuario
 
 class UsuarioSerializer(serializers.ModelSerializer):
     """Serializer básico para Usuario"""
@@ -277,13 +277,27 @@ class ActualizarPerfilSerializer(serializers.ModelSerializer):
         max_length=255, 
         required=False, 
         write_only=True,
-        help_text="Requerido para cambiar correo o contraseña"
+        help_text="Requerido para cambiar correo"
     )
     
     class Meta:
         model = Usuario
         fields = ['usuario', 'correo', 'contrasena_actual']
         read_only_fields = ['id']
+    
+    def validate_usuario(self, value):
+        """Validar que el nombre de usuario no esté en uso por otro usuario"""
+        usuario = self.context.get('usuario')
+        if Usuario.objects.filter(usuario=value).exclude(pk=usuario.pk).exists():
+            raise ValidationError("Este nombre de usuario ya está en uso.")
+        return value
+    
+    def validate_correo(self, value):
+        """Validar que el correo no esté en uso por otro usuario"""
+        usuario = self.context.get('usuario')
+        if Usuario.objects.filter(correo=value).exclude(pk=usuario.pk).exists():
+            raise ValidationError("Este correo ya está en uso por otro usuario.")
+        return value
     
     def validate(self, data):
         usuario = self.context.get('usuario')
@@ -292,6 +306,10 @@ class ActualizarPerfilSerializer(serializers.ModelSerializer):
         if 'correo' in data and data['correo'] != usuario.correo:
             if 'contrasena_actual' not in data:
                 raise ValidationError("Debes ingresar tu contraseña actual para cambiar el correo.")
+            # Verificar que la contraseña actual sea correcta
+            from django.contrib.auth.hashers import check_password
+            if not check_password(data['contrasena_actual'], usuario.contrasena):
+                raise ValidationError("La contraseña actual es incorrecta.")
         
         return data
 

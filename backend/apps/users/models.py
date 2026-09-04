@@ -43,6 +43,10 @@ class Usuario(models.Model):
     # foreignkey a si mismo, PERMITE al administrador eliminar a un usuario sin crear tablas extras
     admin_eliminador = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='usuarios_eliminados')
 
+    # Campos requeridos por Django para AUTH_USER_MODEL
+    USERNAME_FIELD = 'correo'
+    REQUIRED_FIELDS = ['usuario']
+
     # clase meta para poder poner indexes y mejorar la busquedad de lo siguiente de acuerdo a la matrix
     class Meta:
         db_table = 'usuarios'
@@ -72,7 +76,7 @@ class Token_Verificacion(models.Model):
     recuperación de contraseña y cambio de email (RI-009)"""
     
     # Tipo de token el cual se requiera utilizar en el caso de aplicarse
-    TIPO_CHOICES = (('Verificacion_Email', 'Verificación de Email'), ('Recuperacion_Password', 'Recuperación de Contraseña'), ('Cambio_Email', 'Cambio de Email'),)
+    TIPO_CHOICES = (('Verificacion_Email', 'Verificación de Email'), ('Recuperacion_Password', 'Recuperación de Contraseña'),)
     
     id = models.AutoField(primary_key=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='tokens_verificacion') # nombre para identificar
@@ -93,28 +97,6 @@ class Token_Verificacion(models.Model):
     
     def __str__(self):
         return f"{self.usuario.usuario} - {self.tipo}"
-
-
-class Cambio_Email(models.Model):
-    """Modelo para gestionar solicitudes de cambio de email (RI-010)"""
-    
-    id = models.AutoField(primary_key=True)
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='cambios_email')
-    email_anterior = models.EmailField()
-    email_nuevo = models.EmailField()
-    token = models.ForeignKey(Token_Verificacion, on_delete=models.CASCADE)
-    fecha_solicitud = models.DateTimeField(auto_now_add=True)
-    verificado = models.BooleanField(default=False)
-    fecha_verificacion = models.DateTimeField(null=True, blank=True)
-    
-    class Meta:
-        db_table = 'cambios_email'
-        indexes = [
-            models.Index(fields=['usuario', 'verificado']),
-        ]
-    
-    def __str__(self):
-        return f"{self.usuario.usuario}: {self.email_anterior} -> {self.email_nuevo}"
 
 
 # Clase para ver el estado del usuario actual que este registrado
