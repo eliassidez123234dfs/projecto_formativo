@@ -183,4 +183,22 @@ class Log_Auditoria(models.Model):
     
     def __str__(self):
         return f"{self.accion} - {self.fecha_accion}"
+
+
+# -----------------------------------------------------------------------------
+# Señal para garantizar que cada usuario registrado tenga su carrito activo
+# -----------------------------------------------------------------------------
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=Usuario)
+def crear_carrito_para_nuevo_usuario(sender, instance, created, **kwargs):
+    """
+    Señal post_save:
+    Cada vez que se crea un nuevo usuario en el sistema (registro o panel admin),
+    se inicializa automáticamente su registro de carrito asociado.
+    """
+    if created:
+        from apps.carts.models import Cart
+        Cart.objects.get_or_create(user=instance)
     
