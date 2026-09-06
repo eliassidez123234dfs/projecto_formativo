@@ -39,7 +39,20 @@ function App() {
       <CartProvider>
         <BrowserRouter>
           <ErrorBoundary>
-          <Toaster position="top-right" toastOptions={{ duration: 4000, style: { fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
+          {/* Notificaciones Toaster configuradas en la esquina inferior derecha para no obstruir los menús del Header */}
+          <Toaster
+            position="bottom-right"
+            containerStyle={{ bottom: 24, right: 24 }}
+            toastOptions={{
+              duration: 3500,
+              style: {
+                fontSize: 14,
+                borderRadius: 10,
+                padding: '12px 18px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+              },
+            }}
+          />
           <Routes>
             {/* Rutas existentes de integracion-total */}
             <Route path="/" element={<Landing />} />

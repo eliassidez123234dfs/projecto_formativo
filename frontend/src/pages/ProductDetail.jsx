@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchProductDetail } from '../services/api';
 import { useCart } from '../context/CartContext';
@@ -11,6 +11,7 @@ import ErrorState from '../components/ErrorState';
 
 export const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -85,15 +86,32 @@ export const ProductDetail = () => {
     return product?.variants?.find(v => v.size === size && v.color === color)?.stock || 0;
   }
 
+  /**
+   * Maneja el proceso de agregar un producto al carrito:
+   * 1. Verifica si la variante seleccionada cuenta con inventario disponible.
+   * 2. Si no hay stock, muestra error y redirige a la página principal (evita spam).
+   * 3. Si se agrega exitosamente, notifica al usuario y redirige al catálogo.
+   * 4. Si el backend rechaza por falta de stock, redirige a la página principal.
+   */
   const handleAddToCart = async () => {
-    if (!selectedVariant) return;
+    if (!selectedVariant || selectedVariant.stock === 0) {
+      toast.error('Este producto no tiene stock disponible');
+      navigate('/');
+      return;
+    }
     setAdding(true);
     try {
       await addItem(product.id, selectedVariant.id, quantity);
       toast.success('Producto agregado al carrito');
+      // Redirigir al catálogo para continuar la compra y evitar clics repetidos
+      navigate('/catalog');
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.quantity || 'Error al agregar al carrito';
       toast.error(msg);
+      // Si el error es por falta de inventario, redirigir al inicio para prevenir reintentos
+      if (err.response?.status === 400 && String(msg).toLowerCase().includes('stock')) {
+        navigate('/');
+      }
     } finally {
       setAdding(false);
     }

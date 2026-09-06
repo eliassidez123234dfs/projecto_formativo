@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
+import { useCart } from '../context/CartContext'
 import { buildApiUrl } from '../services/api'
 
 const ProfessionalTshirtImage = () => (
@@ -36,6 +37,7 @@ const features = [
 
 export const Landing = () => {
   const navigate = useNavigate()
+  const { cart } = useCart()
   const loggedIn = typeof window !== 'undefined' ? Boolean(localStorage.getItem('access_token')) : false
   const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
 
@@ -76,7 +78,8 @@ export const Landing = () => {
       background: 'linear-gradient(135deg, #f8fafc 0%, #fff1f2 48%, #f1f5f9 100%)',
       backgroundAttachment: 'fixed', color: 'var(--color-text)',
     }}>
-      <Header />
+      {/* Barra de navegación con el contador sincronizado del carrito */}
+      <Header cartCount={cart?.total_items || 0} />
 
       <section style={{
         maxWidth: 1200, margin: '0 auto', padding: 'clamp(40px, 6vw, 80px) clamp(16px, 3vw, 24px)',

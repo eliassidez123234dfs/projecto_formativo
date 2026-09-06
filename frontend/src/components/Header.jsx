@@ -1,8 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useCart } from '../context/CartContext'
 
-export const Header = ({ cartCount = 0 }) => {
+/**
+ * Componente Header de navegación principal:
+ * - Muestra el menú de navegación, autenticación y perfil de usuario.
+ * - Calcula el contador de productos del carrito a partir de las props
+ *   o directamente desde el contexto `useCart` para mantenerlo sincronizado
+ *   en todas las vistas (incluida la Landing).
+ */
+export const Header = ({ cartCount: propCartCount }) => {
   const navigate = useNavigate()
+  const cartContext = useCart()
+  // Determinar la cantidad de artículos del carrito (prioriza prop si se envía, de lo contrario consulta el contexto global)
+  const effectiveCartCount = propCartCount !== undefined ? propCartCount : (cartContext?.cart?.total_items || 0)
+  const cartCount = effectiveCartCount
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef(null)

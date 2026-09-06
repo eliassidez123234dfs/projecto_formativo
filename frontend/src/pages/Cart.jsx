@@ -1,5 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/Button';
 import { Header } from '../components/Header';
@@ -7,7 +8,52 @@ import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 
 export const Cart = () => {
+  const navigate = useNavigate();
   const { cart, loading, updateQuantity, removeItem, clearCartItems } = useCart();
+
+  // Estado para controlar la visualización de la notificación de carga en el centro de la pantalla
+  const [isClearing, setIsClearing] = useState(false);
+
+  /**
+   * Muestra la notificación centrada en pantalla con spinner de carga durante 1 segundo
+   * y posteriormente redirige de inmediato al catálogo de productos.
+   */
+  const handleEmptyCartNotificationAndRedirect = () => {
+    setIsClearing(true);
+    setTimeout(() => {
+      navigate('/catalog');
+    }, 1000);
+  };
+
+  /**
+   * Acción del botón "Vaciar carrito":
+   * Vacía todos los productos del carrito y activa la notificación centrada de 1 segundo.
+   */
+  const handleClearCart = async () => {
+    try {
+      await clearCartItems();
+      handleEmptyCartNotificationAndRedirect();
+    } catch (err) {
+      toast.error('Error al vaciar el carrito');
+    }
+  };
+
+  /**
+   * Acción para eliminar un producto individual del carrito:
+   * Si tras eliminar el ítem el carrito queda vacío (0 productos),
+   * activa la notificación centrada de 1 segundo y redirige al catálogo.
+   */
+  const handleRemoveItem = async (itemId) => {
+    try {
+      const willBeEmpty = (cart?.items?.length || 0) <= 1;
+      await removeItem(itemId);
+      if (willBeEmpty) {
+        handleEmptyCartNotificationAndRedirect();
+      }
+    } catch (err) {
+      toast.error('Error al eliminar el producto');
+    }
+  };
 
   if (loading) {
     return (
@@ -39,7 +85,7 @@ export const Cart = () => {
   const items = cart?.items || [];
   const totalItems = cart?.total_items || 0;
 
-  if (items.length === 0) {
+  if (items.length === 0 && !isClearing) {
     return (
       <>
         <Header cartCount={0} />
@@ -126,8 +172,13 @@ export const Cart = () => {
                 <p style={{ fontWeight: 700, fontSize: 16 }}>{formatCOP(item.subtotal)}</p>
               </div>
 
-              <button className="btn btn-sm btn-ghost" onClick={() => removeItem(item.id)}
-                style={{ color: 'var(--color-error)', padding: '4px 8px' }}>
+              {/* Botón para eliminar item individual */}
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() => handleRemoveItem(item.id)}
+                title="Eliminar producto"
+                style={{ color: 'var(--color-error)', padding: '4px 8px' }}
+              >
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -153,7 +204,12 @@ export const Cart = () => {
         </div>
 
         <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button className="btn btn-outline" style={{ textDecoration: 'none', color: 'var(--color-error)' }} onClick={clearCartItems}>
+          {/* Botón para vaciar todo el carrito */}
+          <button
+            className="btn btn-outline"
+            style={{ textDecoration: 'none', color: 'var(--color-error)' }}
+            onClick={handleClearCart}
+          >
             Vaciar carrito
           </button>
           <Link to="/catalog" className="btn btn-outline" style={{ textDecoration: 'none' }}>
@@ -164,6 +220,84 @@ export const Cart = () => {
           </Link>
         </div>
       </div>
+
+      {/* Notificación centrada en pantalla tipo indicador de carga durante el vaciado */}
+      {isClearing && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          animation: 'fadeInOverlay 0.2s ease-out',
+        }}>
+          <div style={{
+            background: 'var(--color-bg, #ffffff)',
+            borderRadius: 16,
+            padding: '28px 36px',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
+            maxWidth: 360,
+            textAlign: 'center',
+            transform: 'scale(1)',
+            animation: 'popInModal 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}>
+            {/* Spinner circular animado */}
+            <div style={{
+              width: 44,
+              height: 44,
+              border: '3.5px solid var(--color-border-light, #e2e8f0)',
+              borderTopColor: 'var(--color-primary, #dc2626)',
+              borderRadius: '50%',
+              animation: 'spinLoading 0.75s linear infinite',
+            }} />
+
+            <div>
+              <h3 style={{
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 700,
+                color: 'var(--color-text, #0f172a)',
+                letterSpacing: '-0.2px',
+              }}>
+                El carrito fue vaciado correctamente
+              </h3>
+              <p style={{
+                margin: '6px 0 0 0',
+                fontSize: 13,
+                color: 'var(--color-text-muted, #64748b)',
+              }}>
+                Redirigiendo al catálogo...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spinLoading {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes fadeInOverlay {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes popInModal {
+          from { opacity: 0; transform: scale(0.92); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </>
   );
 };
