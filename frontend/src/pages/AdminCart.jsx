@@ -34,21 +34,21 @@ export default function AdminCart() {
   const totalPages = Math.max(1, Math.ceil((carts.count || 0) / pageSize))
 
   return (
-    <AdminLayout title="Carritos" subtitle="Todos los carritos del sistema">
+    <AdminLayout title="Carritos" subtitle="Carritos de usuarios registrados">
       <div className="card">
         {loading ? (
           <Spinner text="Cargando carritos..." />
         ) : error ? (
           <ErrorState error={error} module="carritos" onRetry={loadCarts} />
         ) : !carts.results || carts.results.length === 0 ? (
-          <div className="empty-state"><p>No hay carritos registrados.</p></div>
+          <div className="empty-state"><p>No hay carritos de usuarios registrados.</p></div>
         ) : (
           <>
             <table className="admin-table">
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Usuario</th>
+                  <th>Usuario Registrado</th>
                   <th>Items</th>
                   <th>Total</th>
                   <th>Creado</th>

@@ -126,7 +126,16 @@ class AdminCartViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AdminCartListSerializer
 
     def get_queryset(self):
-        return Cart.objects.prefetch_related('items__product', 'items__variant').select_related('user').all().order_by('-created_at')
+        """
+        Retorna únicamente los carritos pertenecientes a usuarios registrados reales
+        (excluye carritos anónimos o huérfanos sin usuario asociado).
+        """
+        return (
+            Cart.objects.filter(user__isnull=False, user__eliminado=False)
+            .prefetch_related('items__product', 'items__variant')
+            .select_related('user')
+            .order_by('-created_at')
+        )
 
     def list(self, request, *args, **kwargs):
         self.pagination_class.page_size = request.query_params.get('page_size', 20)

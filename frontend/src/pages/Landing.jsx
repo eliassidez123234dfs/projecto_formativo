@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
+import { useCart } from '../context/CartContext'
 import { buildApiUrl } from '../services/api'
 import { isAuthenticated, getCurrentUser, subscribe } from '../services/authService'
 
@@ -39,6 +40,7 @@ export const Landing = () => {
   const navigate = useNavigate()
   const [loggedIn, setLoggedIn] = useState(() => isAuthenticated())
   const [usuario, setUsuario] = useState(() => getCurrentUser())
+  const { cart } = useCart()
 
   useEffect(() => {
     const unsub = subscribe((u) => {
@@ -85,7 +87,8 @@ export const Landing = () => {
       background: 'var(--color-bg-secondary)',
       color: 'var(--color-text)',
     }}>
-      <Header />
+      {/* Barra de navegación con el contador sincronizado del carrito */}
+      <Header cartCount={cart?.total_items || 0} />
 
       <section style={{
         maxWidth: 1200, margin: '0 auto', padding: 'clamp(40px, 6vw, 80px) clamp(16px, 3vw, 24px)',
