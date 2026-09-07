@@ -54,7 +54,6 @@ export default function AdminContact() {
     { value: stats.total - stats.unread, label: 'Leídos', color: 'success' },
   ]
 
-  console.log('MENSAJE SELECCIONADO: ', viewMsg)
   return (
     <AdminLayout title="Contacto" subtitle="Mensajes recibidos del formulario de contacto">
       {modal && (

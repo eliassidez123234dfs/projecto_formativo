@@ -8,7 +8,7 @@ import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 import { openEditor } from '../utils/editor3d';
-import { isAuthenticated, getCurrentUser } from '../services/authService';
+import { isAuthenticated } from '../services/authService';
 import { useAddAttemptGuard, extractCartError } from '../utils/cartLimits';
 import { AddToCartModal } from '../components/catalog/AddToCartModal';
 import ErrorState from '../components/ErrorState';
@@ -161,10 +161,13 @@ export const ProductDetail = () => {
     if (newQty >= 1 && newQty <= stock) setQuantity(newQty);
   };
 
-  const handleOpen3D = (variant, qty) => {
+  const handleOpen3D = async (variant, qty) => {
     if (!requireAuth()) return;
-    const user = getCurrentUser();
-    openEditor({ productId: product.id, variant, quantity: qty, mode: 'new', user });
+    try {
+      await openEditor({ productId: product.id, variant, quantity: qty, mode: 'new' });
+    } catch (err) {
+      toast.error(err?.message || 'No se pudo abrir el editor 3D. Inténtalo de nuevo.');
+    }
   };
 
   function colorToHex(color) {

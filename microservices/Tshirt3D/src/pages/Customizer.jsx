@@ -17,9 +17,10 @@ const CUSTOMER_ERROR_MAP = {
     "Error al capturar la imagen. Intenta de nuevo.",
 };
 
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+
 const Customizer = () => {
   const snap = useSnapshot(state);
-  const isAdmin = state.isAdmin;
 
   const [file, setFile] = useState("");
   const [activeEditorTab, setActiveEditorTab] = useState("");
@@ -39,13 +40,6 @@ const Customizer = () => {
     const id = setInterval(() => setSaveLockSeconds((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
   }, [saveLockSeconds]);
-
-  // Redirigir al login si no hay usuario autenticado
-  useEffect(() => {
-    if (!state.productId) {
-      window.location.href = "http://127.0.0.1:5173/login";
-    }
-  }, []);
 
   // Función para cambiar tamaño
   const handleScale = (amount) => {
@@ -95,7 +89,7 @@ const Customizer = () => {
             type="button"
             className="editor-back-btn"
             onClick={() => {
-              window.location.href = 'http://127.0.0.1:5173/catalog';
+              window.location.href = `${FRONTEND_URL}/catalog`;
             }}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -246,9 +240,7 @@ const Customizer = () => {
                     {saveOk && (
                       <div className="flex flex-wrap gap-2 mt-3">
                         <a
-                          href="http://127.0.0.1:5173/cart"
-                          target="_blank"
-                          rel="noreferrer"
+                          href={`${FRONTEND_URL}/cart`}
                           className="inline-block text-[11px] font-semibold text-emerald-300 border border-emerald-400/40 rounded-full px-3 py-1 hover:bg-emerald-400/10"
                         >
                           Ver carrito →

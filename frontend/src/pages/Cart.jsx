@@ -7,6 +7,8 @@ import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 import { isAuthenticated } from '../services/authService';
 
+let _cartAuthRedirected = false;
+
 export const Cart = () => {
   const navigate = useNavigate();
   const { cart, loading, updateQuantity, removeItem, clearCartItems } = useCart();
@@ -21,7 +23,9 @@ export const Cart = () => {
   const sawItemsRef = useRef(false);
 
   useEffect(() => {
+    if (_cartAuthRedirected) return;
     if (!isAuthenticated()) {
+      _cartAuthRedirected = true;
       toast.error('Debes iniciar sesión para ver el carrito');
       navigate('/login', { replace: true });
       return;

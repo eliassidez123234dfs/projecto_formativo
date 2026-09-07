@@ -72,6 +72,10 @@ services:
         value: "COP"
       - key: WOMPI_REDIRECT_URL
         sync: false
+      - key: SESSION_BACKEND
+        value: "cached_db"
+      - key: REDIS_URL
+        sync: false
       - key: LOG_OUTPUT
         value: "console"
       - key: LOG_LEVEL

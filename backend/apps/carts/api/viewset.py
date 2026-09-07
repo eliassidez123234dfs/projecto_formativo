@@ -95,10 +95,17 @@ class CartViewSet(viewsets.ViewSet):
     def update_quantity(self, request, item_id=None):
         cart = self._get_cart(request)
         item = get_object_or_404(CartItem, pk=item_id, cart=cart)
-        quantity = int(request.data.get('quantity', 1))
+
+        raw_qty = request.data.get('quantity', 1)
+        try:
+            quantity = int(raw_qty)
+        except (TypeError, ValueError):
+            return Response({'quantity': 'La cantidad debe ser un número entero.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if quantity < 1:
             return Response({'quantity': 'La cantidad mínima permitida es 1.'}, status=status.HTTP_400_BAD_REQUEST)
+        if quantity > 999:
+            return Response({'quantity': 'La cantidad máxima permitida es 999.'}, status=status.HTTP_400_BAD_REQUEST)
         if quantity > item.variant.stock:
             return Response({'quantity': 'La cantidad no puede superar el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
 

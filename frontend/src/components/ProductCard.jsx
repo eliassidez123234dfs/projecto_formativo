@@ -5,7 +5,7 @@ import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 import { useCart } from '../context/CartContext';
 import { openEditor } from '../utils/editor3d';
-import { isAuthenticated, getCurrentUser } from '../services/authService';
+import { isAuthenticated } from '../services/authService';
 import { AddToCartModal } from './catalog/AddToCartModal';
 import '../styles/product-card.css';
 
@@ -35,13 +35,15 @@ export const ProductCard = ({ product, onView }) => {
   const handleAdd = async (variantId, quantity) => {
     if (!requireAuth()) return;
     await addItem(product.id, variantId, quantity);
-    toast.success('Producto agregado al carrito');
   };
 
-  const handleOpen3D = (variant, quantity) => {
+  const handleOpen3D = async (variant, quantity) => {
     if (!requireAuth()) return;
-    const user = getCurrentUser();
-    openEditor({ productId: product.id, variant, quantity, mode: 'new', user });
+    try {
+      await openEditor({ productId: product.id, variant, quantity, mode: 'new' });
+    } catch (err) {
+      toast.error(err?.message || 'No se pudo abrir el editor 3D. Inténtalo de nuevo.');
+    }
   };
 
   return (
