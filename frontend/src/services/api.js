@@ -410,3 +410,5 @@ export const deleteCloudinaryResources = async (publicIds, resourceType = 'image
   });
   return response.data;
 };
+
+export { api, publicApi, sessionApi };

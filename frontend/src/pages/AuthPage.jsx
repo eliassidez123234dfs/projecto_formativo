@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { buildApiUrl } from '../services/api'
+import { api } from '../services/api'
+import '../styles/AuthPage.css'
 
 function passwordStrength(pw) {
   let score = 0
@@ -31,7 +32,12 @@ export default function AuthPage({ defaultMode = 'login' }) {
   const [verifiedMsg, setVerifiedMsg] = useState('')
 
   useEffect(() => {
-    setErrors({}); setFieldErrors({}); setSuccess(false); setAnimKey(k => k + 1); setShowConfirm(false); setPwTouched(false)
+    setErrors({})
+    setFieldErrors({})
+    setSuccess(false)
+    setAnimKey(k => k + 1)
+    setShowConfirm(false)
+    setPwTouched(false)
   }, [mode])
 
   useEffect(() => {
@@ -105,52 +111,42 @@ export default function AuthPage({ defaultMode = 'login' }) {
   const handleLoginSubmit = async (e) => {
     e.preventDefault()
     if (!validateLogin()) return
-    setLoading(true); setErrors({})
+    setLoading(true)
+    setErrors({})
     try {
-      const response = await fetch(buildApiUrl('login/login/'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginData),
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        const errData = typeof data === 'object' ? data : { general: data.error || 'Credenciales inválidas' }
-        setErrors(errData)
-        setFieldErrors(extractFieldErrors(errData))
-      } else {
-        localStorage.setItem('access_token', data.access)
-        localStorage.setItem('refresh_token', data.refresh)
-        localStorage.setItem('usuario', JSON.stringify(data.usuario))
-        const usr = data.usuario || {}
-        navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
-      }
-    } catch { setErrors({ general: 'Error al conectar con el servidor' }) }
-    finally { setLoading(false) }
+      const response = await api.post('login/', loginData)
+      const data = response.data
+      localStorage.setItem('access_token', data.access)
+      localStorage.setItem('refresh_token', data.refresh)
+      localStorage.setItem('usuario', JSON.stringify(data.usuario))
+      const usr = data.usuario || {}
+      navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
+    } catch (error) {
+      const errData = error.response?.data || { general: 'Error al conectar con el servidor' }
+      setErrors(errData)
+      setFieldErrors(extractFieldErrors(errData))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault()
     if (!validateRegister()) return
-    setLoading(true); setErrors({})
+    setLoading(true)
+    setErrors({})
     try {
-      const response = await fetch(buildApiUrl('auth/registro/'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registerData),
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        const errData = typeof data === 'object' ? data : { general: data.error || 'Error al registrar' }
-        setErrors(errData)
-        setFieldErrors(extractFieldErrors(errData))
-      }
-      else {
-        setSuccess(true)
-        setRegisterData({ usuario: '', correo: '', contrasena: '', confirmar_contrasena: '' })
-        setTimeout(() => navigate('/verificar-email-pendiente'), 2000)
-      }
-    } catch { setErrors({ general: 'Error al conectar con el servidor' }) }
-    finally { setLoading(false) }
+      const response = await api.post('auth/registro/', registerData)
+      setSuccess(true)
+      setRegisterData({ usuario: '', correo: '', contrasena: '', confirmar_contrasena: '' })
+      setTimeout(() => navigate('/verificar-email-pendiente'), 2000)
+    } catch (error) {
+      const errData = error.response?.data || { general: 'Error al conectar con el servidor' }
+      setErrors(errData)
+      setFieldErrors(extractFieldErrors(errData))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -285,283 +281,6 @@ export default function AuthPage({ defaultMode = 'login' }) {
         </div>
       </div>
 
-      <style>{`
-        .auth-page {
-          display: flex;
-          min-height: 100vh;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        .auth-brand {
-          flex: 0 0 42%;
-          background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 3rem;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .auth-curve {
-          position: absolute;
-          right: -80px;
-          top: 0;
-          width: 160px;
-          height: 100%;
-          background: white;
-          clip-path: ellipse(80px 100% at 80px 50%);
-        }
-
-        .auth-brand-content {
-          position: relative;
-          z-index: 1;
-          max-width: 380px;
-          color: white;
-        }
-
-        .auth-logo {
-          font-size: 2.5rem;
-          font-weight: 800;
-          letter-spacing: -1px;
-          margin-bottom: 1rem;
-        }
-
-        .auth-tagline {
-          font-size: 1.75rem;
-          font-weight: 700;
-          line-height: 1.2;
-          margin-bottom: 0.75rem;
-        }
-
-        .auth-desc {
-          font-size: 0.95rem;
-          color: rgba(255,255,255,0.75);
-          line-height: 1.6;
-          margin-bottom: 2rem;
-        }
-
-        .auth-benefits {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        .auth-benefit {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-          font-size: 0.9rem;
-          color: rgba(255,255,255,0.85);
-        }
-
-        .auth-form-panel {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 2rem;
-          background: white;
-        }
-
-        .auth-form-container {
-          width: 100%;
-          max-width: 400px;
-        }
-
-        .auth-form-header {
-          margin-bottom: 2rem;
-        }
-
-        .auth-form-header h2 {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #111827;
-          margin: 0 0 0.4rem;
-        }
-
-        .auth-form-header p {
-          font-size: 0.9rem;
-          color: #6B7280;
-          margin: 0;
-        }
-
-        .auth-form-body {
-          animation: authFadeIn 0.3s ease;
-        }
-
-        @keyframes authFadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .auth-alert {
-          padding: 12px 16px;
-          border-radius: 8px;
-          font-size: 0.85rem;
-          line-height: 1.5;
-          margin-bottom: 1.25rem;
-        }
-
-        .auth-alert--error {
-          background: #FEF2F2;
-          color: #991B1B;
-          border: 1px solid #FECACA;
-        }
-
-        .auth-alert--success {
-          background: #ECFDF5;
-          color: #065F46;
-          border: 1px solid #A7F3D0;
-        }
-
-        .auth-field {
-          margin-bottom: 1.25rem;
-        }
-
-        .auth-field label {
-          display: block;
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: #374151;
-          margin-bottom: 0.4rem;
-        }
-
-        .auth-field input {
-          width: 100%;
-          padding: 11px 14px;
-          border: 1px solid #D1D5DB;
-          border-radius: 8px;
-          font-size: 0.9rem;
-          color: #111827;
-          background: white;
-          outline: none;
-          transition: border-color 0.15s, box-shadow 0.15s;
-          box-sizing: border-box;
-        }
-
-        .auth-field input:focus {
-          border-color: #DC2626;
-          box-shadow: 0 0 0 3px rgba(220,38,38,0.08);
-        }
-
-        .auth-field input.input-error {
-          border-color: #DC2626;
-        }
-
-        .field-error {
-          display: block;
-          font-size: 0.75rem;
-          color: #DC2626;
-          margin-top: 4px;
-        }
-
-        .pw-strength {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-top: 8px;
-        }
-
-        .pw-bar {
-          flex: 1;
-          height: 4px;
-          background: #E5E7EB;
-          border-radius: 2px;
-          overflow: hidden;
-        }
-
-        .pw-fill {
-          height: 100%;
-          border-radius: 2px;
-          transition: width 0.3s ease;
-        }
-
-        .pw-strength span {
-          font-size: 0.75rem;
-          font-weight: 600;
-          min-width: 40px;
-        }
-
-        .confirm-wrap {
-          overflow: hidden;
-          max-height: 0;
-          opacity: 0;
-          transition: max-height 0.35s ease, opacity 0.35s ease, margin 0.35s ease;
-          margin-bottom: 0 !important;
-        }
-
-        .confirm-wrap.visible {
-          max-height: 120px;
-          opacity: 1;
-          margin-bottom: 1.25rem !important;
-        }
-
-        .auth-submit {
-          width: 100%;
-          padding: 13px;
-          border: none;
-          border-radius: 8px;
-          background: #DC2626;
-          color: white;
-          font-weight: 700;
-          font-size: 0.9rem;
-          cursor: pointer;
-          transition: background 0.15s;
-        }
-
-        .auth-submit:hover {
-          background: #B91C1C;
-        }
-
-        .auth-submit:disabled {
-          background: #9CA3AF;
-          cursor: not-allowed;
-        }
-
-        .auth-switch {
-          text-align: center;
-          margin-top: 1.5rem;
-          padding-top: 1.25rem;
-          border-top: 1px solid #E5E7EB;
-        }
-
-        .auth-switch p {
-          margin: 0;
-          font-size: 0.85rem;
-          color: #6B7280;
-        }
-
-        .auth-switch button {
-          background: none;
-          border: none;
-          color: #DC2626;
-          font-weight: 700;
-          font-size: 0.85rem;
-          cursor: pointer;
-          text-decoration: underline;
-        }
-
-        @media (max-width: 768px) {
-          .auth-page {
-            flex-direction: column;
-          }
-          .auth-brand {
-            flex: none;
-            padding: 2rem;
-            min-height: 180px;
-          }
-          .auth-curve { display: none; }
-          .auth-brand-content {
-            max-width: 100%;
-            text-align: center;
-          }
-          .auth-logo { font-size: 1.75rem; }
-          .auth-tagline { font-size: 1.25rem; }
-          .auth-benefits { align-items: center; }
-          .auth-form-panel { padding: 2rem 1.25rem; }
-        }
-      `}</style>
     </div>
   )
 }

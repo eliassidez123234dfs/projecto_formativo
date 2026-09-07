@@ -1,0 +1,58 @@
+erDiagram
+    USUARIO {
+        int id PK
+        string usuario
+        string correo
+        string contrasena
+        string estado
+        string rol
+        datetime fecha_registro
+        datetime fecha_ultima_sesion
+        boolean email_verificado
+        int intentos_fallidos
+        datetime fecha_bloqueo
+        datetime fecha_desbloqueo
+        int admin_desbloqueador FK
+        boolean eliminado
+        datetime fecha_eliminacion
+        int admin_eliminador FK
+    }
+
+    TOKEN_VERIFICACION {
+        int id PK
+        int usuario FK
+        string token
+        string tipo
+        datetime fecha_creacion
+        datetime fecha_expiracion
+        boolean usado
+    }
+
+    HISTORIAL_ESTADO_USUARIO {
+        int id PK
+        int usuario FK
+        string estado_anterior
+        string estado_nuevo
+        string motivo
+        datetime fecha_cambio
+        int admin FK
+    }
+
+    LOG_AUDITORIA {
+        int id PK
+        int usuario_admin FK
+        int usuario_afectado FK
+        string accion
+        json datos_anteriores
+        json datos_nuevos
+        datetime fecha_accion
+        string ip_admin
+    }
+
+    USUARIO ||--o{ TOKEN_VERIFICACION : "genera"
+    USUARIO ||--o{ HISTORIAL_ESTADO_USUARIO : "tiene historial"
+    USUARIO ||--o{ HISTORIAL_ESTADO_USUARIO : "cambia estado"
+    USUARIO ||--o{ LOG_AUDITORIA : "ejecuta accion"
+    USUARIO ||--o{ LOG_AUDITORIA : "recibe accion"
+    USUARIO ||--o{ USUARIO : "desbloquea"
+    USUARIO ||--o{ USUARIO : "elimina"

@@ -183,23 +183,45 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         """Crear usuario manualmente desde admin (RF-018, RN-027)"""
         datos = request.data
         
-        # Validar datos requeridos
+        # Validar datos requeridos (verificar que existan Y que no estén vacíos)
         campos_requeridos = ['usuario', 'correo', 'rol', 'estado']
         for campo in campos_requeridos:
-            if campo not in datos:
+            valor = datos.get(campo, '')
+            if not valor or not str(valor).strip():
                 return Response({
                     'error': f'El campo {campo} es requerido'
                 }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Validar nombre de usuario (mínimo 3 caracteres)
+        usuario_nombre = datos['usuario'].strip()
+        if len(usuario_nombre) < 3:
+            return Response({
+                'error': 'El nombre de usuario debe tener al menos 3 caracteres.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         # Validar email con expresión regular
-        correo = datos['correo']
+        correo = datos['correo'].strip()
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', correo):
             return Response({
                 'error': 'El formato del correo no es válido.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Validar que el rol sea válido
+        roles_validos = [choice[0] for choice in Usuario.ROL_CHOICES]
+        if datos['rol'] not in roles_validos:
+            return Response({
+                'error': f'El rol debe ser uno de: {", ".join(roles_validos)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar que el estado sea válido
+        estados_validos = [choice[0] for choice in Usuario.ESTADO_CHOICES]
+        if datos['estado'] not in estados_validos:
+            return Response({
+                'error': f'El estado debe ser uno de: {", ".join(estados_validos)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         # Validar que el usuario no exista
-        if Usuario.objects.filter(usuario=datos['usuario']).exists():
+        if Usuario.objects.filter(usuario=usuario_nombre).exists():
             return Response({
                 'error': 'Ya existe un usuario con ese nombre.'
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -210,7 +232,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Validar contraseña si se envía, o generar temporal
-        contrasena = datos.get('password')
+        contrasena = datos.get('password', '').strip() if datos.get('password') else ''
         if contrasena:
             if len(contrasena) < 8:
                 return Response({
@@ -236,11 +258,12 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         
         try:
             usuario = Usuario.objects.create(
-                usuario=datos['usuario'],
+                usuario=usuario_nombre,
                 correo=correo,
                 contrasena=make_password(contrasena_final),
                 rol=datos['rol'],
-                estado=datos['estado']
+                estado=datos['estado'],
+                email_verificado=False
             )
             
             # Crear token de verificación (RN-027)

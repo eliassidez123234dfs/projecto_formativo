@@ -14,7 +14,7 @@ export default function UserEditModal({ user, onClose, onSaved }) {
       if (typeof onSaved === 'function') onSaved(data)
       onClose()
     } catch (e) {
-      setError(e.message)
+      setError(e.response?.data?.error || e.message)
     } finally {
       setSaving(false)
     }
