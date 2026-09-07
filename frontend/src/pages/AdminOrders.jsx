@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchAdminOrders } from '../services/api'
+import { fetchAdminOrders, updateAdminOrderStatus } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
+import toast from 'react-hot-toast'
 
 const STATUS_LABELS = {
   pending: 'Pendiente',
@@ -29,6 +30,7 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
+  const [updatingId, setUpdatingId] = useState(null)
   const pageSize = 20
   const statusFilter = searchParams.get('status') || ''
 
@@ -56,12 +58,29 @@ export default function AdminOrders() {
     setPage(1)
   }
 
+  const handleStatusChange = async (orderId, newStatus) => {
+    setUpdatingId(orderId)
+    try {
+      await updateAdminOrderStatus(orderId, newStatus)
+      toast.success(`Orden #${orderId} actualizada a "${STATUS_LABELS[newStatus] || newStatus}"`)
+      setOrders(prev => ({
+        ...prev,
+        results: prev.results.map(o => o.id === orderId ? { ...o, status: newStatus } : o),
+      }))
+    } catch (err) {
+      const msg = err?.response?.data?.status || 'No se pudo actualizar el estado de la orden'
+      toast.error(msg)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   const statCards = [
-    { value: orders.count ?? '—', label: 'Total Órdenes', color: 'primary' },
+    { value: orders.count ?? '—', label: 'Total Órdenes Registradas', color: 'primary' },
   ]
 
   return (
-    <AdminLayout title="Órdenes" subtitle="Administra las órdenes de compra">
+    <AdminLayout title="Órdenes" subtitle="Administra y actualiza todas las órdenes de compra">
       <div className="admin-stats">
         {statCards.map((s, i) => (
           <div key={i} className="stat-card">
@@ -104,7 +123,8 @@ export default function AdminOrders() {
                   <th>ID</th>
                   <th>Cliente</th>
                   <th>Email</th>
-                  <th>Estado</th>
+                  <th>Estado Actual</th>
+                  <th>Modificar Estado</th>
                   <th>Total</th>
                   <th>Items</th>
                   <th>Fecha</th>
@@ -114,7 +134,7 @@ export default function AdminOrders() {
               <tbody>
                 {orders.results.map(order => (
                   <tr key={order.id}>
-                    <td><code>{order.id}</code></td>
+                    <td><code>#{order.id}</code></td>
                     <td><strong>{order.customer_name || order.user_name || '—'}</strong></td>
                     <td>{order.customer_email || '—'}</td>
                     <td>
@@ -122,7 +142,28 @@ export default function AdminOrders() {
                         {STATUS_LABELS[order.status] || order.status}
                       </span>
                     </td>
-                    <td>{formatCOP(order.total)}</td>
+                    <td>
+                      <select
+                        className="admin-select-status"
+                        value={order.status}
+                        disabled={updatingId === order.id}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: 6,
+                          fontSize: 13,
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-bg)',
+                          cursor: updatingId === order.id ? 'wait' : 'pointer',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {Object.entries(STATUS_LABELS).map(([val, label]) => (
+                          <option key={val} value={val}>{label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td><strong>{formatCOP(order.total)}</strong></td>
                     <td>{order.items?.length || 0}</td>
                     <td>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</td>
                     <td>
@@ -130,6 +171,7 @@ export default function AdminOrders() {
                         Ver detalle
                       </Link>
                     </td>
+
                   </tr>
                 ))}
               </tbody>
@@ -141,3 +183,4 @@ export default function AdminOrders() {
     </AdminLayout>
   )
 }
+

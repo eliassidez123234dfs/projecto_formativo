@@ -72,6 +72,9 @@ class CheckoutTests(TestCase):
             data=json.dumps({
                 'customer_name': 'Juan Pérez',
                 'customer_email': 'juan@test.com',
+                'address': 'Calle 10 # 20-30',
+                'city': 'Bogotá',
+                'department': 'Cundinamarca',
             }),
             content_type='application/json',
         )
@@ -91,6 +94,9 @@ class CheckoutTests(TestCase):
             data=json.dumps({
                 'customer_name': 'Juan Pérez',
                 'customer_email': 'juan@test.com',
+                'address': 'Calle 10 # 20-30',
+                'city': 'Bogotá',
+                'department': 'Cundinamarca',
             }),
             content_type='application/json',
         )

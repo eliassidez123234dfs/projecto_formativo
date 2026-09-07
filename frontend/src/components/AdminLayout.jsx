@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { ThemeToggle } from './ThemeToggle'
-import { subscribe, getCurrentUser, clearAuth } from '../services/authService'
-import './admin.css'
+import '../styles/admin.css'
 
 const Icons = {
   Dashboard: () => (
@@ -120,12 +118,7 @@ export default function AdminLayout({ children, title, subtitle }) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try { return localStorage.getItem('sidebarOpen') !== 'false' } catch { return true }
   })
-  const [usuario, setUsuario] = useState(() => getCurrentUser())
-
-  useEffect(() => {
-    const unsub = subscribe((u) => setUsuario(u))
-    return unsub
-  }, [])
+  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
 
   useEffect(() => {
     try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch {}
@@ -153,7 +146,9 @@ export default function AdminLayout({ children, title, subtitle }) {
   }
 
   const handleLogout = () => {
-    clearAuth()
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('usuario')
     navigate('/login')
   }
 
@@ -237,9 +232,6 @@ export default function AdminLayout({ children, title, subtitle }) {
           <div className="header-text">
             {title && <h1>{title}</h1>}
             {subtitle && <p className="subtitle">{subtitle}</p>}
-          </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
-            <ThemeToggle />
           </div>
         </div>
 

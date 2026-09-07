@@ -229,8 +229,8 @@ class LoginViewSet(viewsets.ViewSet):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AnonRateThrottle]
     
-    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
-    def login(self, request):
+    # CAMBIADO: Se eliminó el decorador @action y se renombró la función a 'create'
+    def create(self, request):
         """Endpoint de login con JWT (RF-008, RF-011)"""
         try:
             serializer = LoginSerializer(data=request.data)

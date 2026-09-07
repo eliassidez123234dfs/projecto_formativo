@@ -49,21 +49,22 @@ export default function AdminUsers() {
       setShowCreateModal(false)
       setRefreshKey(k => k + 1)
     } catch (err) {
-      setCreateError(err.message)
+      const msg = err.response?.data?.error || err.message || 'Error al crear usuario'
+      setCreateError(msg)
     } finally {
       setCreating(false)
     }
   }
 
   const createFields = [
-    { name: 'usuario', label: 'Nombre de usuario', type: 'text', placeholder: 'juan_doe', required: true },
-    { name: 'correo', label: 'Correo', type: 'email', placeholder: 'juan@example.com', required: true },
-    { name: 'password', label: 'Contraseña', type: 'password', required: true },
+    { name: 'usuario', label: 'Nombre de usuario', type: 'text', placeholder: 'juan_doe', required: true, help: 'Mínimo 3 caracteres' },
+    { name: 'correo', label: 'Correo electrónico', type: 'email', placeholder: 'juan@example.com', required: true, help: 'El usuario deberá verificarlo' },
+    { name: 'password', label: 'Contraseña', type: 'password', required: true, help: 'Mín. 8 caracteres, 1 mayúscula, 1 número, 1 carácter especial (!@#$%^&*)' },
     { name: 'rol', label: 'Rol', type: 'select', required: true, options: [
       { value: 'Usuario', label: 'Usuario' },
       { value: 'Administrador', label: 'Administrador' },
     ]},
-    { name: 'estado', label: 'Estado', type: 'select', value: 'Activo', options: [
+    { name: 'estado', label: 'Estado', type: 'select', value: 'Activo', required: true, options: [
       { value: 'Activo', label: 'Activo' },
       { value: 'Inactivo', label: 'Inactivo' },
       { value: 'Bloqueado', label: 'Bloqueado' },

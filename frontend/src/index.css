@@ -1,6 +1,21 @@
+/* =========================================
+   TAILWIND CSS
+   ========================================= */
+@import "tailwindcss";
+
+/* =========================================
+   CUSTOM THEME - Colores del proyecto RED
+   ========================================= */
+@theme {
+  --color-red-brand: #dc2626;
+  --color-red-dark: #b91c1c;
+  --color-red-light: #fef2f2;
+  --color-surface: #f8fafc;
+  --color-surface-warm: #fff1f2;
+}
+
 /* ⬇️ IMPORTS AL PRINCIPIO ⬇️ */
 @import './styles/components.css';
-@import './styles/Landing.css';
 @import './styles/Auth.css';
 @import './styles/Dashboard.css';
 @import './styles/Email.css';

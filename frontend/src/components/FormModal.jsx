@@ -43,7 +43,7 @@ export default function FormModal({ isOpen, title, onClose, onSubmit, fields, lo
 
           {fields.map(field => (
             <div key={field.name} className="form-group">
-              <label htmlFor={field.name}>{field.label}</label>
+              <label htmlFor={field.name}>{field.label}{field.required && ' *'}</label>
               
               {field.type === 'select' ? (
                 <select
@@ -53,7 +53,7 @@ export default function FormModal({ isOpen, title, onClose, onSubmit, fields, lo
                   onChange={handleChange}
                   required={field.required}
                 >
-                  <option value="">Seleccionar {field.label}</option>
+                  {!field.value && <option value="">Seleccionar {field.label}</option>}
                   {field.options?.map(opt => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -80,6 +80,7 @@ export default function FormModal({ isOpen, title, onClose, onSubmit, fields, lo
                   required={field.required}
                 />
               )}
+              {field.help && <span className="form-field-help">{field.help}</span>}
             </div>
           ))}
 
