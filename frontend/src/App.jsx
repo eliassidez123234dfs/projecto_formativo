@@ -4,8 +4,10 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ScrollTopButton from './components/ScrollTopButton';
 import './styles/theme.css';
 import './styles/globals.css';
+import './styles/scroll-top.css';
 import { Landing } from './pages/Landing';
 import AuthPage from './pages/AuthPage';
 import { Dashboard } from './pages/Dashboard';
@@ -55,6 +57,7 @@ function App() {
               },
             }}
           />
+          <ScrollTopButton />
           <Routes>
             {/* Rutas existentes de integracion-total */}
             <Route path="/" element={<Landing />} />

@@ -119,3 +119,15 @@ def close_mongo_connection():
     _db = None
     _connected = False
     logger.info('Conexión MongoDB cerrada')
+
+
+def ping_mongo():
+    """Verifica si MongoDB está disponible. Retorna True/False sin excepciones."""
+    try:
+        client = get_mongo_client()
+        if client is None:
+            return False
+        client.admin.command('ping')
+        return True
+    except Exception:
+        return False

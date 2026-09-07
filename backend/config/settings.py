@@ -243,6 +243,7 @@ MIDDLEWARE = [
     'apps.users.middleware.RequestIDMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -377,7 +378,8 @@ STORAGES = {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage" if not DEBUG
+                   else "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
@@ -596,7 +598,7 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
 #
 #  PATRÓN DE DISEÑO: Polyglot Persistence / CQRS parcial.
 # =============================================================================
-USE_MONGODB = env.bool('USE_MONGODB', default=False)
+USE_MONGODB = env.bool('USE_MONGODB', default=True)
 if USE_MONGODB:
     MONGODB_URI = env('MONGODB_URI', default='mongodb://localhost:27017/projecto_formativo')
     MONGODB_NAME = env('MONGODB_NAME', default='projecto_formativo')

@@ -24,6 +24,9 @@ const state = proxy({
   colorName: getParam('colorName') || '',
   size: getParam('size') || '',
   quantity: Number.isFinite(quantityParam) && quantityParam > 0 ? quantityParam : 1,
+  // ── Autenticación ──
+  isAdmin: getParam('isAdmin') === 'true',
+  userRole: getParam('userRole') || 'Usuario',
 });
 
 export default state;

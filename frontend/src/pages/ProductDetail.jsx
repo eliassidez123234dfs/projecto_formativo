@@ -8,6 +8,7 @@ import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 import { openEditor } from '../utils/editor3d';
+import { isAuthenticated, getCurrentUser } from '../services/authService';
 import { useAddAttemptGuard, extractCartError } from '../utils/cartLimits';
 import { AddToCartModal } from '../components/catalog/AddToCartModal';
 import ErrorState from '../components/ErrorState';
@@ -91,6 +92,15 @@ export const ProductDetail = () => {
     return product?.variants?.find(v => v.size === size && v.color === color)?.stock || 0;
   }
 
+  const requireAuth = () => {
+    if (!isAuthenticated()) {
+      toast.error('Debes iniciar sesión para continuar');
+      navigate('/login');
+      return false;
+    }
+    return true;
+  };
+
   /**
    * Maneja el proceso de agregar un producto al carrito:
    * 1. Verifica si la variante seleccionada cuenta con inventario disponible.
@@ -99,6 +109,7 @@ export const ProductDetail = () => {
    * 4. Si el backend rechaza por falta de stock, redirige a la página principal.
    */
   const handleAddToCart = async () => {
+    if (!requireAuth()) return;
     if (!selectedVariant || selectedVariant.stock === 0) {
       toast.error('Este producto no tiene stock disponible');
       navigate('/');
@@ -151,7 +162,9 @@ export const ProductDetail = () => {
   };
 
   const handleOpen3D = (variant, qty) => {
-    openEditor({ productId: product.id, variant, quantity: qty, mode: 'new' });
+    if (!requireAuth()) return;
+    const user = getCurrentUser();
+    openEditor({ productId: product.id, variant, quantity: qty, mode: 'new', user });
   };
 
   function colorToHex(color) {

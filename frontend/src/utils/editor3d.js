@@ -23,7 +23,7 @@ export const COLOR_FALLBACK = '#6B7280';
  * @param {number}  p.quantity
  * @param {string}  p.mode     'new' | 'view' | 'edit'
  */
-export function buildEditorUrl({ productId, variant, quantity = 1, mode = 'new' }) {
+export function buildEditorUrl({ productId, variant, quantity = 1, mode = 'new', user = null }) {
   const qs = new URLSearchParams({ mode });
   if (productId != null) qs.set('productId', String(productId));
   if (variant?.id != null) qs.set('variantId', String(variant.id));
@@ -33,11 +33,15 @@ export function buildEditorUrl({ productId, variant, quantity = 1, mode = 'new' 
     if (variant.size) qs.set('size', variant.size);
   }
   qs.set('quantity', String(quantity));
+  if (user) {
+    qs.set('isAdmin', String(user.rol === 'Administrador'));
+    qs.set('userRole', user.rol || 'Usuario');
+  }
   return `${EDITOR_BASE_URL}?${qs.toString()}`;
 }
 
 /** Abre el editor 3D en una pestaña nueva. Devuelve la ventana (o null). */
-export function openEditor({ productId, variant, quantity = 1, mode = 'new' }) {
-  const url = buildEditorUrl({ productId, variant, quantity, mode });
+export function openEditor({ productId, variant, quantity = 1, mode = 'new', user = null }) {
+  const url = buildEditorUrl({ productId, variant, quantity, mode, user });
   return window.open(url, '_blank', 'noopener,noreferrer');
 }

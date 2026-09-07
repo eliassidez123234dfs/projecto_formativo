@@ -8,10 +8,18 @@ import { EditorTabs, FilterTabs, DecalTypes } from "../config/constants";
 import { fadeAnimation, slideAnimation } from "../config/motion";
 import { ColorPicker, FilePicker, Tab } from "../components";
 
-const SAVE_COOLDOWN_SECONDS = 60;
+const CUSTOMER_ERROR_MAP = {
+  "Falta configuración de Cloudinary. Define VITE_CLOUDINARY_CLOUD_NAME y VITE_CLOUDINARY_UPLOAD_PRESET.":
+    "Error de configuración del editor. Contacta al administrador.",
+  "No se encontró el canvas para subir a Cloudinary.":
+    "No se pudo capturar el diseño. Intenta recargar la página.",
+  "No se pudo capturar el canvas como imagen.":
+    "Error al capturar la imagen. Intenta de nuevo.",
+};
 
 const Customizer = () => {
   const snap = useSnapshot(state);
+  const isAdmin = state.isAdmin;
 
   const [file, setFile] = useState("");
   const [activeEditorTab, setActiveEditorTab] = useState("");
@@ -19,7 +27,6 @@ const Customizer = () => {
     logoShirt: true,
     stylishShirt: false,
   });
-  const [cloudinaryUrl, setCloudinaryUrl] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -33,11 +40,17 @@ const Customizer = () => {
     return () => clearInterval(id);
   }, [saveLockSeconds]);
 
+  // Redirigir al login si no hay usuario autenticado
+  useEffect(() => {
+    if (!state.productId) {
+      window.location.href = "http://127.0.0.1:5173/login";
+    }
+  }, []);
+
   // Función para cambiar tamaño
   const handleScale = (amount) => {
     state.logoScale = Math.max(0.05, Math.min(0.5, state.logoScale + amount));
   };
-
 
   const generateTabContent = () => {
     switch (activeEditorTab) {
@@ -67,6 +80,11 @@ const Customizer = () => {
       handleDecals(type, result);
       setActiveEditorTab("");
     });
+  };
+
+  const friendlyError = (err) => {
+    const msg = err?.message || "";
+    return CUSTOMER_ERROR_MAP[msg] || "Ocurrió un error al guardar. Inténtalo de nuevo.";
   };
 
   return (
@@ -120,13 +138,11 @@ const Customizer = () => {
                 if (isSaving) return;
                 setSaveStatus("Subiendo el diseño...");
                 setIsSaving(true);
-                let uploadedUrl = "";
                 try {
                   const result = await uploadCanvasToCloudinary({ folder: "tshirtify_designs" });
-                  uploadedUrl = result.secure_url || result.url || "";
-                  setCloudinaryUrl(uploadedUrl);
+                  const uploadedUrl = result.secure_url || result.url || "";
 
-                  setSaveStatus("Guardando en Models3D...");
+                  setSaveStatus("Guardando modelo...");
                   try {
                     await createModel3D({
                       name: `TshirtDesign ${Date.now()}`,
@@ -139,7 +155,7 @@ const Customizer = () => {
                       is_approved: false,
                     });
                   } catch (backendError) {
-                    // El diseño ya está en Cloudinary; continuamos para añadirlo al carrito.
+                    // Continuar aunque falle el backend
                   }
 
                   setSaveStatus("Agregando al carrito...");
@@ -150,23 +166,18 @@ const Customizer = () => {
                   });
 
                   setSaveOk(true);
-                  setSaveMessage(
-                    "El diseño se guardó y se agregó al carrito para imprimir."
-                  );
+                  setSaveMessage("El diseño se guardó y se agregó al carrito para imprimir.");
                 } catch (error) {
                   setSaveOk(false);
-                  setSaveMessage(
-                    error.message ||
-                      "Error al guardar el modelo. Inténtalo de nuevo."
-                  );
-                  setSaveLockSeconds(SAVE_COOLDOWN_SECONDS);
+                  setSaveMessage(friendlyError(error));
+                  setSaveLockSeconds(10);
                 } finally {
                   setIsSaving(false);
                   setSaveStatus("");
                   setShowResultModal(true);
                 }
               }}
-              disabled={isSaving || saveLockSeconds > 0}
+              disabled={isSaving}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3/5 h-3/5">
                 <line x1="22" y1="2" x2="11" y2="13" />
@@ -223,9 +234,7 @@ const Customizer = () => {
                         : "No se pudo guardar el modelo"}
                     </h4>
                     <p className="text-xs text-slate-300 mt-1">
-                      {saveOk
-                        ? saveMessage
-                        : saveMessage}
+                      {saveMessage}
                       {saveOk && state.productId && (
                         <span className="block mt-1">
                           Producto #{state.productId}
@@ -244,16 +253,6 @@ const Customizer = () => {
                         >
                           Ver carrito →
                         </a>
-                        {cloudinaryUrl && (
-                          <a
-                            href={cloudinaryUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-block text-[11px] text-cyan-300 hover:underline mt-0.5"
-                          >
-                            Ver en Cloudinary →
-                          </a>
-                        )}
                       </div>
                     )}
                   </div>

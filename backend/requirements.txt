@@ -24,8 +24,15 @@ billiard==4.2.4
 kombu==5.6.2
 vine==5.1.0
 
-# WSGI Server & Utilities
+# MongoDB (Polyglot Persistence — telemetría, logs, diseño 3D)
+pymongo>=4.6
+dnspython>=2.6
+
+# Production: static files + WSGI server
+whitenoise>=6.6
 gunicorn==26.0.0
+
+# Utilities
 asgiref==3.11.1
 PyJWT==2.12.1
 python-dateutil==2.9.0.post0

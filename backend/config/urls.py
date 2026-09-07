@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils import timezone
 
@@ -35,6 +36,30 @@ router.register(r'admin/stats', AdminStatsViewSet, basename='admin-stats')
 # Landing
 router.register(r'contacto', ContactoViewSet, basename='contacto')
 
+
+def health_check(request):
+    """Endpoint de salud para Render. Verifica PostgreSQL y MongoDB."""
+    from django.db import connection
+    db_ok = True
+    try:
+        connection.ensure_connection()
+    except Exception:
+        db_ok = False
+
+    mongo_ok = False
+    try:
+        from apps.users.mongodb import ping_mongo
+        mongo_ok = ping_mongo()
+    except Exception:
+        pass
+
+    status_code = 200 if db_ok else 503
+    return JsonResponse({
+        'status': 'ok' if db_ok else 'degraded',
+        'postgres': db_ok,
+        'mongo': mongo_ok,
+    }, status=status_code)
+
 # Vista directa para verificar email desde el link del correo
 def verificar_email_directo(request):
     token = request.GET.get('token', '')
@@ -59,6 +84,9 @@ def verificar_email_directo(request):
         return redirect(f"{settings.FRONTEND_URL}/login?error=token-invalido")
 
 urlpatterns = [
+    # Health check (Render, monitoreo)
+    path('api/health/', health_check, name='health-check'),
+
     # Admin
     path('admin/', admin.site.urls),
 

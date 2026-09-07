@@ -1,7 +1,11 @@
 import React, { useState } from "react";
+import { useSnapshot } from "valtio";
+import state from "../store";
 import { sendCanvasToApi } from "../config/helpers";
 
 const Preview = ({ order, onBack }) => {
+  const snap = useSnapshot(state);
+  const isAdmin = snap.isAdmin;
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmStatus, setConfirmStatus] = useState(order.status ?? "pendiente");
   const [confirmMessage, setConfirmMessage] = useState("");
@@ -33,7 +37,7 @@ const Preview = ({ order, onBack }) => {
       setConfirmMessage("Solicitud enviada correctamente.");
     } catch (error) {
       setConfirmStatus("Error al enviar");
-      setConfirmMessage(error.message);
+      setConfirmMessage("Ocurrió un error al enviar la solicitud. Inténtalo de nuevo.");
     } finally {
       setIsConfirming(false);
     }
@@ -99,9 +103,9 @@ const Preview = ({ order, onBack }) => {
                   <span className="font-semibold">Tamaño del logo</span>
                   <span>{order.logoScale?.toFixed(2) ?? "-"}</span>
                 </div>
-                {order.imageUrl && (
+                {isAdmin && order.imageUrl && (
                   <div className="flex flex-col gap-2 rounded-2xl bg-slate-900/80 p-4">
-                    <span className="font-semibold">Cloudinary URL</span>
+                    <span className="font-semibold">URL de imagen</span>
                     <a
                       href={order.imageUrl}
                       target="_blank"

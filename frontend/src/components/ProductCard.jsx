@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 import { useCart } from '../context/CartContext';
 import { openEditor } from '../utils/editor3d';
+import { isAuthenticated, getCurrentUser } from '../services/authService';
 import { AddToCartModal } from './catalog/AddToCartModal';
 import '../styles/product-card.css';
 
@@ -11,6 +13,7 @@ const COLOR_SWATCH_FALLBACK = '#6B7280';
 
 export const ProductCard = ({ product, onView }) => {
   const { addItem } = useCart();
+  const navigate = useNavigate();
   const imgSrc = product.image || DEFAULT_IMAGE;
   const price = Number(product.min_price ?? product.price ?? product.base_price ?? 0);
   const hasVariedPrice = product.min_price != null && product.max_price != null && Number(product.min_price) !== Number(product.max_price);
@@ -20,13 +23,25 @@ export const ProductCard = ({ product, onView }) => {
   const [showModal, setShowModal] = useState(false);
   const [show3DModal, setShow3DModal] = useState(false);
 
+  const requireAuth = () => {
+    if (!isAuthenticated()) {
+      toast.error('Debes iniciar sesión para continuar');
+      navigate('/login');
+      return false;
+    }
+    return true;
+  };
+
   const handleAdd = async (variantId, quantity) => {
+    if (!requireAuth()) return;
     await addItem(product.id, variantId, quantity);
     toast.success('Producto agregado al carrito');
   };
 
   const handleOpen3D = (variant, quantity) => {
-    openEditor({ productId: product.id, variant, quantity, mode: 'new' });
+    if (!requireAuth()) return;
+    const user = getCurrentUser();
+    openEditor({ productId: product.id, variant, quantity, mode: 'new', user });
   };
 
   return (

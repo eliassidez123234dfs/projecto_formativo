@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
+import { isAuthenticated } from '../services/authService';
 
 export const Cart = () => {
   const navigate = useNavigate();
@@ -18,6 +19,14 @@ export const Cart = () => {
   const showEmptyView = empty && plannedEntry;
 
   const sawItemsRef = useRef(false);
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      toast.error('Debes iniciar sesión para ver el carrito');
+      navigate('/login', { replace: true });
+      return;
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (items.length > 0) sawItemsRef.current = true;
