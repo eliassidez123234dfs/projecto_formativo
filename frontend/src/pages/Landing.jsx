@@ -147,7 +147,7 @@ export const Landing = () => {
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #f8fafc 0%, #fff1f2 48%, #f1f5f9 100%)',
       backgroundAttachment: 'fixed', color: 'var(--color-text)',
-    }}>
+    }} id="landing-page">
       {/* Barra de navegación con el contador sincronizado del carrito */}
       <Header cartCount={cart?.total_items || 0} />
 
