@@ -1,7 +1,6 @@
 const API_BASE = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/").replace(/\/+$/, "");
 const API_URL = `${API_BASE}/orders/`;
 const MODELS3D_API_URL = `${API_BASE}/models3d/models/`;
-const CART_API_URL = `${API_BASE}/cart/add/`;
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const CLOUDINARY_URL =
@@ -153,28 +152,16 @@ export const createModel3D = async (modelData = {}) => {
   return response.json();
 };
 
-/**
- * Agrega el diseño 3D al carrito del backend como un pedido de impresión.
- * Usa la variante y cantidad recibidas por URL (state.productId/variantId/quantity).
- */
-export const addDesignToCart = async ({ productId, variantId, quantity = 1 } = {}) => {
-  if (!productId || !variantId) {
-    throw new Error("Faltan datos del producto/variante. Abre el editor desde el catálogo.");
-  }
-
+/** Agrega al carrito usando exclusivamente la selección validada en sesión. */
+export const addDesignToCart = async () => {
   const headers = { "Content-Type": "application/json" };
   const csrfToken = getCookie("csrftoken");
   if (csrfToken) headers["X-CSRFToken"] = csrfToken;
 
-  const response = await fetch(CART_API_URL, {
+  const response = await fetch(`${API_BASE}/editor-session/commit/`, {
     method: "POST",
     headers,
     credentials: "include", // importante: la sesión del carrito vive en cookies
-    body: JSON.stringify({
-      product_id: productId,
-      variant_id: variantId,
-      quantity,
-    }),
   });
 
   if (!response.ok) {

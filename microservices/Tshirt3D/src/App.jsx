@@ -11,6 +11,7 @@ function App() {
   const [previewOrder, setPreviewOrder] = useState(null);
   const [ready, setReady] = useState(false);
   const [sessionError, setSessionError] = useState(false);
+  const [renderError, setRenderError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +59,19 @@ function App() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary onError={setRenderError}>
+      {renderError && (
+        <div className="flex items-center justify-center w-full h-screen bg-slate-900 px-6 text-center">
+          <div className="glassmorphism rounded-2xl p-8 max-w-md border border-red-400/40">
+            <h2 className="text-white text-lg font-bold mb-2">No se pudo renderizar el editor</h2>
+            <p className="text-slate-300 text-sm mb-6">Recarga la página o vuelve al catálogo para iniciar una sesión nueva.</p>
+            <button type="button" onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-white text-slate-900 text-sm font-bold">
+              Recargar editor
+            </button>
+          </div>
+        </div>
+      )}
+      {!renderError && (
       <main className="app transition-all ease-in">
         {!previewOrder ? (
           <>
@@ -69,6 +82,7 @@ function App() {
           <Preview order={previewOrder} onBack={() => setPreviewOrder(null)} />
         )}
       </main>
+      )}
     </ErrorBoundary>
   );
 }

@@ -153,11 +153,7 @@ const Customizer = () => {
                   }
 
                   setSaveStatus("Agregando al carrito...");
-                  await addDesignToCart({
-                    productId: state.productId,
-                    variantId: state.variantId,
-                    quantity: state.quantity,
-                  });
+                  await addDesignToCart();
 
                   setSaveOk(true);
                   setSaveMessage("El diseño se guardó y se agregó al carrito para imprimir.");

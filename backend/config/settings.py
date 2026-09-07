@@ -292,7 +292,7 @@ AUTH_USER_MODEL = 'users.Usuario'
 #  PATRÓN DE DISEÑO: Repository (acceso a DB via ORM Django).
 # =============================================================================
 
-DB_TYPE = env('DB_TYPE', default='sqlite')
+DB_TYPE = env('DB_TYPE', default='neon' if ENVIRONMENT == 'production' else 'sqlite')
 
 if DB_TYPE == 'sqlite':
     DATABASES = {
@@ -309,7 +309,8 @@ elif DB_TYPE in ['postgres_local', 'postgres_docker', 'neon']:
         }
         DATABASES['default']['ATOMIC_REQUESTS'] = True
     else:
-        # Fallback a SQLite si no hay DATABASE_URL
+        if ENVIRONMENT == 'production':
+            raise RuntimeError('DATABASE_URL es obligatoria en producción; configura Neon antes de iniciar Django.')
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.sqlite3',

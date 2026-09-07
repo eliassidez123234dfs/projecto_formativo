@@ -212,6 +212,19 @@ responses:
 
 ---
 
+### POST /api/editor-session/commit/
+```yaml
+summary: Confirmar selección del editor 3D y agregarla al carrito
+security: [{ SessionCookie: [] }]
+requestBody:
+  required: false
+  description: No recibe identificadores ni cantidad; usa la sesión creada previamente.
+responses:
+  201: { description: Item agregado con precio y stock recalculados desde la BD }
+  400: { description: Producto, variante o stock dejaron de ser válidos }
+  404: { description: Sesión inexistente o ya consumida }
+```
+
 ## 4. Checkout Service
 
 ### POST /api/checkout/

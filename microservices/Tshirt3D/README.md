@@ -6,7 +6,8 @@ Este microservicio es la interfaz React/Vite para crear y visualizar diseños de
 
 - Renderiza una camiseta en 3D usando `three.js` y `@react-three/fiber`.
 - Permite capturar el canvas y enviarlo a Cloudinary.
-- Puede guardar un modelo 3D en el backend Django usando el endpoint `VITE_MODELS3D_API_URL`.
+- Guarda la selección validada en la sesión Django y confirma el carrito mediante
+	`POST /api/editor-session/commit/`; los identificadores comerciales nunca viajan en la URL.
 
 ## Tecnologías
 
@@ -45,11 +46,12 @@ Crea un archivo `.env` en la carpeta `microservices/Tshirt3D` con estas variable
 VITE_CLOUDINARY_CLOUD_NAME=tu_cloud_name
 VITE_CLOUDINARY_UPLOAD_PRESET=tu_upload_preset
 VITE_CLOUDINARY_URL=https://api.cloudinary.com/v1_1/tu_cloud_name/image/upload
-VITE_MODELS3D_API_URL=http://127.0.0.1:8000/api/models3d/models/
-VITE_API_URL=http://127.0.0.1:8000/api/orders/
+VITE_API_URL=http://127.0.0.1:8000/api/
+VITE_FRONTEND_URL=http://127.0.0.1:5173
 ```
 
-> Nota: Si solo necesitas guardar diseños en `models3d`, el valor más importante es `VITE_MODELS3D_API_URL`.
+En producción, `VITE_API_URL` debe apuntar a la API de Render y el proyecto debe incluir el
+dominio del editor en `CORS_ALLOWED_ORIGINS` y `CSRF_TRUSTED_ORIGINS`.
 
 ### 4. Iniciar el backend Django
 
@@ -89,7 +91,8 @@ Abre el navegador en la URL que muestre Vite, normalmente `http://127.0.0.1:5174
 ## Solución de problemas comunes
 
 - Si no carga Cloudinary, revisa que `VITE_CLOUDINARY_CLOUD_NAME` y `VITE_CLOUDINARY_UPLOAD_PRESET` estén bien.
-- Si no guarda en el backend, revisa que `VITE_MODELS3D_API_URL` apunte a `http://127.0.0.1:8000/api/models3d/models/`.
+- Si no inicia, revisa que `VITE_API_URL` termine en `/api/`, que exista una sesión creada
+	desde el catálogo y que el dominio del editor esté permitido por CORS.
 - Si el backend devuelve error `Invalid HTTP_HOST`, usa `127.0.0.1` y no `localhost` en la URL.
 
 ## Comandos útiles

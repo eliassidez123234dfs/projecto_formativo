@@ -1,25 +1,21 @@
 import { proxy } from 'valtio';
 
-const getParam = (key) => new URLSearchParams(window.location.search).get(key);
-
 const isValidHex = (hex) => /^#[0-9a-fA-F]{6}$/.test(hex || '');
-
-const colorParam = getParam('color');
 
 const state = proxy({
   intro: false,
   captureTransparent: false,
-  color: isValidHex(colorParam) ? colorParam : '#353934',
+  color: '#353934',
   isLogoTexture: true,
   isFullTexture: false,
   logoDecal: './superman_logo1.png',
   fullDecal: './circuit.png',
   logoPosition: [0, 0.04, 0.15],
   logoScale: 0.15,
-  // ── Parámetros de UI (seguros, vienen de la URL) ──
-  mode: getParam('mode') || 'new',
-  colorName: getParam('colorName') || '',
-  size: getParam('size') || '',
+  // Solo el modo de apertura es una preferencia de UI no sensible.
+  mode: new URLSearchParams(window.location.search).get('mode') || 'new',
+  colorName: '',
+  size: '',
   // ── Datos sensibles (cargados desde la sesión del backend) ──
   productId: null,
   productName: '',
@@ -48,6 +44,9 @@ export async function loadEditorSession() {
     state.productName = data.productName || '';
     state.variantId = data.variantId || null;
     state.quantity = Number.isFinite(Number(data.quantity)) && Number(data.quantity) > 0 ? Number(data.quantity) : 1;
+    state.color = isValidHex(data.colorHex) ? data.colorHex : '#353934';
+    state.colorName = data.color || '';
+    state.size = data.size || '';
     state.sessionLoaded = true;
     state.sessionError = false;
   } catch {

@@ -12,14 +12,14 @@ Toda la documentación del proyecto está en **[`docs/`](./docs/README.md)**, or
 | [Arquitectura](./docs/05-arquitectura/) | Stack tecnológico, estructura, diseño visual |
 | [API](./docs/07-api/) | Endpoints REST, autenticación, contratos |
 | [Instalación](./docs/08-instalacion-entorno-desarrollo/) | Guías de configuración y puesta en marcha |
-| [Roadmap](./docs/roadmap.md) | Plan de evolución del proyecto |
-| [Checklist Producción](./docs/production-checklist.md) | Preparación para despliegue |
+| [Roadmap](./docs/12-historial/roadmap.md) | Plan de evolución del proyecto |
+| [Checklist Producción](./docs/09-despliegue/checklist-produccion.md) | Preparación para despliegue |
 
 ## Stack
 
 - **Backend:** Python 3.12, Django 5.2, DRF, JWT, SQLite/PostgreSQL
 - **Frontend:** React 19, Vite 8, Axios, React Router DOM
-- **Infra:** Docker Compose, Nginx
+- **Infra:** Docker Compose, Nginx, Render, Vercel y Neon
 
 ## Inicio rápido
 

@@ -11,13 +11,15 @@ services:
       pip install -r requirements.txt --quiet
       python manage.py collectstatic --noinput --clear
     preDeployCommand: python manage.py migrate --noinput
-    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --access-logfile - --error-logfile -
+    startCommand: gunicorn config.wsgi:application --config gunicorn.conf.py
     healthCheckPath: /api/health/
     envVars:
       - key: ENVIRONMENT
         value: production
       - key: DEBUG
         value: "False"
+      - key: DB_TYPE
+        value: neon
       - key: SECRET_KEY
         sync: false
       - key: ALLOWED_HOSTS

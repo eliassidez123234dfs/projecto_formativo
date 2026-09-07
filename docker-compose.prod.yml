@@ -14,7 +14,7 @@ services:
     volumes:
       - media_data:/app/media
       - static_data:/app/static
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+    command: gunicorn config.wsgi:application --config gunicorn.conf.py
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
       interval: 30s

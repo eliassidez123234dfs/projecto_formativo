@@ -62,11 +62,16 @@ def health_check(request):
     }, status=status_code)
 
 
-from rest_framework.decorators import api_view, permission_classes as perm_decorator, authentication_classes as auth_decorator
+from rest_framework.decorators import api_view, permission_classes as perm_decorator
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
+
+
+def _editor_origin_allowed(request):
+    origin = request.headers.get('Origin')
+    return not origin or origin in settings.CORS_ALLOWED_ORIGINS
 
 
 @api_view(['GET'])
@@ -81,8 +86,7 @@ def me_view(request):
 
 @csrf_exempt
 @api_view(['POST'])
-@auth_decorator([])
-@perm_decorator([AllowAny])
+@perm_decorator([IsAuthenticated])
 def editor_session_save(request):
     """Guarda datos sensibles del editor 3D en la sesión del backend (cookie).
 
@@ -102,6 +106,9 @@ def editor_session_save(request):
       usa solo como referencia de UI y se descarta si no coincide con la
       variante.
     """
+    if not _editor_origin_allowed(request):
+        return JsonResponse({'error': 'Origen no permitido.'}, status=403)
+
     try:
         data = json.loads(request.body) if hasattr(request, 'body') else request.data
     except (json.JSONDecodeError, AttributeError):
@@ -145,6 +152,7 @@ def editor_session_save(request):
         'productName': product.name,
         'variantId': str(variant.id),
         'quantity': quantity,
+        'userId': str(request.user.id) if request.user.is_authenticated else None,
         'size': variant.size,
         'color': variant.color,
         'colorHex': variant.color_hex or data.get('colorHex') or '#6B7280',
@@ -159,7 +167,6 @@ def editor_session_save(request):
 
 @csrf_exempt
 @api_view(['GET'])
-@auth_decorator([])
 @perm_decorator([AllowAny])
 def editor_session_get(request):
     """Recupera los datos del editor 3D desde la sesión del backend.
@@ -196,6 +203,77 @@ def editor_session_get(request):
         'colorHex': editor_data.get('colorHex'),
     })
 
+
+@csrf_exempt
+@api_view(['POST'])
+@perm_decorator([AllowAny])
+def editor_session_commit(request):
+    """Agrega al carrito la selección validada guardada en la sesión.
+
+    El cliente no puede escoger producto, variante ni cantidad en este paso.
+    La sesión es de un solo uso y los datos comerciales se vuelven a validar
+    contra la base de datos justo antes de modificar el carrito.
+    """
+    from django.db import transaction
+    from apps.carts.models import Cart, CartItem
+    from apps.carts.api.serializers import CartItemSerializer
+    from apps.products.models import Product, Variant
+
+    if not _editor_origin_allowed(request):
+        return JsonResponse({'error': 'Origen no permitido.'}, status=403)
+
+    editor_data = request.session.get('editor_3d')
+    if not editor_data:
+        return JsonResponse({'error': 'La sesión del editor no existe o ya fue utilizada.'}, status=404)
+
+    try:
+        product = Product.objects.get(
+            pk=int(editor_data['productId']), is_active=True, is_approved=True,
+        )
+        variant = Variant.objects.get(
+            pk=int(editor_data['variantId']), product=product,
+        )
+        quantity = int(editor_data['quantity'])
+    except (KeyError, TypeError, ValueError, Product.DoesNotExist, Variant.DoesNotExist):
+        request.session.pop('editor_3d', None)
+        request.session.save()
+        return JsonResponse({'error': 'La selección del editor ya no es válida.'}, status=400)
+
+    if quantity < 1 or quantity > 999 or quantity > variant.stock:
+        request.session.pop('editor_3d', None)
+        request.session.save()
+        return JsonResponse({'error': 'La cantidad ya no está disponible.'}, status=400)
+
+    if not request.session.session_key:
+        request.session.save()
+
+    with transaction.atomic():
+        cart, _ = Cart.objects.get_or_create(
+            session_key=request.session.session_key,
+            defaults={'user': request.user if request.user.is_authenticated else None},
+        )
+        if request.user.is_authenticated and cart.user_id is None:
+            cart.user = request.user
+            cart.save(update_fields=['user'])
+
+        item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            variant=variant,
+            defaults={'quantity': quantity, 'unit_price': variant.effective_price},
+        )
+        if not created:
+            new_quantity = item.quantity + quantity
+            if new_quantity > variant.stock:
+                return JsonResponse({'error': 'La cantidad total supera el stock disponible.'}, status=400)
+            item.quantity = new_quantity
+            item.unit_price = variant.effective_price
+            item.save(update_fields=['quantity', 'unit_price', 'updated_at'])
+
+    request.session.pop('editor_3d', None)
+    request.session.save()
+    return JsonResponse(CartItemSerializer(item, context={'request': request}).data, status=201)
+
 # Vista directa para verificar email desde el link del correo
 def verificar_email_directo(request):
     token = request.GET.get('token', '')
@@ -229,6 +307,7 @@ urlpatterns = [
     # Sesión del editor 3D (datos sensibles fuera de la URL)
     path('api/editor-session/save/', editor_session_save, name='editor-session-save'),
     path('api/editor-session/', editor_session_get, name='editor-session-get'),
+    path('api/editor-session/commit/', editor_session_commit, name='editor-session-commit'),
 
     # Admin
     path('admin/', admin.site.urls),

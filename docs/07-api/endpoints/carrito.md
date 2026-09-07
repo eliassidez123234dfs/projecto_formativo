@@ -70,6 +70,15 @@ Agrega un producto al carrito.
 - El stock debe ser suficiente
 - Si el producto+variante ya existe en el carrito, se suma la cantidad (sin superar stock)
 
+### POST /api/editor-session/commit/
+
+Confirma el diseño 3D usando la selección previamente guardada por
+`POST /api/editor-session/save/`. No acepta `product_id`, `variant_id`, `quantity` ni rol en
+el cuerpo. Django recupera esos valores de la sesión, consulta de nuevo el producto y la
+variante en PostgreSQL, valida estado y stock, calcula el precio desde la variante y consume
+la sesión al finalizar. Devuelve `404` si la sesión no existe o ya fue utilizada y `400` si
+la selección dejó de estar disponible.
+
 ### PATCH /api/cart/items/{item_id}/quantity/
 Actualiza la cantidad de un item en el carrito.
 

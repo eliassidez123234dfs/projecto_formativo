@@ -108,12 +108,19 @@
 - [ ] Variables de entorno por ambiente (.env.dev, .env.prod)
 - [ ] Sin puertos expuestos innecesarios
 
-### Despliegue Recomendado
+### Despliegue Actual
 ```
-Opción 1: VPS (DigitalOcean / Linode / AWS EC2)
-Opción 2: Railway / Render (más simple, plan gratuito)
-Opción 3: Entorno académico SENA (servidor local)
+Neon       -> PostgreSQL
+Render     -> Backend Django + Gunicorn
+Vercel     -> Frontend React y proyecto Tshirt3D separado
+Cloudinary -> Imágenes y capturas del editor
+MongoDB    -> Datos no relacionales del editor y auditoría
 ```
+
+La configuración de producción debe usar `DATABASE_URL` de Neon, `DB_TYPE=neon`,
+`DEBUG=False`, dominios HTTPS explícitos en `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` y
+`CSRF_TRUSTED_ORIGINS`, además de `VITE_API_URL` y `VITE_EDITOR_3D_URL` apuntando a los
+servicios desplegados. No se deben publicar secretos en variables `VITE_*`.
 
 ---
 

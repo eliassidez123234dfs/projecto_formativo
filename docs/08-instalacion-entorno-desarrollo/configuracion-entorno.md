@@ -76,40 +76,40 @@ Esto crea:
 ### Backend (Django)
 
 ```
-\# 1. Navegar al directorio del backend  
+# 1. Navegar al directorio del backend  
 cd backend  
   
-\# 2. Crear y activar entorno virtual  
+# 2. Crear y activar entorno virtual  
 python3 -m venv venv  
-source venv/bin/activate  \# Linux/Mac  
-venv\\Scripts\\activate   \# Windows  
+source venv/bin/activate  # Linux/Mac  
+venv/Scripts/activate   # Windows  
   
-\# 3. Actualizar pip e instalar dependencias  
+# 3. Actualizar pip e instalar dependencias  
 python -m pip install --upgrade pip   
 pip install --upgrade pip  
 pip install -r requirements.txt  
   
-\# 4. Configurar variables de entorno  
-\# Copiar .env.example a .env en la RAÍZ del proyecto y completar los valores  
+# 4. Configurar variables de entorno  
+# Copiar .env.example a .env en la RAÍZ del proyecto y completar los valores  
   
-\# 5. Ejecutar migraciones  
-python manage.py makemigrations \# solo la primera vez  
+# 5. Ejecutar migraciones  
+python manage.py makemigrations # solo la primera vez  
 python manage.py showmigrations  
 python manage.py migrate  
   
-\# 6. Crear superusuario (opcional)  
+# 6. Crear superusuario (opcional)  
 python manage.py createsuperuser  
-\# El modelo custom usa: --usuario, --correo, --noinput  
-\# Ejemplo con variables de entorno:  
-\# DJANGO\_SUPERUSER\_PASSWORD="Red2026!" DJANGO\_SUPERUSER\_EMAIL="admin@red.com" \\  
-\#   python manage.py createsuperuser --usuario admin --noinput  
+# El modelo custom usa: --usuario, --correo, --noinput  
+# Ejemplo con variables de entorno:  
+# DJANGO_SUPERUSER_PASSWORD="Red2026!" DJANGO_SUPERUSER_EMAIL="admin@red.com" 
+#   python manage.py createsuperuser --usuario admin --noinput  
   
-\# 7. Poblar base de datos con datos de prueba (opcional)  
+# 7. Poblar base de datos con datos de prueba (opcional)  
 python manage.py loaddata  
-python manage.py load\_sample\_data  
-python manage.py seed\_all  
+python manage.py load_sample_data  
+python manage.py seed_all  
   
-\# 8. Iniciar servidor de desarrollo  
+# 8. Iniciar servidor de desarrollo  
 python manage.py runserver
 ```
 
@@ -118,18 +118,18 @@ El backend estara disponible en: `http://localhost:8000/`
 ### Frontend (React + Vite)
 
 ```
-\# 1. Navegar al directorio del frontend  
+# 1. Navegar al directorio del frontend  
 cd frontend  
   
-\# 2. Instalar dependencias  
+# 2. Instalar dependencias  
 npm install  
 npm install-scripts approve --all  
   
-\# 3. Configurar variables de entorno  
-\# El frontend lee el .env de la RAÍZ del proyecto (configurado en vite.config.js con envDir)  
-\# No hace falta frontend/.env  
+# 3. Configurar variables de entorno  
+# El frontend lee el .env de la RAÍZ del proyecto (configurado en vite.config.js con envDir)  
+# No hace falta frontend/.env  
   
-\# 4. Iniciar servidor de desarrollo  
+# 4. Iniciar servidor de desarrollo  
 npm run dev -- --host
 ```
 
@@ -138,24 +138,24 @@ El frontend estara disponible en: `http://127.0.0.1:5173/`
 ### Microservicio de Editor 3D (Arquitectura propia, aunque usa mismo Backend)
 
 ```
-\# 1. Navegar al directorio del editor  
+# 1. Navegar al directorio del editor  
 cd microservices/Tshirt3D  
   
-\# 2. Configurar variables de entorno  
-\# Copiar microservices/Tshirt3D/.env.example a microservices/Tshirt3D/.env (archivo propio del editor):  
-\# VITE\_CLOUDINARY\_CLOUD\_NAME=tu\_cloud\_name  
-\# VITE\_CLOUDINARY\_UPLOAD\_PRESET=tu\_upload\_preset  
-\# VITE\_CLOUDINARY\_URL=https://api.cloudinary.com/v1\_1/tu\_cloud\_name/image/upload  
-\# VITE\_MODELS3D\_API\_URL=http://127.0.0.1:8000/api/models3d/models/  
-\# VITE\_API\_URL=http://127.0.0.1:8000/api/orders/  
+# 2. Configurar variables de entorno  
+# Copiar microservices/Tshirt3D/.env.example a microservices/Tshirt3D/.env (archivo propio del editor):  
+# VITE\_CLOUDINARY\_CLOUD\_NAME=tu\_cloud\_name  
+# VITE\_CLOUDINARY\_UPLOAD\_PRESET=tu\_upload\_preset  
+# VITE\_CLOUDINARY\_URL=https://api.cloudinary.com/v1\_1/tu\_cloud\_name/image/upload  
+# VITE\_MODELS3D\_API\_URL=http://127.0.0.1:8000/api/models3d/models/  
+# VITE\_API\_URL=http://127.0.0.1:8000/api/orders/  
   
-\# 3. Backend (Django) ya deberia estar activado en otra terminal como se explico antes.  
+# 3. Backend (Django) ya deberia estar activado en otra terminal como se explico antes.  
   
-\# 2. Instalar dependencias  
+# 2. Instalar dependencias  
 npm install  
 npm install-scripts approve --all  
   
-\# 4. Iniciar servidor de desarrollo  
+# 4. Iniciar servidor de desarrollo  
 npm run dev -- --host
 ```
 
@@ -164,7 +164,7 @@ Abre el navegador en la URL que muestre Vite, normalmente `http://127.0.0.1:5174
 ## 2. Ejecucion con Docker Compose
 
 ```
-\# 1. Desde la raiz del proyecto  
+# 1. Desde la raiz del proyecto  
 docker compose up --build
 ```
 
@@ -179,75 +179,75 @@ Esto iniciara:
 ### Comandos utiles de Docker
 
 ```
-\# Iniciar contenedores en segundo plano  
+# Iniciar contenedores en segundo plano  
 docker compose up -d  
   
-\# Detener contenedores  
+# Detener contenedores  
 docker compose down  
   
-\# Ver logs  
+# Ver logs  
 docker compose logs -f  
   
-\# Ejecutar comandos dentro del contenedor backend  
-docker exec proyecto\_backend python manage.py migrate  
-docker exec proyecto\_backend python manage.py createsuperuser  
-docker exec proyecto\_backend python manage.py seed\_products  
+# Ejecutar comandos dentro del contenedor backend  
+docker exec proyecto_backend python manage.py migrate  
+docker exec proyecto_backend python manage.py createsuperuser  
+docker exec proyecto_backend python manage.py seed\_products  
   
-\# Reconstruir imagenes  
+# Reconstruir imagenes  
 docker compose build
 ```
 
 ## 3. Comandos Django Utiles
 
 ```
-\# Migraciones  
+# Migraciones  
 python manage.py makemigrations \<app\_name\>  
 python manage.py migrate  
   
-\# Reconciliar migraciones fakes (si la BD difiere del historial)  
+# Reconciliar migraciones fakes (si la BD difiere del historial)  
 python manage.py migrate \<app\_name\> \<num\_migracion\> --fake  \# retroceder  
 python manage.py migrate \<app\_name\>                           \# re-aplicar  
   
-\# Verificar estado de migraciones  
+# Verificar estado de migraciones  
 python manage.py showmigrations  
   
-\# Crear superusuario (modelo custom: usuario, correo)  
+# Crear superusuario (modelo custom: usuario, correo)  
 python manage.py createsuperuser  
-\# Non-interactive (requiere DJANGO\_SUPERUSER\_PASSWORD y DJANGO\_SUPERUSER\_EMAIL):  
-\# DJANGO\_SUPERUSER\_PASSWORD="pass" DJANGO\_SUPERUSER\_EMAIL="admin@red.com" \\  
-\#   python manage.py createsuperuser --usuario admin --noinput  
+# Non-interactive (requiere DJANGO\_SUPERUSER\_PASSWORD y DJANGO\_SUPERUSER\_EMAIL):  
+# DJANGO\_SUPERUSER\_PASSWORD="pass" DJANGO\_SUPERUSER\_EMAIL="admin@red.com" \\  
+#   python manage.py createsuperuser --usuario admin --noinput  
   
-\# Shell de Django  
+# Shell de Django  
 python manage.py shell  
   
-\# Recolectar archivos estaticos  
+# Recolectar archivos estaticos  
 python manage.py collectstatic  
   
-\# Pruebas  
+# Pruebas  
 python manage.py test  
   
-\# Seed de datos de prueba  
+# Seed de datos de prueba  
 python manage.py seed\_products  
 python manage.py seed\_users  
 python manage.py seed\_all \# los dos comandos anteriores juntos hacen lo mismo que este  
   
-\# Verificar el proyecto  
+# Verificar el proyecto  
 python manage.py check
 ```
 
 ## 4. Comandos Frontend Utiles
 
 ```
-\# Desarrollo  
+# Desarrollo  
 npm run dev  
   
-\# Build de produccion  
+# Build de produccion  
 npm run build  
   
-\# Preview del build  
+# Preview del build  
 npm run preview  
   
-\# Linter  
+# Linter  
 npm run lint
 ```
 
@@ -312,15 +312,15 @@ python manage.py migrate
 
 
 ```
-\# Borra todas las tablas (datos, no estructura). Después corres seed\_all de nuevo.  
+# Borra todas las tablas (datos, no estructura). Después corres seed\_all de nuevo.  
 python manage.py flush --noinput  
   
-\# Alternativa manual si quieres borrar todo + migrations:  
+# Alternativa manual si quieres borrar todo + migrations:  
 Remove-Item -Path db.sqlite3 -Force  
 python manage.py migrate  
 python manage.py loaddata  
-python manage.py load\_sample\_data  
-python manage.py seed\_all
+python manage.py load_sample_data  
+python manage.py seed_all
 ```
 
 ## 24.9 Configuracion de Envio de Correos (Consola vs SMTP Real)
@@ -330,7 +330,7 @@ En `.env`, puedes alternar cómo se envían los enlaces de verificación de corr
 ### Modo 1: Enviar a la Terminal (Consola - Ideal para desarrollo)
 
 ```
-EMAIL\_BACKEND=console
+EMAIL_BACKEND=console
 ```
 
 Los enlaces de verificación aparecerán directamente en la consola/terminal donde se ejecuta `python manage.py runserver`.
@@ -338,13 +338,13 @@ Los enlaces de verificación aparecerán directamente en la consola/terminal don
 ### Modo 2: Enviar a Correos Reales (SMTP)
 
 ```
-EMAIL\_BACKEND=smtp  
-EMAIL\_HOST=smtp.gmail.com  
-EMAIL\_PORT=587  
-EMAIL\_USE\_TLS=True  
-EMAIL\_HOST\_USER=tu\_correo@gmail.com  
-EMAIL\_HOST\_PASSWORD=tu\_contraseña\_de\_aplicacion  
-DEFAULT\_FROM\_EMAIL=tu\_correo@gmail.com
+EMAIL_BACKEND=smtp  
+EMAIL_HOST=smtp.gmail.com  
+EMAIL_PORT=587  
+EMAIL_USE_TLS=True  
+EMAIL_HOST_USER=tu_correo@gmail.com  
+EMAIL_HOST_PASSWORD=tu_contraseña_de_aplicacion  
+DEFAULT_FROM_EMAIL=tu_correo@gmail.com
 ```
 
 Los correos se enviarán de verdad a la bandeja de entrada del usuario registrado.

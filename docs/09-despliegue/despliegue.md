@@ -9,7 +9,7 @@ servicios con plan gratuito permanente (sin tarjeta de crédito, sin trials que 
 |---|---|---|
 | Frontend (React + Vite) | Vercel | Hobby (gratis) |
 | Backend API (Django + DRF) | Render — Web Service | Free |
-| Microservicio Tshirt3D | Render — Web Service (o Static Site si solo sirve build de Three.js) | Free |
+| Microservicio Tshirt3D | Vercel — proyecto independiente con raiz `microservices/Tshirt3D` | Hobby |
 | Base de datos SQL | Neon o Supabase (PostgreSQL) | Free |
 | Base de datos NoSQL | MongoDB Atlas | M0 (Free) |
 | Media (imágenes, estampados, modelos 3D) | Cloudinary | Free |
@@ -79,7 +79,7 @@ directamente al activar la cuenta.
 | `VITE_CLOUDINARY_CLOUD_NAME` | tu cloud name de Cloudinary | Production, Preview |
 | `VITE_CLOUDINARY_UPLOAD_PRESET` | nombre del preset unsigned | Production, Preview |
 | `VITE_SENTRY_DSN` | DSN del proyecto React en Sentry | Production |
-| `VITE_TSHIRT3D_URL` | URL del microservicio 3D en Render | Production |
+| `VITE_EDITOR_3D_URL` | URL del microservicio 3D en Vercel | Production |
 
 > Cualquier variable que empiece con `VITE_` queda incluida en el build final del navegador.
 > **Nunca** pongas ahí una API secret (esas solo van en el backend).
@@ -113,7 +113,7 @@ directamente al activar la cuenta.
 | `ALLOWED_HOSTS` | `tu-backend.onrender.com` |
 | `CORS_ALLOWED_ORIGINS` | `https://tu-frontend.vercel.app` |
 | `DATABASE_URL` | connection string de Neon/Supabase (ver sección 5) |
-| `MONGO_URI` | connection string de MongoDB Atlas (ver sección 6) |
+| `MONGODB_URI` | connection string de MongoDB Atlas (ver sección 6) |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | del panel de Cloudinary |
 | `SENTRY_DSN` | DSN del proyecto Django en Sentry |
 | `ENVIRONMENT` | `production` |
@@ -138,14 +138,21 @@ El servicio se "duerme" tras 15 minutos sin tráfico y tarda 30-60 segundos en r
 primera petición después de eso. Es esperable en un plan gratuito; menciónalo en la
 sustentación como limitación conocida y no como bug. No afecta la lógica ni los datos.
 
-### 4.5 Microservicio Tshirt3D
+### 4.5 Microservicio Tshirt3D en Vercel
 
-Repetir el mismo proceso creando un **segundo Web Service** con:
-- **Root Directory**: `microservices/Tshirt3D`
-- Variables de entorno propias (URL del backend principal si necesita consumir su API, URL
-  de Cloudinary para los modelos `.glb`).
+Crear un **segundo proyecto Vercel** conectado al mismo repositorio:
 
-Esto mantiene la separación de microservicios también en el despliegue, no solo en el código.
+- **Root Directory**: `microservices/Tshirt3D`.
+- **Framework**: Vite; build `npm run build`; salida `dist`.
+- Variables: `VITE_API_URL=https://tu-backend.onrender.com/api/`,
+   `VITE_FRONTEND_URL=https://tu-frontend.vercel.app` y las dos variables públicas de
+   Cloudinary.
+- En el frontend principal, `VITE_EDITOR_3D_URL` debe apuntar al dominio de este proyecto.
+
+El editor no recibe producto, variante, cantidad ni rol por URL. El frontend principal crea
+una sesión HTTP en Django y el editor la consume con `credentials: include`. El endpoint
+`POST /api/editor-session/commit/` vuelve a validar la selección en PostgreSQL y consume la
+sesión después de agregar el producto al carrito.
 
 ---
 
@@ -178,22 +185,9 @@ Cualquiera de las dos cubre las necesidades del proyecto. Elegir una:
 
 ### 5.3 Django
 
-```python
-# config/settings.py
-import dj_database_url
-
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
-        ssl_require=True,
-    )
-}
-```
-
-```bash
-pip install dj-database-url psycopg2-binary
-```
+En este repositorio `config/settings.py` lee `DATABASE_URL` con `django-environ` cuando
+`DB_TYPE=neon`. En producción la variable es obligatoria: Django falla al arrancar si no
+existe, evitando crear una base SQLite accidental en Render.
 
 ---
 
@@ -217,7 +211,7 @@ eventos de uso del editor.
 ### 6.2 Variables de entorno
 
 ```
-MONGO_URI=mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/nombre_db?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://usuario:password@cluster0.xxxxx.mongodb.net/nombre_db?retryWrites=true&w=majority
 ```
 
 ### 6.3 Conexión desde Django
@@ -231,7 +225,7 @@ pip install pymongo
 from pymongo import MongoClient
 from django.conf import settings
 
-_client = MongoClient(settings.MONGO_URI)
+_client = MongoClient(settings.MONGODB_URI)
 db = _client.get_default_database()
 
 disenos_collection = db["disenos_3d"]
