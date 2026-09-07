@@ -80,7 +80,9 @@ Esto crea:
 cd backend  
   
 # 2. Crear y activar entorno virtual  
-python3 -m venv venv  
+python3 -m venv venv
+# Dependiendo de la version de Python y la configuracion puede ser:
+# python -m venv venv 
 source venv/bin/activate  # Linux/Mac  
 venv/Scripts/activate   # Windows  
   

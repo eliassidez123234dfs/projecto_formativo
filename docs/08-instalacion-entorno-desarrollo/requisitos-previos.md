@@ -16,6 +16,7 @@
 ```bash
 # Verificar Python
 python3 --version
+python --version
 # Python 3.12.3
 
 # Verificar Node.js
