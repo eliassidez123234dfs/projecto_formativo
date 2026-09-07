@@ -23,10 +23,17 @@ class ContactoCreateSerializer(serializers.ModelSerializer):
         fields = ['nombre', 'correo', 'asunto', 'mensaje']
     
     def validate_nombre(self, value):
-        if len(value.strip()) < 2:
-            raise ValidationError("El nombre debe tener al menos 2 caracteres.")
+        if len(value.strip()) < 3:
+            raise ValidationError("El nombre debe tener al menos 3 caracteres.")
         return value
-    
+
+    def validate_asunto(self, value):
+        if not value or not value.strip():
+            raise ValidationError("El asunto es requerido.")
+        if len(value.strip()) < 3:
+            raise ValidationError("El asunto debe tener al menos 3 caracteres.")
+        return value
+
     def validate_mensaje(self, value):
         if len(value.strip()) < 10:
             raise ValidationError("El mensaje debe tener al menos 10 caracteres.")

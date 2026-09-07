@@ -117,25 +117,52 @@ export const Landing = () => {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState({})
+  const [fieldErrors, setFieldErrors] = useState({})
 
-  const handleChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.value }))
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(p => ({ ...p, [name]: value }))
+    if (fieldErrors[name]) setFieldErrors(p => ({ ...p, [name]: '' }))
+  }
+
+  const validateForm = () => {
+    const errs = {}
+    if (!formData.nombre.trim() || formData.nombre.trim().length < 3)
+      errs.nombre = 'El nombre debe tener al menos 3 caracteres.'
+    if (!formData.correo.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo.trim()))
+      errs.correo = 'Ingrese un correo válido.'
+    if (!formData.asunto.trim() || formData.asunto.trim().length < 3)
+      errs.asunto = 'El asunto debe tener al menos 3 caracteres.'
+    if (!formData.mensaje.trim() || formData.mensaje.trim().length < 10)
+      errs.mensaje = 'El mensaje debe tener al menos 10 caracteres.'
+    setFieldErrors(errs)
+    return Object.keys(errs).length === 0
+  }
 
   const handleSubmitContacto = async (e) => {
     e.preventDefault()
+    if (!validateForm()) return
     setLoading(true); setErrors({}); setMessage('')
     try {
       const response = await fetch(buildApiUrl('contacto/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          nombre: formData.nombre.trim(),
+          correo: formData.correo.trim(),
+          asunto: formData.asunto.trim(),
+          mensaje: formData.mensaje.trim(),
+        }),
       })
       const data = await response.json()
       if (!response.ok) {
         if (response.status === 429) setErrors({ general: 'Límite de envíos. Intenta en una hora.' })
-        else setErrors(data)
+        else if (typeof data === 'object') setFieldErrors(data)
+        else setErrors({ general: 'Error al enviar el mensaje.' })
       } else {
         setMessage('Mensaje enviado exitosamente.')
         setFormData({ nombre: '', correo: '', asunto: '', mensaje: '' })
+        setFieldErrors({})
       }
     } catch { setErrors({ general: 'Error al conectar con el servidor' }) }
     finally { setLoading(false) }
