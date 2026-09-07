@@ -67,9 +67,19 @@ export default function AdminOrderDetail() {
 
   return (
     <AdminLayout title={`Orden #${order.id}`} subtitle={order.customer_name || order.user_name}>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <Link to="/admin-orders" className="btn btn-sm btn-ghost">← Volver a órdenes</Link>
+        <a
+          href={`/api/checkout/orders/${order.id}/invoice-pdf/`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-sm btn-outline"
+          download
+        >
+          Descargar Factura (PDF)
+        </a>
       </div>
+
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
         <DetailCard title="Información de la Orden">

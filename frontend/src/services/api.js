@@ -173,6 +173,14 @@ export const confirmCheckout = async (data) => {
   return response.data;
 };
 
+export const downloadInvoicePdf = async (orderId) => {
+  const response = await publicApi.get(`checkout/orders/${orderId}/invoice-pdf/`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+
 // ─────────── PRODUCTS (gestión admin, con token) ───────────
 export const fetchProducts = async (params = {}) => {
   const response = await api.get('products/', { params });
