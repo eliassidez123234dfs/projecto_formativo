@@ -4,38 +4,41 @@
 
 | Software | Version Minima | Proposito |
 |----------|---------------|-----------|
-| Python | 3.11+ | Entorno de ejecucion del backend |
-| Node.js | 18+ | Entorno de ejecucion del frontend |
+| Python | 3.12+ | Entorno de ejecucion del backend |
+| Node.js | 20+ | Entorno de ejecucion del frontend |
 | npm | 10+ | Gestor de paquetes del frontend |
-| Git | 2.30+ | Control de versiones |
-| Docker (opcional) | 24+ | Contenedorizacion |
-| Docker Compose (opcional) | 2.20+ | Orquestacion de contenedores |
+| Git | 2.45+ | Control de versiones |
+| Docker (opcional) | 26+ | Contenedorizacion |
+| Docker Compose (opcional) | 2.27+ | Orquestacion de contenedores |
 
 ## 23.2 Verificacion de Instalacion
 
 ```bash
-# Verificar Python
-python3 --version
+# Verificar Python en Windows
 python --version
-# Python 3.12.3
+# Python 3.12.10
+
+# Verificar Python en Linux
+python3 --version
+# Python 3.12.10
 
 # Verificar Node.js
 node --version
-# v20.15.0
+# v22.14.0
 
 # Verificar npm
 npm --version
-# 10.8.0
+# 11.3.0
 
 # Verificar Git
 git --version
-# git 2.45.0
+# git 2.51.1.windows.1
 
 # Verificar Docker (opcional)
 docker --version
-# Docker version 26.0.0
+# Docker version 29.7.2
 docker compose version
-# Docker Compose version 2.27.0
+# Docker Compose version v5.5.1
 ```
 
 ## 23.3 Clonacion del Repositorio

@@ -8,6 +8,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.conf import settings
 
 from apps.users.models import Usuario
 
@@ -295,3 +296,21 @@ class ProductAudit(models.Model):
 
 	def __str__(self) -> str:
 		return f'{self.product.name} - {self.action}'
+
+
+class Review(models.Model):
+	product = models.ForeignKey(Product, related_name='reviews', on_delete=models.CASCADE)
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='reviews', on_delete=models.CASCADE)
+	rating = models.PositiveSmallIntegerField(choices=[(value, str(value)) for value in range(1, 6)])
+	comment = models.TextField(max_length=1000, blank=True)
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		ordering = ['-created_at']
+		constraints = [
+			models.UniqueConstraint(fields=['product', 'user'], name='unique_product_user_review'),
+		]
+
+	def __str__(self) -> str:
+		return f'{self.product.name} - {self.user} ({self.rating})'

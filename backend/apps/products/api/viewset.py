@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
 from apps.users.api.admin_viewset import AdminPermission
-from apps.products.models import Product, ProductAudit, ProductImage, Variant
+from apps.products.models import Product, ProductAudit, ProductImage, Review, Variant
 
 from .serializers import (
     CartItemSerializer,
@@ -25,6 +25,7 @@ from .serializers import (
     VariantSerializer,
     VariantUpdateSerializer,
 )
+from .review_serializers import ReviewSerializer
 
 
 def _actor_name(request) -> str:
@@ -408,3 +409,33 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         serializer = ProductListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    queryset = Review.objects.select_related('user', 'product').all()
+    serializer_class = ReviewSerializer
+
+    def get_permissions(self):
+        if self.action in {'list', 'retrieve'}:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ProductImageViewSet(viewsets.ModelViewSet):
+    queryset = ProductImage.objects.select_related('product').order_by('product', 'order')
+    serializer_class = ProductImageSerializer
+
+    def get_permissions(self):
+        if self.action in {'list', 'retrieve'}:
+            return [permissions.AllowAny()]
+        return [AdminPermission()]

@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('orders', '0002_order_cloudinary_public_id_order_design_color_and_more'),
+        ('orders', '0003_alter_order_status'),
         ('users', '0002_alter_token_verificacion_token'),
     ]
 

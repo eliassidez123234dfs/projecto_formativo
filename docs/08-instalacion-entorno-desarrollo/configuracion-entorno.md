@@ -4,9 +4,9 @@
 
 - Git
 
-- Python 3.11 o superior
+- Python 3.12 o superior
 
-- Node.js 18 o superior
+- Node.js 20 o superior
 
 - npm 10 o superior
 
@@ -35,7 +35,7 @@ cp .env.example .env
 | `DEBUG` | `True` para desarrollo, `False` para producción |
 | `ALLOWED\_HOSTS` | Hosts permitidos separados por coma |
 | `FRONTEND\_URL` | URL base del frontend |
-| `DATABASE\_URL` | URL de conexión a PostgreSQL (opcional, usa SQLite por defecto) |
+| `DATABASE\_URL` | URL de conexión a PostgreSQL; obligatoria en producción |
 | `EMAIL\_HOST` / `EMAIL\_PORT` / `EMAIL\_USE\_TLS` | Configuración de correo |
 | `EMAIL\_HOST\_USER` / `EMAIL\_HOST\_PASSWORD` | Credenciales de correo |
 | `DEFAULT\_FROM\_EMAIL` | Remitente por defecto |
@@ -80,11 +80,10 @@ Esto crea:
 cd backend  
   
 # 2. Crear y activar entorno virtual  
-python3 -m venv venv
+python -m venv venv
 # Dependiendo de la version de Python y la configuracion puede ser:
 # python -m venv venv 
-source venv/bin/activate  # Linux/Mac  
-venv/Scripts/activate   # Windows  
+.\venv\Scripts\Activate.ps1  # Windows
   
 # 3. Actualizar pip e instalar dependencias  
 python -m pip install --upgrade pip   
@@ -95,7 +94,7 @@ pip install -r requirements.txt
 # Copiar .env.example a .env en la RAÍZ del proyecto y completar los valores  
   
 # 5. Ejecutar migraciones  
-python manage.py makemigrations # solo la primera vez  
+python manage.py makemigrations # solo la primera vez
 python manage.py showmigrations  
 python manage.py migrate  
   
@@ -203,20 +202,20 @@ docker compose build
 
 ```
 # Migraciones  
-python manage.py makemigrations \<app\_name\>  
+python manage.py makemigrations <app_name>  
 python manage.py migrate  
   
 # Reconciliar migraciones fakes (si la BD difiere del historial)  
-python manage.py migrate \<app\_name\> \<num\_migracion\> --fake  \# retroceder  
-python manage.py migrate \<app\_name\>                           \# re-aplicar  
+python manage.py migrate <app_name>  <num_migracion> --fake  # retroceder  
+python manage.py migrate <app_name>                            # re-aplicar  
   
 # Verificar estado de migraciones  
 python manage.py showmigrations  
   
 # Crear superusuario (modelo custom: usuario, correo)  
 python manage.py createsuperuser  
-# Non-interactive (requiere DJANGO\_SUPERUSER\_PASSWORD y DJANGO\_SUPERUSER\_EMAIL):  
-# DJANGO\_SUPERUSER\_PASSWORD="pass" DJANGO\_SUPERUSER\_EMAIL="admin@red.com" \\  
+# Non-interactive (requiere DJANGO_SUPERUSER_PASSWORD y DJANGO_SUPERUSER_EMAIL):  
+# DJANGO_SUPERUSER_PASSWORD="pass" DJANGO_SUPERUSER_EMAIL="admin@red.com" \\  
 #   python manage.py createsuperuser --usuario admin --noinput  
   
 # Shell de Django  
