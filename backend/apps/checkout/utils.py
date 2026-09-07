@@ -118,32 +118,52 @@ def generate_order_invoice_pdf(order) -> bytes:
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#E2E8F0'), spaceAfter=12))
 
     # Bloque de información del cliente y entrega
-    # En notes almacenamos datos de dirección y entrega formateados
     customer_name = order.customer_name or (order.user.usuario if order.user else 'Cliente')
     customer_email = order.customer_email or (order.user.correo if order.user else 'No registrado')
 
     customer_info = [
-        [Paragraph("<b>Nombre:</b>", label_style), Paragraph(customer_name, value_style)],
-        [Paragraph("<b>Email:</b>", label_style), Paragraph(customer_email, value_style)],
+        [Paragraph("<b>Nombre / Cliente:</b>", label_style), Paragraph(customer_name, value_style)],
+        [Paragraph("<b>Correo electrónico:</b>", label_style), Paragraph(customer_email, value_style)],
     ]
     if order.user:
-        customer_info.append([Paragraph("<b>Usuario Reg.:</b>", label_style), Paragraph(order.user.usuario, value_style)])
+        customer_info.append([Paragraph("<b>Usuario registrado:</b>", label_style), Paragraph(order.user.usuario, value_style)])
 
-    # Extraer notas o datos de entrega si existen
-    delivery_details = order.notes or "Entrega a convenir"
+    # Extraer y formatear datos de entrega a partir de notes
+    delivery_rows = []
+    if order.notes:
+        for line in order.notes.split('\n'):
+            line_str = line.strip()
+            if not line_str:
+                continue
+            if ':' in line_str:
+                lbl, val = line_str.split(':', 1)
+                delivery_rows.append([
+                    Paragraph(f"<b>{lbl.strip()}:</b>", label_style),
+                    Paragraph(val.strip(), value_style)
+                ])
+            else:
+                delivery_rows.append([
+                    Paragraph("<b>Nota:</b>", label_style),
+                    Paragraph(line_str, value_style)
+                ])
+    else:
+        delivery_rows.append([
+            Paragraph("<b>Dirección:</b>", label_style),
+            Paragraph("Entrega a acordar con el cliente", value_style)
+        ])
 
     info_data = [
         [
-            Paragraph("<b>INFORMACIÓN DEL CLIENTE</b>", section_heading),
-            Paragraph("<b>DETALLES DE ENTREGA / OBSERVACIONES</b>", section_heading)
+            Paragraph("<b>DATOS DEL CLIENTE / FACTURACIÓN</b>", section_heading),
+            Paragraph("<b>DIRECCIÓN Y DATOS DE ENTREGA</b>", section_heading)
         ],
         [
-            Table(customer_info, colWidths=[1.0 * inch, 2.5 * inch]),
-            Paragraph(delivery_details.replace('\n', '<br/>'), value_style)
+            Table(customer_info, colWidths=[1.3 * inch, 2.3 * inch]),
+            Table(delivery_rows, colWidths=[1.1 * inch, 2.5 * inch])
         ]
     ]
 
-    info_table = Table(info_data, colWidths=[3.75 * inch, 3.75 * inch])
+    info_table = Table(info_data, colWidths=[3.7 * inch, 3.8 * inch])
     info_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 10),

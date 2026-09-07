@@ -1,6 +1,8 @@
-from rest_framework import viewsets, permissions, serializers
+from rest_framework import viewsets, permissions, serializers, status
+from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.conf import settings
+
 
 from apps.orders.models import Order, OrderItem
 from apps.users.api.admin_viewset import AdminPermission
@@ -34,6 +36,7 @@ class AdminOrderSerializer(serializers.ModelSerializer):
             'id', 'user', 'user_name', 'customer_name', 'customer_email',
             'status', 'total', 'notes', 'created_at', 'updated_at', 'items',
         ]
+        read_only_fields = ['id', 'user', 'user_name', 'customer_name', 'customer_email', 'total', 'notes', 'created_at', 'updated_at', 'items']
 
 
 class AdminOrderPagination(PageNumberPagination):
@@ -42,7 +45,7 @@ class AdminOrderPagination(PageNumberPagination):
     max_page_size = 100
 
 
-class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
+class AdminOrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all().prefetch_related(
         'items__product', 'items__variant'
     ).select_related('user')
@@ -53,3 +56,18 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['customer_name', 'customer_email', 'id']
     ordering_fields = ['created_at', 'total', 'status']
     ordering = ['-created_at']
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        new_status = request.data.get('status')
+        if new_status and new_status not in dict(Order.STATUS_CHOICES):
+            return Response(
+                {'status': f"Estado inválido. Opciones permitidas: {', '.join(dict(Order.STATUS_CHOICES).keys())}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+

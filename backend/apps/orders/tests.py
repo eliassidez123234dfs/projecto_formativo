@@ -144,3 +144,36 @@ class OrderAdminTests(TestCase):
             **self.auth_headers,
         )
         self.assertEqual(response.status_code, 200)
+
+    def test_modificar_estado_orden_admin(self):
+        order = Order.objects.create(
+            customer_name='Test',
+            customer_email='test@test.com',
+            status='pending',
+            total='10000.00',
+        )
+        response = self.client.patch(
+            f'/api/admin/orders/{order.id}/',
+            data=json.dumps({'status': 'paid'}),
+            content_type='application/json',
+            **self.auth_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'paid')
+
+    def test_modificar_estado_orden_invalido(self):
+        order = Order.objects.create(
+            customer_name='Test',
+            customer_email='test@test.com',
+            status='pending',
+            total='10000.00',
+        )
+        response = self.client.patch(
+            f'/api/admin/orders/{order.id}/',
+            data=json.dumps({'status': 'invalido_status'}),
+            content_type='application/json',
+            **self.auth_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+

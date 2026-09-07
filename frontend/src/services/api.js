@@ -366,6 +366,12 @@ export const fetchAdminOrderDetail = async (id) => {
   return response.data;
 };
 
+export const updateAdminOrderStatus = async (id, status) => {
+  const response = await api.patch(`admin/orders/${id}/`, { status });
+  return response.data;
+};
+
+
 // ─────────── MODELOS 3D (admin) ───────────
 export const fetchModel3DList = async () => {
   const response = await api.get('models3d/models/');
