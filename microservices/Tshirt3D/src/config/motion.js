@@ -1,5 +1,27 @@
+/**
+ * Animaciones de Framer Motion para el editor 3D.
+ *
+ * Define transiciones suaves (spring) para los paneles de la interfaz:
+ * - `slideAnimation`: Deslizamiento desde cualquier dirección
+ *   (left, right, up, down) con opacidad progresiva.
+ * - `fadeAnimation`: Fundido de entrada/salida (opacity 0 ↔ 1).
+ * - `headTextAnimation`, `headContentAnimation`, `headContainerAnimation`:
+ *   Animaciones específicas para la pantalla de introducción/encabezado
+ *   con diferentes tiempos de entrada (stagger).
+ *
+ * Framer Motion es una librería de animaciones declarativas para React
+ * que utiliza springs físicos para lograr transiciones naturales y
+ * suaves. Los springs simulan el comportamiento de un muelle: a mayor
+ * stiffness, más rápida la animación; a mayor damping, menos rebote.
+ *
+ * Estas animaciones se aplican a los paneles del Customizer con
+ * motion.div, motion.header, etc. para crear una experiencia fluida
+ * al abrir/cerrar herramientas del editor.
+ */
+
 export const transition = { type: "spring", duration: 0.8 };
 
+/** Animación de deslizamiento según la dirección especificada */
 export const slideAnimation = (direction) => {
   return {
     initial: {
@@ -22,6 +44,7 @@ export const slideAnimation = (direction) => {
   };
 };
 
+/** Animación de opacidad (fade in/out) */
 export const fadeAnimation = {
   initial: {
     opacity: 0,
@@ -37,6 +60,7 @@ export const fadeAnimation = {
   },
 };
 
+/** Animación del título principal (desliza desde la derecha) */
 export const headTextAnimation = {
   initial: { x: 100, opacity: 0 },
   animate: { x: 0, opacity: 1 },
@@ -49,6 +73,7 @@ export const headTextAnimation = {
   },
 };
 
+/** Animación del contenido del encabezado (desliza desde abajo) */
 export const headContentAnimation = {
   initial: { y: 100, opacity: 0 },
   animate: { y: 0, opacity: 1 },
@@ -63,6 +88,7 @@ export const headContentAnimation = {
   },
 };
 
+/** Animación del contenedor del encabezado (desliza desde la izquierda) */
 export const headContainerAnimation = {
   initial: { x: -100, opacity: 0, transition: { ...transition, delay: 0.5 } },
   animate: { x: 0, opacity: 1, transition: { ...transition, delay: 0 } },

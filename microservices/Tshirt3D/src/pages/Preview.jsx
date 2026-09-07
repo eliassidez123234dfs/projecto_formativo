@@ -1,3 +1,34 @@
+/**
+ * Página de previsualización y confirmación del pedido.
+ *
+ * Muestra una vista previa del diseño capturado del canvas 3D junto
+ * con los detalles del pedido (color, logo, textura, escala).
+ * Permite al usuario confirmar el pedido (enviándolo al backend Django)
+ * o volver al editor para seguir personalizando.
+ *
+ * Captura de imagen del diseño:
+ * - El diseño se muestra como una imagen <img> cuya fuente (src) es
+ *   una Data URL generada por canvas.toDataURL("image/png") desde el
+ *   canvas de Three.js. Este proceso ocurre en App.jsx o helpers.js
+ *   antes de pasar los datos a Preview.
+ * - La Data URL es una cadena base64 que representa la imagen PNG
+ *   completa del canvas 3D renderizado.
+ *
+ * Flujo de envío al backend Django (API REST):
+ * 1. Se recibe la imagen del canvas 3D como Data URL (order.image).
+ * 2. handleConfirmOrder llama a `sendCanvasToApi()` que hace POST a
+ *    `VITE_API_URL` (por defecto http://127.0.0.1:8000/api/orders/).
+ * 3. El payload JSON incluye: image (base64), designColor, logoTexture,
+ *    fullTexture, logoScale, notes.
+ * 4. El backend Django procesa y almacena el pedido, devolviendo un
+ *    ID y estado de confirmación.
+ *
+ * RF-025: Previsualización del diseño 3D antes de confirmar.
+ * RF-026: Muestra los detalles de personalización (color, logos, textura).
+ *
+ * @param {Object} order - Datos del pedido (image, color, logoActive, etc.)
+ * @param {Function} onBack - Callback para volver al editor
+ */
 import React, { useState } from "react";
 import { sendCanvasToApi } from "../config/helpers";
 

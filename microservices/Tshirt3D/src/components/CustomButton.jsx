@@ -1,3 +1,21 @@
+/**
+ * Componente de botón personalizado con estilo dinámico.
+ *
+ * Renderiza un botón cuyo estilo se adapta al color actual del diseño:
+ * - Tipo "filled": fondo con el color de la camiseta y texto contrastante.
+ * - Tipo "outline": borde y texto del color de la camiseta.
+ *
+ * Utiliza `getContrastingColor` para asegurar legibilidad del texto
+ * sobre cualquier color de fondo (negro sobre claros, blanco sobre oscuros).
+ * La función calcula la luminancia relativa (fórmula W3C) del color
+ * hexadecimal y determina si el texto debe ser negro o blanco.
+ *
+ * Se suscribe al store de Valtio (useSnapshot) para reaccionar a cambios
+ * de color en tiempo real. Al mutar state.color desde ColorPicker, este
+ * botón se re-renderiza automáticamente con los nuevos estilos.
+ *
+ * RF-026: Botones dinámicos que reflejan el color de personalización.
+ */
 import React from "react";
 import { useSnapshot } from "valtio";
 
@@ -7,16 +25,13 @@ import { getContrastingColor } from "../config/helpers";
 const CustomButton = ({ type, title, customStyles, handleClick }) => {
   const snap = useSnapshot(state);
 
-  // This function generates a style object based on the type of style required
   const generateStyle = (type) => {
     if (type === "filled") {
-      // If the type is 'filled', return a style object with a background color and contrasting text color
       return {
         backgroundColor: snap.color,
         color: getContrastingColor(snap.color),
       };
     } else if (type === "outline") {
-      // If the type is 'outline', return a style object with a border and color
       return {
         borderWidth: "1px",
         borderColor: snap.color,

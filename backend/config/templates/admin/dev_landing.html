@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RED — Landing Informativa</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
+        .navbar { background: #1a1a2e; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 20px; }
+        .navbar a { color: #e0e0e0; text-decoration: none; font-size: 14px; padding: 6px 14px; border-radius: 6px; }
+        .navbar a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .navbar .brand { font-weight: 700; font-size: 18px; margin-right: auto; }
+        .container { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
+        h1 { font-size: 28px; margin-bottom: 12px; }
+        .subtitle { color: #666; font-size: 16px; margin-bottom: 32px; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 24px; }
+        .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .card h3 { font-size: 16px; margin-bottom: 8px; color: #1a1a2e; }
+        .card p { font-size: 14px; color: #666; line-height: 1.6; }
+        .text-muted { color: #999; font-size: 13px; }
+        hr { margin: 32px 0; border: none; border-top: 1px solid #e0e0e0; }
+        .tech-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .tech-tag { background: #eef2ff; color: #4338ca; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <span class="brand">RED — Plataforma de Personalización</span>
+        <a href="{% url 'admin:index' %}">Admin</a>
+        <a href="{% url 'dev-dashboard' %}">Dashboard</a>
+        <a href="/">Inicio</a>
+    </nav>
+    <div class="container">
+        <h1>Landing Informativa del Proyecto</h1>
+        <p class="subtitle">Red Estampación: Plataforma web para personalización de camisetas con editor 3D</p>
+
+        <div class="cards">
+            <div class="card">
+                <h3>🎯 Propósito</h3>
+                <p>Aplicación web modernizada tipo e-commerce que permite a clientes personalizar camisetas mediante un editor 3D en tiempo real, gestionar pedidos, y ofrecer una experiencia de compra completa con carrito de compras, checkout y pasarela de pago.</p>
+            </div>
+            <div class="card">
+                <h3>🛠️ Stack Tecnológico</h3>
+                <p>Backend: Django + Django REST Framework + PostgreSQL + MongoDB + Redis. Frontend: React + Vite. 3D: Three.js. Pago: Wompi.</p>
+                <div class="tech-list">
+                    <span class="tech-tag">Django 6.0</span>
+                    <span class="tech-tag">DRF</span>
+                    <span class="tech-tag">PostgreSQL</span>
+                    <span class="tech-tag">MongoDB</span>
+                    <span class="tech-tag">Redis</span>
+                    <span class="tech-tag">React</span>
+                    <span class="tech-tag">Vite</span>
+                    <span class="tech-tag">Three.js</span>
+                    <span class="tech-tag">Wompi</span>
+                    <span class="tech-tag">Cloudinary</span>
+                </div>
+            </div>
+            <div class="card">
+                <h3>📐 Arquitectura</h3>
+                <p>Backend monolítico modular (Django) con APIs REST separadas por módulo de negocio (usuarios, productos, carrito, pedidos, checkout). Frontend SPA con React Router. Persistencia híbrida: PostgreSQL para datos relacionales + MongoDB para diseños 3D y logs.</p>
+            </div>
+            <div class="card">
+                <h3>📋 Funcionalidades Clave</h3>
+                <p>Registro/login con JWT, editor 3D de camisetas, carrito de compras con fusión anónimo→autenticado, checkout con Wompi, catálogo con filtros, panel admin completo, verificación por email, diseños guardados por usuarios.</p>
+            </div>
+        </div>
+        <hr>
+        <p class="text-muted">Proyecto formativo — RED Estampación &copy; {% now "Y" %}</p>
+    </div>
+</body>
+</html>

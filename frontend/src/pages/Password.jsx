@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { buildApiUrl } from '../services/api';
 
 export const RecuperarPassword = () => {
@@ -55,7 +55,8 @@ export const RecuperarPassword = () => {
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
               placeholder="tu@email.com"
-              required
+              required autoComplete="email"
+              pattern="[^\s@]+@[^\s@]+\.[^\s@]+" maxLength={254}
             />
             {errors.correo && <span className="error">{errors.correo[0]}</span>}
             {errors.general && <span className="error">{errors.general}</span>}
@@ -67,7 +68,7 @@ export const RecuperarPassword = () => {
         </form>
 
         <p className="auth-link">
-          <a href="/login">Volver al login</a>
+          <Link to="/login">Volver al login</Link>
         </p>
       </div>
     </div>
@@ -170,7 +171,7 @@ export const NuevaPassword = () => {
         </form>
 
         <p className="auth-link">
-          <a href="/login">Volver al login</a>
+          <Link to="/login">Volver al login</Link>
         </p>
       </div>
     </div>

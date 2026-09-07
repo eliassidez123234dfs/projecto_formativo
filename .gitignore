@@ -1,22 +1,52 @@
 # =============================================================================
+<<<<<<< HEAD
 # .gitignore unificado – Python, Django, Node, React, macOS, Linux, IDEs, IA
 # =============================================================================
 
 # Solo subir uno de estos dos al repositorio, dependiendo del gestor de paquetes que se use:
 # package-lock.json
 # yarn.lock
+=======
+#  Seguridad y secretos
+# =============================================================================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.cert
+*.crt
+.cache_ggshield
+>>>>>>> origin/main
 
-### Django ###
-*.log
-*.pot
-*.pyc
+# =============================================================================
+#  Python / Django
+# =============================================================================
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-media
+db.sqlite3.backup
+*.sql
+*.sql.gz
+*.dump
+media/
+staticfiles/
+static_root/
+*.pot
+*.log
 
 # =============================================================================
+<<<<<<< HEAD
 # Sistemas operativos
 # =============================================================================
 # Linux
@@ -201,12 +231,19 @@ celerybeat.pid
 # Entornos virtuales
 .venv/
 venv/
+=======
+#  Entorno virtual
+# =============================================================================
+venv/
+.venv/
+>>>>>>> origin/main
 env/
 ENV/
 env.bak/
 venv.bak/
 .virtualenvs/
 
+<<<<<<< HEAD
 # Spyder
 .spyderproject
 .spyproject
@@ -249,12 +286,19 @@ pyrightconfig.json
 # =============================================================================
 # Logs
 logs
+=======
+# =============================================================================
+#  Node.js / Frontend
+# =============================================================================
+node_modules/
+>>>>>>> origin/main
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 .pnpm-debug.log*
+.lh/
 
+<<<<<<< HEAD
 # Reportes de diagnóstico
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
@@ -460,14 +504,142 @@ allure-results/
 *.orig
 *.tmp
 *.temp
+=======
+# =============================================================================
+#  IDEs y editores
+# =============================================================================
+.vscode/
+.idea/
+.vs/
+*.swp
+*.swo
+*~
+*.code-workspace
+.history/
+.ntvs_analysis.dat
+*.sublime-workspace
+*.sublime-project
+
+# =============================================================================
+#  OS archivos temporales
+# =============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# =============================================================================
+#  Herramientas IA y automatización (no código del proyecto)
+# =============================================================================
+.agents/
+.auxly/
+.claude/
+.cursor/
+.cursorrules
+.goose/
+.kiro/
+.specify/
+.agents/*
+.auxly/*
+.claude/*
+.cursor/*
+.goose/*
+.kiro/*
+.specify/*
+skills-lock.json
+AGENTS.md
+AI_AGENTS_STRATEGY.md
+.github/agents/
+.github/instructions/
+.github/prompts/
+.github/skills/
+.github/.ace-version.json
+.github/hooks/
+
+# =============================================================================
+#  Datos personales y documentación sensible
+# =============================================================================
+Ficha Proyecto RED.md
+estructura_proyecto_completo.txt
+taiga.json
+COMPONENTS_EXAMPLES.jsx
+
+# =============================================================================
+#  Matriz de requerimientos (dump Excel)
+# =============================================================================
+Matrix\ de\ requerimientos.xlsx/
+Matrix\ de\ requerimientos.xlsx.zip
+lista\ de\ chequeos/
+
+# =============================================================================
+#  Backend específico
+# =============================================================================
+backend/.coverage
+backend/htmlcov/
+backend/.pytest_cache/
+backend/*.db
+backend/media/
+backend/static/
+
+# =============================================================================
+#  Microservicios
+# =============================================================================
+microservices/*/node_modules/
+microservices/*/.env
+microservices/*/.venv/
+microservices/*/venv/
+
+# =============================================================================
+#  Contenedores / Docker
+# =============================================================================
+.docker/
+
+# =============================================================================
+#  Neon / Base de datos
+# =============================================================================
+.neon*
+.neon/
+
+# =============================================================================
+#  Archivos de testing y reportes
+# =============================================================================
+test-reports/
+allure-results/
+*.test.js.snap
+coverage/
+.nyc_output/
+
+# =============================================================================
+#  Miscelánea
+# =============================================================================
+*.bak
+*.orig
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.pid
+*.seed
+
+>>>>>>> origin/main
 .ejemplos_codigo/
 .ejemplos_codigo/*
 ejemplos_codigo/
 ejemplos_codigo/*
 ejemplos_codigo
+<<<<<<< HEAD
 
 # =============================================================================
 # Notas adicionales (comentarios de la versión original)
 # =============================================================================
 # Si usas collectstatic, descomenta la siguiente línea:
 <django-project-name>/staticfiles/
+=======
+.aider*
+>>>>>>> origin/main

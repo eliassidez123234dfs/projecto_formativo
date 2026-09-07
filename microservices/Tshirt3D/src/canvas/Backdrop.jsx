@@ -1,3 +1,24 @@
+/**
+ * Componente de fondo/escenario 3D para la camiseta.
+ *
+ * Renderiza sombras acumulativas (AccumulativeShadows) y luces
+ * aleatorizadas (RandomizedLight) de @react-three/drei para crear
+ * un efecto de iluminación suave y realista detrás de la camiseta.
+ *
+ * - `AccumulativeShadows`: Genera sombras suaves mediante múltiples
+ *   muestras temporales (30 frames) para un resultado más natural
+ *   sin necesidad de configurar mapas de sombras complejos.
+ * - `RandomizedLight`: Simula luces con parámetros aleatorios (posición,
+ *   intensidad, radio) dentro de un rango para evitar sombras artificiales
+ *   y dar profundidad a la escena.
+ *
+ * Estos componentes son parte de @react-three/drei (utilidades para
+ * R3F/Three.js). drei abstrae configuraciones complejas de Three.js
+ * (como AccumulativeShadows, que usa THREE.WebGLRenderTarget internamente)
+ * en componentes JSX declarativos.
+ *
+ * RF-025: Contribuye a la escena 3D del editor interactivo.
+ */
 import React, { useRef } from "react";
 // import { easing } from "maath";
 // import { useFrame } from "@react-three/fiber";
@@ -32,26 +53,27 @@ const Backdrop = () => {
   return (
     <AccumulativeShadows
       ref={shadows}
-      temporal={true} // smooth out the edges of the shadows over time
-      frames={60}
-      alphaTest={0.85} // Transparency of the shadows
-      scale={10}
+      temporal={true}
+      frames={30}
+      alphaTest={0.25} // reduce the darkness/coverage of the accumulated shadow
+      opacity={0.5}
+      scale={6}
       rotation={[Math.PI / 2, 0, 0]}
-      position={[0, 0, -0.14]}
+      position={[0, -0.3, -0.14]}
     >
       <RandomizedLight
-        amount={4}
-        radius={9}
-        intensity={0.55}
-        ambient={0.25}
-        position={[5, 5, -10]}
+        amount={2}
+        radius={5}
+        intensity={0.28}
+        ambient={0.1}
+        position={[5, 6, -6]}
       />
       <RandomizedLight
-        amount={4}
-        radius={5}
-        intensity={0.25}
-        ambient={0.55}
-        position={[-5, 5, -9]}
+        amount={2}
+        radius={4}
+        intensity={0.18}
+        ambient={0.08}
+        position={[-5, 5, -6]}
       />
     </AccumulativeShadows>
   );

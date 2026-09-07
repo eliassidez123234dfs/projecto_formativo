@@ -1,3 +1,37 @@
+/**
+ * Componente de la malla 3D de la camiseta.
+ *
+ * Carga el modelo GLTF de la camiseta (`/shirt_baked.glb`) mediante
+ * `useGLTF` de @react-three/drei y renderiza la malla con Three.js.
+ *
+ * Three.js maneja la geometría (T_Shirt_male), el material (lambert1)
+ * y las texturas como objetos del mundo 3D. @react-three/fiber sincroniza
+ * el ciclo de vida de React con el bucle de renderizado de Three.js
+ * mediante hooks como useFrame.
+ *
+ * Aplicación de colores y texturas:
+ * - El color de la camiseta se interpola suavemente en cada frame
+ *   usando `easing.dampC` de la biblioteca maath, transicionando
+ *   desde el color actual al color seleccionado en el store de Valtio.
+ *   maath es una biblioteca de matemáticas para animaciones 3D que
+ *   proporciona funciones de interpolación (damping exponencial).
+ * - Las texturas (logo y textura completa) se aplican como decals
+ *   (calcomanías) sobre la superficie de la malla usando el componente
+ *   `<Decal>` de drei, que proyecta una textura 2D sobre la geometría 3D.
+ * - `logoTexture` se renderiza si `isLogoTexture` es true, en la
+ *   posición y escala definidas en el store (arrastrable por el usuario).
+ * - `fullTexture` se renderiza si `isFullTexture` es true, cubriendo
+ *   toda la superficie de la camiseta.
+ *
+ * Interacción drag & drop del logo:
+ * - onPointerDown: activa el modo de arrastre.
+ * - onPointerMove: actualiza logoPosition [x, y, z] según el punto
+ *   de intersección del rayo (raycaster) con la malla.
+ * - onPointerUp / onPointerOut: desactiva el modo de arrastre.
+ *
+ * RF-025: Renderizado 3D interactivo de la camiseta.
+ * RF-026: Personalización con colores, logos y texturas.
+ */
 import React, { useState } from "react";
 import { easing } from "maath";
 import { useSnapshot } from "valtio";

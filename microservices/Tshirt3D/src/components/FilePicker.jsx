@@ -1,13 +1,30 @@
+/**
+ * Componente de selección de archivos para subir imágenes.
+ *
+ * Permite al usuario seleccionar una imagen desde su dispositivo
+ * y aplicarla como logo o textura completa en la camiseta 3D.
+ *
+ * Flujo de carga de imagen:
+ * 1. El usuario selecciona un archivo en el input type="file".
+ * 2. Se llama a la función `reader()` (FileReader API) que convierte
+ *    el archivo a una Data URL (base64).
+ * 3. Esa Data URL se asigna al store de Valtio como logoDecal o
+ *    fullDecal (según el botón presionado: "Logo" o "Full").
+ * 4. Shirt.jsx consume la textura con useTexture(snap.logoDecal) y
+ *    la aplica a la malla 3D mediante <Decal map={logoTexture}>.
+ *
+ * - Input de tipo file con aceptación de imágenes (accept="image/*").
+ * - Botón "Logo": aplica la imagen como calcomanía parcial (logo).
+ * - Botón "Full": aplica la imagen como textura de cuerpo completo.
+ *
+ * RF-026: Permite la personalización con imágenes propias del usuario
+ *         subidas desde su dispositivo local.
+ */
 import React from "react";
 import PropTypes from "prop-types";
 
 import CustomButton from "./CustomButton";
 
-/**
- * The `FilePicker` component is a React component that allows users to upload a file and provides
- * buttons to read different parts of the file.
- * @returns The FilePicker component is returning JSX elements.
- */
 const FilePicker = ({ file, setFile, readFile }) => {
   return (
     <div className="filepicker-container">
@@ -16,8 +33,6 @@ const FilePicker = ({ file, setFile, readFile }) => {
           id="file-upload"
           type="file"
           accept="image/*"
-          /* The `onChange` event handler in the `input` element is responsible for updating the `file` state
-            when a file is selected by the user. */
           onChange={(e) => setFile(e.target.files[0])}
         />
         <label htmlFor="file-upload" className="filepicker-label">
