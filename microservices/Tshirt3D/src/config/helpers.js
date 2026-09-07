@@ -1,5 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/orders/";
 const MODELS3D_API_URL = import.meta.env.VITE_MODELS3D_API_URL ?? "http://127.0.0.1:8000/api/models3d/models/";
+const CART_API_URL = import.meta.env.VITE_CART_API_URL ?? "http://127.0.0.1:8000/api/cart/add/";
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const CLOUDINARY_URL =
@@ -7,6 +8,14 @@ const CLOUDINARY_URL =
   `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 import state from "../store";
+
+/** Lee una cookie por nombre (usado para CSRF al agregar al carrito). */
+const getCookie = (name) => {
+  const cookies = `; ${document.cookie}`;
+  const parts = cookies.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift() || null;
+  return null;
+};
 
 const waitForNextFrames = (frames = 2) =>
   new Promise((resolve) => {
@@ -131,6 +140,7 @@ export const createModel3D = async (modelData = {}) => {
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include", // comparte la cookie de sesión (2008: anónimo carrito)
     body: JSON.stringify(modelData),
   });
 
@@ -142,10 +152,55 @@ export const createModel3D = async (modelData = {}) => {
   return response.json();
 };
 
+/**
+ * Agrega el diseño 3D al carrito del backend como un pedido de impresión.
+ * Usa la variante y cantidad recibidas por URL (state.productId/variantId/quantity).
+ */
+export const addDesignToCart = async ({ productId, variantId, quantity = 1 } = {}) => {
+  if (!productId || !variantId) {
+    throw new Error("Faltan datos del producto/variante. Abre el editor desde el catálogo.");
+  }
+
+  const headers = { "Content-Type": "application/json" };
+  const csrfToken = getCookie("csrftoken");
+  if (csrfToken) headers["X-CSRFToken"] = csrfToken;
+
+  const response = await fetch(CART_API_URL, {
+    method: "POST",
+    headers,
+    credentials: "include", // importante: la sesión del carrito vive en cookies
+    body: JSON.stringify({
+      product_id: productId,
+      variant_id: variantId,
+      quantity,
+    }),
+  });
+
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const body = await response.json();
+      detail =
+        body?.quantity?.[0] ||
+        body?.product_id?.[0] ||
+        body?.variant_id?.[0] ||
+        body?.error ||
+        body?.detail ||
+        JSON.stringify(body);
+    } catch {
+      detail = await response.text();
+    }
+    throw new Error(`No se pudo agregar al carrito: ${detail}`);
+  }
+
+  return response.json();
+};
+
 export const reader = (file) =>
-  new Promise((resolve, reject) => {
+  new Promise((resolve) => {
     const fileReader = new FileReader();
     fileReader.onload = () => resolve(fileReader.result);
+    fileReader.onerror = () => resolve(null);
     fileReader.readAsDataURL(file);
   });
 

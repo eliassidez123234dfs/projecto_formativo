@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Resumen del admin panel original. Para la documentación técnica actual ver [API_DOCUMENTATION.md](../API_DOCUMENTATION.md).
+
 # ✅ Admin Panel Profesional - Resumen Ejecutivo
 
 ## 🎯 Objetivo Completado

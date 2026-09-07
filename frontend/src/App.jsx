@@ -12,7 +12,6 @@ import { Dashboard } from './pages/Dashboard';
 import { Catalog } from './pages/Catalog';
 import { Category } from './pages/Category';
 import { ProductDetail } from './pages/ProductDetail';
-import { Product3D } from './pages/Product3D';
 import { Cart } from './pages/Cart';
 import AdminCart from './pages/AdminCart';
 import AdminCartDetail from './pages/AdminCartDetail';
@@ -39,7 +38,7 @@ function App() {
       <CartProvider>
         <BrowserRouter>
           <ErrorBoundary>
-          <Toaster position="top-right" toastOptions={{ duration: 4000, style: { fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
+          <Toaster position="top-right" toastOptions={{ duration: 4000, style: { background: 'var(--color-surface, #ffffff)', color: 'var(--color-text, #0f172a)', border: '1px solid var(--color-border, #e2e8f0)', fontSize: 14, borderRadius: 8, padding: '10px 16px' } }} />
           <Routes>
             {/* Rutas existentes de integracion-total */}
             <Route path="/" element={<Landing />} />
@@ -47,7 +46,6 @@ function App() {
             <Route path="/category/:id" element={<Category />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/product/:id/3d" element={<Product3D />} />
             <Route path="/login" element={<AuthPage defaultMode="login" />} />
             <Route path="/register" element={<AuthPage defaultMode="register" />} />
             <Route path="/dashboard" element={<Dashboard />} />

@@ -309,27 +309,47 @@
 }
 
 .alert-success {
-  background-color: #F0FDF4;
+  background-color: var(--color-success-light);
   border-color: var(--color-success);
-  color: #166534;
+  color: var(--color-success-dark);
 }
 
 .alert-error {
-  background-color: #FEF2F2;
+  background-color: var(--color-error-light);
   border-color: var(--color-error);
-  color: #991B1B;
+  color: var(--color-error-dark);
 }
 
 .alert-warning {
-  background-color: #FFFBEB;
+  background-color: var(--color-warning-light);
   border-color: var(--color-warning);
-  color: #92400E;
+  color: var(--color-warning-dark);
 }
 
 .alert-info {
-  background-color: #EFF6FF;
+  background-color: var(--color-info-light);
   border-color: var(--color-info);
-  color: #1E40AF;
+  color: var(--color-info-dark);
+}
+
+[data-theme="dark"] .alert-success {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+[data-theme="dark"] .alert-error {
+  background-color: var(--color-error-light);
+  color: var(--color-error);
+}
+
+[data-theme="dark"] .alert-warning {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+[data-theme="dark"] .alert-info {
+  background-color: var(--color-info-light);
+  color: var(--color-info);
 }
 
 .alert-icon {
@@ -474,4 +494,60 @@
 
 .product-footer .btn {
   flex: 1;
+}
+
+/* ============================================
+   DARK MODE — Componentes
+   ============================================ */
+[data-theme="dark"] .header {
+  background-color: var(--color-bg);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .header-logo {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .header-nav a {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .header-button-secondary {
+  background-color: transparent;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .form-label {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .form-help {
+  color: var(--color-text-muted);
+}
+
+[data-theme="dark"] .card {
+  background-color: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .product-card {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .product-name {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .product-image {
+  background: var(--color-bg-tertiary);
 }

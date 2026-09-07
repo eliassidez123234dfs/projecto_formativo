@@ -1,7 +1,7 @@
 .form-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -68,7 +68,7 @@
 
 .form-error-box {
   background: var(--color-error-light);
-  color: #991b1b;
+  color: var(--color-error-dark);
   padding: 12px 16px;
   border-radius: var(--radius-lg);
   margin-bottom: 16px;
@@ -133,7 +133,7 @@
 }
 
 .publish-confirm-modal {
-  border-top: 4px solid #2563eb;
+  border-top: 4px solid var(--color-publish);
 }
 
 .publish-confirm-alert {
@@ -141,23 +141,23 @@
   align-items: flex-start;
   gap: 14px;
   padding: 16px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--color-publish-border);
   border-radius: var(--radius-lg);
-  background: #eff6ff;
-  color: #1e3a8a;
+  background: var(--color-publish-bg);
+  color: var(--color-publish-text);
 }
 
 .publish-confirm-alert strong {
   display: block;
   font-size: 15px;
-  color: #1e3a8a;
+  color: var(--color-publish-text);
 }
 
 .publish-confirm-alert p {
   margin: 4px 0 0;
   font-size: 14px;
   line-height: 1.45;
-  color: #1e40af;
+  color: var(--color-publish-text);
 }
 
 .publish-confirm-icon {
@@ -168,14 +168,36 @@
   height: 28px;
   flex: 0 0 28px;
   border-radius: 50%;
-  background: #2563eb;
-  color: #fff;
+  background: var(--color-publish);
+  color: var(--color-white);
   font-size: 17px;
   font-weight: 700;
 }
 
 .publish-confirm-action {
-  background: #2563eb;
+  background: var(--color-publish);
+}
+
+/* ============================================
+   DARK MODE — Form Modal
+   ============================================ */
+[data-theme="dark"] .form-error-box {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+[data-theme="dark"] .publish-confirm-alert {
+  background: var(--color-publish-bg);
+  border-color: var(--color-publish-border);
+  color: var(--color-publish-text);
+}
+
+[data-theme="dark"] .publish-confirm-alert strong {
+  color: var(--color-publish-text);
+}
+
+[data-theme="dark"] .publish-confirm-alert p {
+  color: var(--color-publish);
 }
 
 @media (max-width: 480px) {

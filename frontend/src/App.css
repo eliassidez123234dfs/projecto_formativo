@@ -138,3 +138,16 @@ nav a.active::after {
     width: 100%;
   }
 }
+
+/* =========================================
+   DARK MODE — Navbar
+   ========================================= */
+[data-theme="dark"] html, [data-theme="dark"] body {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] nav {
+  background: #0a0f1a;
+  border-bottom-color: #334155;
+}

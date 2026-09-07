@@ -1,0 +1,118 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam nodeBorderColor #2E4057
+skinparam nodeFontColor #2E4057
+skinparam nodeFontSize 12
+skinparam componentBorderColor #4A6FA5
+skinparam componentFontColor #4A6FA5
+skinparam componentFontSize 10
+skinparam arrowColor #2E4057
+skinparam databaseBorderColor #2E4057
+skinparam databaseFontColor #2E4057
+skinparam databaseFontSize 11
+skinparam artifactBorderColor #6B8E23
+skinparam artifactFontColor #6B8E23
+
+title "Diagrama de Despliegue - RED Estampación"
+
+' ============================================================
+' NODOS PRINCIPALES
+' ============================================================
+
+node "Cliente" as Client {
+  artifact "Navegador Web\n(Chrome, Firefox, etc.)" as Browser
+}
+
+node "Servidor Frontend\n(React + Vite)" as FrontendNode {
+  component "SPA React" as ReactApp
+  component "React Router\n(Navegación)" as Router
+  component "Axios\n(Cliente HTTP)" as Axios
+  component "Three.js / R3F\n(Editor 3D)" as ThreeJS
+  component "Tailwind CSS\n(Estilos)" as Tailwind
+}
+
+node "Servidor Backend\n(Django + DRF)" as BackendNode {
+  component "Django REST Framework\n(API REST)" as DRF
+  component "JWT Auth\n(SimpleJWT)" as JWTAuth
+  component "Celery\n(Tareas Asíncronas)" as Celery
+
+  node "Apps Django" as Apps {
+    component "landing" as AppLanding
+    component "users" as AppUsers
+    component "products" as AppProducts
+    component "catalog" as AppCatalog
+    component "carts" as AppCarts
+    component "checkout" as AppCheckout
+    component "orders" as AppOrders
+    component "models3d" as AppModels3D
+    component "management" as AppMgmt
+  }
+}
+
+node "Servidor Base de Datos" as DBServer {
+  database "SQLite (dev)\nPostgreSQL (prod)" as Database
+}
+
+node "Redis" as RedisNode {
+  component "Redis\n(Caché / Colas)" as Redis
+}
+
+' ============================================================
+' SERVICIOS EXTERNOS
+' ============================================================
+
+node "Cloudinary" as CloudinaryNode {
+  component "Cloudinary API\n(Imágenes y Modelos 3D)" as CloudinaryAPI
+  database "CDN\n(Almacenamiento)" as CloudinaryCDN
+}
+
+node "Wompi" as WompiNode {
+  component "Wompi API\n(Pasarela de Pagos)" as WompiAPI
+  component "Webhook\n(Notificaciones)" as WompiWebhook
+}
+
+node "SMTP Server" as MailNode {
+  component "Servidor de Correo\n(Email Verification)" as MailServer
+}
+
+' ============================================================
+' RELACIONES
+' ============================================================
+
+Client --> FrontendNode : "HTTPS\n(Peticiones Web)"
+
+FrontendNode --> BackendNode : "HTTPS\n(REST API / JSON)"
+FrontendNode --> CloudinaryNode : "HTTPS\n(Imágenes 3D / Assets)"
+
+BackendNode --> DBServer : "SQL\n(ORM Django)"
+BackendNode --> RedisNode : "TCP\n(Caché / Celery)"
+BackendNode --> CloudinaryNode : "HTTPS\n(Upload / Admin)"
+BackendNode --> WompiNode : "HTTPS\n(Transacciones)"
+BackendNode --> MailNode : "SMTP\n(Emails)"
+
+WompiNode --> BackendNode : "Webhook\n(HTTP POST)"
+
+' ============================================================
+' NOTAS
+' ============================================================
+note right of DBServer
+  En desarrollo: SQLite
+  En producción: PostgreSQL 16+
+end note
+
+note left of RedisNode
+  Usado para:
+  - Caché de consultas
+  - Colas de Celery
+  - Sesiones (opcional)
+end note
+
+note top of CloudinaryNode
+  Almacenamiento externo para:
+  - Imágenes de productos
+  - Previsualizaciones
+  - Modelos 3D (GLB/GLTF)
+end note
+
+@enduml

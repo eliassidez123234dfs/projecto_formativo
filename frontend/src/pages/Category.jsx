@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { fetchCatalog } from '../services/api';
 import { ProductCard } from '../components/ProductCard';
 import ErrorState from '../components/ErrorState';
@@ -15,7 +14,7 @@ export const Category = () => {
   const [filters, setFilters] = useState({ q: '', min_price: '', max_price: '', ordering: '', page: 1 });
   const [pageInfo, setPageInfo] = useState(null);
   const [categoryName, setCategoryName] = useState('Categoría');
-  const { cart, addItem } = useCart();
+  const { cart } = useCart();
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -44,17 +43,6 @@ export const Category = () => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
-  };
-
-  const handleAddToCart = async (product) => {
-    const variantId = product.variants?.[0]?.id;
-    if (!variantId) { toast.error('Este producto no tiene variantes disponibles'); return }
-    try {
-      await addItem(product.id, variantId, 1);
-      toast.success('Producto agregado al carrito');
-    } catch (error) {
-      toast.error(error.response?.data?.detail || error.response?.data?.quantity || 'Error al agregar al carrito');
-    }
   };
 
   return (
@@ -117,7 +105,6 @@ export const Category = () => {
                     image: product.main_image || null,
                   }}
                   onView={(id) => window.location.href = `/product/${id}`}
-                  onAdd={() => handleAddToCart(product)}
                 />
               ))}
             </div>

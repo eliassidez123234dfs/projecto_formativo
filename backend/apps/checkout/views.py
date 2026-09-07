@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from apps.carts.models import Cart
 from apps.orders.models import Order, OrderItem
+from apps.users.api.auth_backend import UsuarioJWTAuthentication
 
 
 def _get_cart_from_session(request):
@@ -77,7 +78,7 @@ def checkout_summary(request):
 
 
 @api_view(['POST'])
-@authentication_classes([SessionAuthentication])
+@authentication_classes([UsuarioJWTAuthentication, SessionAuthentication])
 @permission_classes([AllowAny])
 def checkout_confirm(request):
 	cart = _get_cart_from_session(request)

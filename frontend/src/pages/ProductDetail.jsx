@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchProductDetail } from '../services/api';
@@ -7,6 +7,9 @@ import { Button } from '../components/Button';
 import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
+import { openEditor } from '../utils/editor3d';
+import { useAddAttemptGuard, extractCartError } from '../utils/cartLimits';
+import { AddToCartModal } from '../components/catalog/AddToCartModal';
 import ErrorState from '../components/ErrorState';
 
 export const ProductDetail = () => {
@@ -21,6 +24,8 @@ export const ProductDetail = () => {
   const [adding, setAdding] = useState(false);
   const [mainImage, setMainImage] = useState(null);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [show3DModal, setShow3DModal] = useState(false);
+  const { maxReached, registerFailure, clearAlerts } = useAddAttemptGuard();
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -90,10 +95,36 @@ export const ProductDetail = () => {
     setAdding(true);
     try {
       await addItem(product.id, selectedVariant.id, quantity);
+      clearAlerts();
       toast.success('Producto agregado al carrito');
+      try {
+        const refreshed = await fetchProductDetail(id);
+        const normalized = {
+          id: refreshed?.id ?? null,
+          name: refreshed?.name ?? '',
+          description: refreshed?.description ?? '',
+          base_price: refreshed?.base_price ?? 0,
+          main_image: refreshed?.main_image ?? null,
+          images: Array.isArray(refreshed?.images) ? refreshed.images : [],
+          variants: Array.isArray(refreshed?.variants) ? refreshed.variants : [],
+          categories: Array.isArray(refreshed?.categories) ? refreshed.categories : [],
+          related_products: Array.isArray(refreshed?.related_products) ? refreshed.related_products : [],
+          total_stock: refreshed?.total_stock ?? (Array.isArray(refreshed?.variants) ? refreshed.variants.reduce((s, v) => s + (v.stock || 0), 0) : 0),
+          created_at: refreshed?.created_at ?? null,
+          is_active: !!refreshed?.is_active,
+          is_approved: !!refreshed?.is_approved,
+          ready_to_publish: !!refreshed?.ready_to_publish,
+        };
+        setProduct(normalized);
+      } catch {
+        // Si falla el refresh de stock, no bloquear la experiencia
+      }
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.quantity || 'Error al agregar al carrito';
-      toast.error(msg);
+      const msg = extractCartError(err, 'Error al agregar al carrito');
+      if (!maxReached) {
+        toast.error(msg);
+      }
+      registerFailure();
     } finally {
       setAdding(false);
     }
@@ -102,6 +133,10 @@ export const ProductDetail = () => {
   const handleQuantityChange = (newQty) => {
     const stock = selectedVariant?.stock || 1;
     if (newQty >= 1 && newQty <= stock) setQuantity(newQty);
+  };
+
+  const handleOpen3D = (variant, qty) => {
+    openEditor({ productId: product.id, variant, quantity: qty, mode: 'new' });
   };
 
   function colorToHex(color) {
@@ -298,7 +333,7 @@ export const ProductDetail = () => {
                 {adding ? 'Agregando...' : 'Agregar al Carrito'}
               </Button>
               <Button size="lg" variant="outline"
-                onClick={() => window.location.href = `/product/${id}/3d?mode=view`}>
+                onClick={() => setShow3DModal(true)}>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                 3D
               </Button>
@@ -443,6 +478,14 @@ export const ProductDetail = () => {
           .pd-skeleton { grid-template-columns: 1fr; }
         }
       `}</style>
+
+      {show3DModal && (
+        <AddToCartModal
+          product={{ ...product, image: mainImage || DEFAULT_IMAGE }}
+          onClose={() => setShow3DModal(false)}
+          onOpen3D={handleOpen3D}
+        />
+      )}
     </>
   );
 };

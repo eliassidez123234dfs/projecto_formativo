@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Arquitectura del admin panel de la fase inicial. Para la arquitectura general actual consulta [README.md](../README.md).
+
 # Arquitectura Profesional del Admin Panel - Resumen de Implementación
 
 ## ✅ Completado

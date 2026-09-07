@@ -17,17 +17,17 @@ class OrderModelTests(TestCase):
         self.order = Order.objects.create(
             customer_name='Juan Pérez',
             customer_email='juan@test.com',
-            status='pending',
+            status='pendiente',
             total='50000.00',
             image='test-image',
         )
 
     def test_creacion_orden(self):
         self.assertEqual(self.order.customer_name, 'Juan Pérez')
-        self.assertEqual(self.order.status, 'pending')
+        self.assertEqual(self.order.status, 'pendiente')
 
     def test_estados_validos(self):
-        estados_validos = ['pending', 'paid', 'processing', 'completed', 'cancelled']
+        estados_validos = ['pendiente', 'pagado', 'produccion', 'enviado', 'entregado', 'cancelado']
         for estado in estados_validos:
             order = Order.objects.create(
                 customer_name='Test',
@@ -48,29 +48,28 @@ class OrderViewSetTests(TestCase):
             'customer_name': 'Juan Pérez',
             'customer_email': 'juan@test.com',
             'total': '50000.00',
-            'status': 'pending',
+            'status': 'pendiente',
         }
 
     def test_listar_ordenes(self):
         Order.objects.create(
             customer_name='Test',
             customer_email='test@test.com',
-            status='pending',
+            status='pendiente',
             total='10000.00',
         )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
 
     def test_crear_orden_sin_autenticacion(self):
-        """PRUEBA CRÍTICA: Verifica que la API de órdenes NO requiere autenticación.
-        Esto es un PROBLEMA DE SEGURIDAD conocido."""
+        """KNOWN ISSUE: OrderViewSet usa AllowAny, cualquier persona puede crear órdenes.
+        Debería requerir autenticación (IsAuthenticated) para seguridad."""
         response = self.client.post(
             self.url,
             data=json.dumps(self.order_data),
             content_type='application/json',
         )
-        # NOTA: Esto actualmente pasa porque OrderViewSet usa AllowAny
-        # En un sistema seguro, esto debería retornar 401
+        # AllowAny permite crear órdenes sin auth — issue conocido de seguridad
         self.assertEqual(response.status_code, 201)
         self.assertTrue(Order.objects.filter(customer_email='juan@test.com').exists())
 
@@ -89,7 +88,7 @@ class OrderViewSetTests(TestCase):
         order = Order.objects.create(
             customer_name='Test',
             customer_email='test@test.com',
-            status='pending',
+            status='pendiente',
             total='10000.00',
         )
         response = self.client.get(f'{self.url}{order.id}/')
@@ -99,7 +98,7 @@ class OrderViewSetTests(TestCase):
         order = Order.objects.create(
             customer_name='Test',
             customer_email='test@test.com',
-            status='pending',
+            status='pendiente',
             total='10000.00',
         )
         response = self.client.delete(f'{self.url}{order.id}/')
@@ -136,7 +135,7 @@ class OrderAdminTests(TestCase):
         order = Order.objects.create(
             customer_name='Test',
             customer_email='test@test.com',
-            status='pending',
+            status='pendiente',
             total='10000.00',
         )
         response = self.client.get(

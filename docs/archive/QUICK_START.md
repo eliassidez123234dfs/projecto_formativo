@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Guía rápida de implementación del diseño v2.0. Para la guía actual de instalación consulta [SETUP_GUIDE.md](../SETUP_GUIDE.md).
+
 # ⚡ Quick Start - Implementación del Nuevo Diseño
 
 **Fecha:** 12 de mayo de 2026  

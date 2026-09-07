@@ -118,3 +118,32 @@
     padding: var(--spacing-xl);
   }
 }
+
+/* ============================================
+   DARK MODE — Email
+   ============================================ */
+[data-theme="dark"] .auth-container {
+  background: var(--color-bg);
+}
+
+[data-theme="dark"] .auth-card {
+  background: var(--color-bg-secondary);
+}
+
+[data-theme="dark"] .auth-card h1 {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .auth-card p {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .auth-card label {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .auth-card input {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}

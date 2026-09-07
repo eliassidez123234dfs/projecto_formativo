@@ -1,9 +1,10 @@
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.orders.models import Order
-from .serializers import OrderSerializer
+from .serializers import OrderSerializer, MyOrderSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -24,3 +25,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=False, methods=['get'])
+    def mis(self, request):
+        """Pedidos del usuario autenticado, del más reciente al más antiguo."""
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated:
+            return Response([])
+        orders = Order.objects.filter(user=user)[:50]
+        return Response(MyOrderSerializer(orders, many=True).data)

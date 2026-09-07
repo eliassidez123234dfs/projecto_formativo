@@ -12,6 +12,7 @@ USERS = [
         "rol": "Administrador",
         "estado": "Activo",
         "email_verificado": True,
+        "is_superuser": True,
     },
     {
         "usuario": "juanperez",
@@ -71,6 +72,7 @@ class Command(BaseCommand):
                     "rol": udata["rol"],
                     "estado": udata["estado"],
                     "email_verificado": udata["email_verificado"],
+                    "is_superuser": udata.get("is_superuser", False),
                     "fecha_registro": timezone.now(),
                 },
             )

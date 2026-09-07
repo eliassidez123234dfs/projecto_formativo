@@ -274,6 +274,90 @@
   }
 }
 
+// ─── Mis pedidos ───
+.profile-orders {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profile-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-secondary);
+  flex-wrap: wrap;
+
+  &__main {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  &__number {
+    font-weight: 700;
+    color: var(--color-text);
+    font-size: 0.95rem;
+  }
+
+  &__badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    color: #fff;
+
+    &--processing { background: var(--color-primary); }
+    &--shipping { background: var(--color-primary-dark, var(--color-primary)); }
+    &--delivered { background: var(--color-success, #2e9b57); }
+    &--cancelled { background: var(--color-error); }
+  }
+
+  &__dates {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+  }
+
+  &__side {
+    display: grid;
+    justify-items: end;
+    gap: 0.15rem;
+  }
+
+  &__items {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+  }
+
+  &__total {
+    font-weight: 700;
+    color: var(--color-text);
+  }
+}
+
+.profile-orders__empty {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
 // ─── Responsive ───
 @media (max-width: 900px) {
   .profile-pass-grid {

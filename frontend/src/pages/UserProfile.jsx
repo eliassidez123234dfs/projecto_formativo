@@ -1,14 +1,38 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
-import { updateMyProfile, changeMyPassword } from '../services/api'
+import { updateMyProfile, changeMyPassword, fetchMyOrders } from '../services/api'
+import { getCurrentUser, subscribe, updateUser } from '../services/authService'
+import { formatCOP } from '../utils/format'
 import '../styles/UserProfile.scss'
+
+const ORDER_STATUS = {
+  pendiente: { label: 'En procesamiento', badge: 'processing' },
+  pagado: { label: 'En procesamiento', badge: 'processing' },
+  produccion: { label: 'En procesamiento', badge: 'processing' },
+  enviado: { label: 'En camino', badge: 'shipping' },
+  entregado: { label: 'Realizado', badge: 'delivered' },
+  cancelado: { label: 'Cancelado', badge: 'cancelled' },
+}
+
+function orderStatusLabel(status) {
+  return ORDER_STATUS[status]?.label || status
+}
+
+function orderStatusBadge(status) {
+  return ORDER_STATUS[status]?.badge || 'processing'
+}
+
+function formatDate(value) {
+  if (!value) return null
+  return new Date(value).toLocaleDateString('es-ES', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  })
+}
 
 export default function UserProfile() {
   const navigate = useNavigate()
-  const [usuario, setUsuario] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null }
-  })
+  const [usuario, setUsuario] = useState(() => getCurrentUser())
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
@@ -16,10 +40,35 @@ export default function UserProfile() {
   const [showPassForm, setShowPassForm] = useState(false)
   const [passData, setPassData] = useState({})
   const [savingPass, setSavingPass] = useState(false)
+  const [orders, setOrders] = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(true)
+
+  useEffect(() => {
+    const unsub = subscribe((u) => setUsuario(u))
+    return unsub
+  }, [])
 
   useEffect(() => {
     if (!usuario) navigate('/login')
   }, [usuario, navigate])
+
+  useEffect(() => {
+    if (!usuario) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await fetchMyOrders()
+        if (!cancelled) setOrders(Array.isArray(data) ? data : [])
+      } catch {
+        if (!cancelled) setOrders([])
+      } finally {
+        if (!cancelled) setOrdersLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [usuario])
 
   async function handleSaveProfile(e) {
     e.preventDefault()
@@ -28,7 +77,8 @@ export default function UserProfile() {
     try {
       const data = await updateMyProfile(editData)
       const updated = data.usuario || { ...usuario, ...editData }
-      localStorage.setItem('usuario', JSON.stringify(updated))
+      // Actualizar en authService (mantiene localStorage + subscribers sincronizados)
+      updateUser(updated)
       setUsuario(updated)
       setEditing(false)
       setMsg({ type: 'success', text: 'Perfil actualizado correctamente' })
@@ -230,6 +280,44 @@ export default function UserProfile() {
                     </button>
                   </div>
                 </form>
+              )}
+            </section>
+          <section className="profile-section">
+              <div className="profile-section__header">
+                <h3 className="profile-section__title">Mis pedidos</h3>
+              </div>
+
+              {ordersLoading ? (
+                <p className="profile-orders__empty">Cargando pedidos...</p>
+              ) : orders.length === 0 ? (
+                <p className="profile-orders__empty">Todavía no has realizado pedidos.</p>
+              ) : (
+                <ul className="profile-orders">
+                  {orders.map(o => (
+                    <li key={o.id} className="profile-order">
+                      <div className="profile-order__main">
+                        <div className="profile-order__head">
+                          <span className="profile-order__number">{o.order_number}</span>
+                          <span className={`profile-order__badge profile-order__badge--${orderStatusBadge(o.status)}`}>
+                            {orderStatusLabel(o.status)}
+                          </span>
+                        </div>
+                        <div className="profile-order__dates">
+                          <span>Pedido: <strong>{formatDate(o.created_at)}</strong></span>
+                          {o.status === 'entregado' && (
+                            <span>Entregado el: <strong>{formatDate(o.delivered_at)}</strong></span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="profile-order__side">
+                        <span className="profile-order__items">
+                          {o.items_count} {o.items_count === 1 ? 'artículo' : 'artículos'}
+                        </span>
+                        <span className="profile-order__total">{formatCOP(o.total)}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
             </section>
           </div>

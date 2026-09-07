@@ -124,11 +124,11 @@ class CatalogPagination(PageNumberPagination):
 
 class CatalogSearchSerializer(serializers.Serializer):
     q = serializers.CharField(required=False, allow_blank=True)
-    category = serializers.IntegerField(required=False)
+    category = serializers.CharField(required=False, allow_blank=True)
     min_price = serializers.DecimalField(required=False, max_digits=10, decimal_places=2)
     max_price = serializers.DecimalField(required=False, max_digits=10, decimal_places=2)
-    size = serializers.CharField(required=False)
-    color = serializers.CharField(required=False)
+    size = serializers.CharField(required=False, allow_blank=True)
+    color = serializers.CharField(required=False, allow_blank=True)
     is_active = serializers.BooleanField(required=False)
     is_approved = serializers.BooleanField(required=False)
     has_stock = serializers.BooleanField(required=False)
@@ -141,3 +141,18 @@ class CatalogSearchSerializer(serializers.Serializer):
         default='-created_at'
     )
     page_size = serializers.IntegerField(required=False, min_value=1, max_value=100)
+
+    def _parse_csv(self, value):
+        """Parse comma-separated values into a list of stripped strings."""
+        if not value:
+            return []
+        return [v.strip() for v in str(value).split(',') if v.strip()]
+
+    def validate(self, attrs):
+        """Soporta multi-selección: category, size y color llegan como
+        valores separados por comas (ej. ?category=4,2 o ?size=M,S)
+        y se convierten a listas para aplicar OR dentro de cada faceta."""
+        attrs['category'] = self._parse_csv(attrs.get('category'))
+        attrs['size'] = self._parse_csv(attrs.get('size'))
+        attrs['color'] = self._parse_csv(attrs.get('color'))
+        return attrs

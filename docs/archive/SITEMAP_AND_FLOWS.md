@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Este documento refleja el sitemap y flujos diseñados en la fase inicial del proyecto. Algunas rutas y flujos pueden haber cambiado durante la implementación. Para la especificación actualizada consulta [`.specify/spec.md`](../.specify/spec.md).
+
 # 🗺️ Sitemap Visual y Flujos de Usuario
 
 ## 📍 Estructura Completa del Sitio

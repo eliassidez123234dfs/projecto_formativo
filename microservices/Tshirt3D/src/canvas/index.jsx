@@ -1,24 +1,23 @@
+/* eslint-disable react/no-unknown-property -- props de la escena three.js */
 import { Canvas } from "@react-three/fiber";
-import { Environment, Center } from "@react-three/drei";
-import { useSnapshot } from "valtio";
+import { Center } from "@react-three/drei";
 
 import Shirt from "./Shirt";
 import Backdrop from "./Backdrop";
 import CameraRig from "./CameraRig";
-import state from "../store";
 
 const CanvasModel = () => {
-  const snap = useSnapshot(state);
-
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 0, 0], fov: 25 }} // fov = field of view
+      camera={{ position: [0, 0, 2], fov: 25 }} // fov = field of view
       gl={{ preserveDrawingBuffer: true, alpha: true }}
       className="w-full max-w-full h-full transition-all ease-in"
     >
-      <ambientLight intensity={0.5} />
-      <Environment preset="city" background={!snap.captureTransparent} />
+      {/* Iluminación local (sin HDR remoto): el editor funciona sin internet */}
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[4, 6, 6]} intensity={1.4} />
+      <directionalLight position={[-6, 5, -8]} intensity={0.45} />
 
       <CameraRig>
         <Backdrop />

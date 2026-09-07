@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchAdminStats } from '../services/api'
+import { getCurrentUser } from '../services/authService'
 import AdminLayout from '../components/AdminLayout'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
@@ -46,7 +47,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+  const usuario = getCurrentUser()
 
   const loadStats = useCallback(async () => {
     setLoading(true)

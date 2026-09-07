@@ -1,14 +1,16 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSnapshot } from "valtio";
 
 import state from "../store";
-import { reader, uploadCanvasToCloudinary, createModel3D } from "../config/helpers";
+import { reader, uploadCanvasToCloudinary, createModel3D, addDesignToCart } from "../config/helpers";
 import { EditorTabs, FilterTabs, DecalTypes } from "../config/constants";
 import { fadeAnimation, slideAnimation } from "../config/motion";
 import { ColorPicker, FilePicker, Tab } from "../components";
 
-const Customizer = ({ onOrderCreated }) => {
+const SAVE_COOLDOWN_SECONDS = 60;
+
+const Customizer = () => {
   const snap = useSnapshot(state);
 
   const [file, setFile] = useState("");
@@ -18,9 +20,18 @@ const Customizer = ({ onOrderCreated }) => {
     stylishShirt: false,
   });
   const [cloudinaryUrl, setCloudinaryUrl] = useState("");
-  const [cloudinaryStatus, setCloudinaryStatus] = useState("");
-  const [isUploadingToCloudinary, setIsUploadingToCloudinary] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [saveOk, setSaveOk] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [saveLockSeconds, setSaveLockSeconds] = useState(0);
+
+  useEffect(() => {
+    if (saveLockSeconds <= 0) return undefined;
+    const id = setInterval(() => setSaveLockSeconds((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [saveLockSeconds]);
 
   // Función para cambiar tamaño
   const handleScale = (amount) => {
@@ -66,7 +77,7 @@ const Customizer = ({ onOrderCreated }) => {
             type="button"
             className="editor-back-btn"
             onClick={() => {
-              window.location.href = 'http://127.0.0.1:5173/admin';
+              window.location.href = 'http://127.0.0.1:5173/catalog';
             }}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -75,7 +86,7 @@ const Customizer = ({ onOrderCreated }) => {
             whileTap={{ scale: 0.98 }}
           >
             <span aria-hidden="true">←</span>
-            <span>Volver al dashboard</span>
+            <span>Volver al catálogo</span>
           </motion.button>
 
           <motion.div key="custom" className="absolute top-0 left-0 z-10" {...slideAnimation("left")}>
@@ -104,20 +115,20 @@ const Customizer = ({ onOrderCreated }) => {
             ))}
             <button
               className="download-btn"
-              title="Enviar diseño"
+              title="Guardar diseño"
               onClick={async () => {
-                if (isUploadingToCloudinary) return;
-                setCloudinaryStatus("Subiendo a Cloudinary...");
-                setIsUploadingToCloudinary(true);
+                if (isSaving) return;
+                setSaveStatus("Subiendo el diseño...");
+                setIsSaving(true);
+                let uploadedUrl = "";
                 try {
                   const result = await uploadCanvasToCloudinary({ folder: "tshirtify_designs" });
-                  const uploadedUrl = result.secure_url || result.url || "";
+                  uploadedUrl = result.secure_url || result.url || "";
                   setCloudinaryUrl(uploadedUrl);
-                  setCloudinaryStatus("Subida completada");
 
+                  setSaveStatus("Guardando en Models3D...");
                   try {
-                    setCloudinaryStatus("Guardando en Models3D...");
-                    const saved = await createModel3D({
+                    await createModel3D({
                       name: `TshirtDesign ${Date.now()}`,
                       description: "Diseño generado desde Tshirt3D",
                       cloudinary_url: uploadedUrl,
@@ -127,57 +138,127 @@ const Customizer = ({ onOrderCreated }) => {
                       is_active: true,
                       is_approved: false,
                     });
-                    setCloudinaryStatus("Guardado en Models3D: id " + (saved.id || "(sin id)"));
-                    setShowSuccessModal(true);
                   } catch (backendError) {
-                    setCloudinaryStatus(backendError.message || "Error guardando en Models3D");
-                    setShowSuccessModal(true);
+                    // El diseño ya está en Cloudinary; continuamos para añadirlo al carrito.
                   }
+
+                  setSaveStatus("Agregando al carrito...");
+                  await addDesignToCart({
+                    productId: state.productId,
+                    variantId: state.variantId,
+                    quantity: state.quantity,
+                  });
+
+                  setSaveOk(true);
+                  setSaveMessage(
+                    "El diseño se guardó y se agregó al carrito para imprimir."
+                  );
                 } catch (error) {
-                  setCloudinaryStatus(error.message || "Error al subir a Cloudinary");
+                  setSaveOk(false);
+                  setSaveMessage(
+                    error.message ||
+                      "Error al guardar el modelo. Inténtalo de nuevo."
+                  );
+                  setSaveLockSeconds(SAVE_COOLDOWN_SECONDS);
                 } finally {
-                  setIsUploadingToCloudinary(false);
+                  setIsSaving(false);
+                  setSaveStatus("");
+                  setShowResultModal(true);
                 }
               }}
-              disabled={isUploadingToCloudinary}
+              disabled={isSaving || saveLockSeconds > 0}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3/5 h-3/5">
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
             </button>
+            {saveLockSeconds > 0 && (
+              <span className="text-white/90 text-[11px] font-semibold bg-red-900/80 backdrop-blur-md rounded-full px-3 py-1.5 border border-red-400/40">
+                Espera {saveLockSeconds}s para reintentar
+              </span>
+            )}
+            {saveStatus && (
+              <span className="text-white/90 text-[11px] font-semibold bg-slate-900/60 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/20">
+                {saveStatus}
+              </span>
+            )}
           </motion.div>
 
-          {/* Modal / Notificación Superior Derecha */}
+          {/* Modal / Notificación de resultado del guardado */}
           <AnimatePresence>
-            {showSuccessModal && (
+            {showResultModal && (
               <motion.div
                 initial={{ opacity: 0, x: 50, scale: 0.9 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 50, scale: 0.9 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                className="fixed top-4 right-4 z-50 max-w-sm rounded-2xl p-4 shadow-2xl glassmorphism border border-emerald-500/40 bg-slate-900/90 text-white backdrop-blur-md"
+                className={
+                  "fixed top-4 right-4 z-50 max-w-sm rounded-2xl p-4 shadow-2xl glassmorphism border backdrop-blur-md " +
+                  (saveOk
+                    ? "border-emerald-500/40 bg-slate-900/90 text-white"
+                    : "border-red-500/40 bg-red-950/90 text-white")
+                }
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg">
-                    ✓
+                  <div
+                    className={
+                      "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg " +
+                      (saveOk
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-red-500/20 text-red-400")
+                    }
+                  >
+                    {saveOk ? "✓" : "✕"}
                   </div>
                   <div className="flex-1 pr-1">
-                    <h4 className="text-sm font-bold text-emerald-400">Diseño enviado satisfactoriamente</h4>
-                    <p className="text-xs text-slate-300 mt-1">El diseño 3D ha sido subido y guardado correctamente.</p>
-                    {cloudinaryUrl && (
-                      <a
-                        href={cloudinaryUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-block text-[11px] text-cyan-300 hover:underline mt-2 break-all"
-                      >
-                        Ver en Cloudinary →
-                      </a>
+                    <h4
+                      className={
+                        "text-sm font-bold " +
+                        (saveOk ? "text-emerald-400" : "text-red-300")
+                      }
+                    >
+                      {saveOk
+                        ? "Modelo guardado con éxito"
+                        : "No se pudo guardar el modelo"}
+                    </h4>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {saveOk
+                        ? saveMessage
+                        : saveMessage}
+                      {saveOk && state.productId && (
+                        <span className="block mt-1">
+                          Producto #{state.productId}
+                          {state.size ? ` · Talla ${state.size}` : ""}
+                          {state.colorName ? ` · ${state.colorName}` : ""}
+                        </span>
+                      )}
+                    </p>
+                    {saveOk && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <a
+                          href="http://127.0.0.1:5173/cart"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block text-[11px] font-semibold text-emerald-300 border border-emerald-400/40 rounded-full px-3 py-1 hover:bg-emerald-400/10"
+                        >
+                          Ver carrito →
+                        </a>
+                        {cloudinaryUrl && (
+                          <a
+                            href={cloudinaryUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-block text-[11px] text-cyan-300 hover:underline mt-0.5"
+                          >
+                            Ver en Cloudinary →
+                          </a>
+                        )}
+                      </div>
                     )}
                   </div>
                   <button
-                    onClick={() => setShowSuccessModal(false)}
+                    onClick={() => setShowResultModal(false)}
                     className="text-slate-400 hover:text-white text-lg font-bold leading-none px-1 py-0.5 rounded"
                     title="Cerrar"
                   >

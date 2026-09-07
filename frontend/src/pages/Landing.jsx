@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { buildApiUrl } from '../services/api'
+import { isAuthenticated, getCurrentUser, subscribe } from '../services/authService'
 
 const ProfessionalTshirtImage = () => (
   <img
@@ -36,8 +37,16 @@ const features = [
 
 export const Landing = () => {
   const navigate = useNavigate()
-  const loggedIn = typeof window !== 'undefined' ? Boolean(localStorage.getItem('access_token')) : false
-  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+  const [loggedIn, setLoggedIn] = useState(() => isAuthenticated())
+  const [usuario, setUsuario] = useState(() => getCurrentUser())
+
+  useEffect(() => {
+    const unsub = subscribe((u) => {
+      setUsuario(u)
+      setLoggedIn(isAuthenticated())
+    })
+    return unsub
+  }, [])
 
   const [formData, setFormData] = useState({ nombre: '', correo: '', asunto: '', mensaje: '' })
   const [loading, setLoading] = useState(false)
@@ -70,11 +79,11 @@ export const Landing = () => {
   const r = 'var(--color-primary)'
 
   return (
-    <div style={{
+    <div className="landing-root" style={{
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #fff1f2 48%, #f1f5f9 100%)',
-      backgroundAttachment: 'fixed', color: 'var(--color-text)',
+      background: 'var(--color-bg-secondary)',
+      color: 'var(--color-text)',
     }}>
       <Header />
 
@@ -85,16 +94,14 @@ export const Landing = () => {
       }}>
         <div style={{
           padding: 'clamp(24px, 4vw, 40px)',
-          background: 'rgba(255, 255, 255, 0.52)',
-          border: '1px solid rgba(255, 255, 255, 0.8)',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
           borderRadius: 20,
-          boxShadow: '0 18px 40px rgba(30, 30, 30, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(18px) saturate(135%)',
-          WebkitBackdropFilter: 'blur(18px) saturate(135%)',
+          boxShadow: '0 18px 40px var(--color-overlay)',
         }}>
           <span style={{
-            display: 'inline-block', padding: '4px 14px', background: 'var(--color-primary-light)',
-            color: '#991b1b', borderRadius: 20, fontSize: 12, fontWeight: 600,
+            display: 'inline-block', padding: '4px 14px', background: 'var(--color-badge-bg)',
+            color: 'var(--color-badge-text)', borderRadius: 20, fontSize: 12, fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 20,
           }}>
             Plataforma de Gestión
@@ -143,7 +150,7 @@ export const Landing = () => {
         </div>
         <div style={{
           width: '100%', aspectRatio: '4/3',
-          background: 'linear-gradient(135deg, #fef2f2 0%, #fff 100%)',
+          background: 'var(--color-bg-tertiary)',
           borderRadius: 16, display: 'flex',
           alignItems: 'center', justifyContent: 'center',
           border: '1px solid var(--color-border)',
@@ -163,15 +170,13 @@ export const Landing = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
             {features.map((f, i) => (
               <div key={i} style={{
-                padding: 28, border: '1px solid rgba(255, 255, 255, 0.78)', borderRadius: 16,
-                background: 'rgba(255, 255, 255, 0.5)', textAlign: 'center',
+                padding: 28, border: '1px solid var(--color-border)', borderRadius: 16,
+                background: 'var(--color-surface)', textAlign: 'center',
                 transition: 'transform 0.2s, box-shadow 0.2s',
-                boxShadow: '0 14px 32px rgba(30, 30, 30, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85)',
-                backdropFilter: 'blur(16px) saturate(130%)',
-                WebkitBackdropFilter: 'blur(16px) saturate(130%)',
+                boxShadow: 'var(--shadow-md)',
               }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 18px 36px rgba(90, 20, 30, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9)' }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 14px 32px rgba(30, 30, 30, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85)' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-lg)' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
               >
                 <div style={{ marginBottom: 16, display: 'inline-flex' }}>{f.icon}</div>
                 <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{f.title}</h3>
@@ -194,18 +199,16 @@ export const Landing = () => {
             display: 'flex', justifyContent: 'center',
           }}>
             <form onSubmit={handleSubmitContacto} style={{
-              background: 'rgba(255, 255, 255, 0.52)', border: '1px solid rgba(255, 255, 255, 0.8)', borderRadius: 16,
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 16,
               padding: 28, display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: 420,
-              boxShadow: '0 16px 36px rgba(30, 30, 30, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(18px) saturate(135%)',
-              WebkitBackdropFilter: 'blur(18px) saturate(135%)',
+              boxShadow: 'var(--shadow-md)',
             }}>
               {message && <div style={{ padding: '10px 14px', background: 'var(--color-success-light)', color: '#065f46', borderRadius: 8, fontSize: 13 }}>{message}</div>}
               {errors.general && <div style={{ padding: '10px 14px', background: 'var(--color-error-light)', color: '#991b1b', borderRadius: 8, fontSize: 13 }}>{errors.general}</div>}
-              <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Tu nombre" required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.85)', background: 'rgba(255, 255, 255, 0.42)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
-              <input type="email" name="correo" value={formData.correo} onChange={handleChange} placeholder="tu@email.com" required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.85)', background: 'rgba(255, 255, 255, 0.42)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
-              <input type="text" name="asunto" value={formData.asunto} onChange={handleChange} placeholder="Asunto" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.85)', background: 'rgba(255, 255, 255, 0.42)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
-              <textarea name="mensaje" value={formData.mensaje} onChange={handleChange} placeholder="Tu mensaje..." rows={4} required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.85)', background: 'rgba(255, 255, 255, 0.42)', color: 'var(--color-text)', fontSize: 14, outline: 'none', resize: 'vertical', minHeight: 100 }} />
+              <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Tu nombre" required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-input-bg)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
+              <input type="email" name="correo" value={formData.correo} onChange={handleChange} placeholder="tu@email.com" required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-input-bg)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
+              <input type="text" name="asunto" value={formData.asunto} onChange={handleChange} placeholder="Asunto" style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-input-bg)', color: 'var(--color-text)', fontSize: 14, outline: 'none' }} />
+              <textarea name="mensaje" value={formData.mensaje} onChange={handleChange} placeholder="Tu mensaje..." rows={4} required style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-input-bg)', color: 'var(--color-text)', fontSize: 14, outline: 'none', resize: 'vertical', minHeight: 100 }} />
               <button type="submit" disabled={loading} style={{
                 padding: '12px', borderRadius: 8, border: 'none',
                 background: loading ? 'var(--color-text-muted)' : 'var(--color-primary)',
@@ -222,8 +225,8 @@ export const Landing = () => {
 
       <section style={{
         padding: 'clamp(32px, 5vw, 64px) clamp(16px, 3vw, 24px)', textAlign: 'center',
-        borderTop: '1px solid rgba(255, 255, 255, 0.72)',
-        background: 'rgba(255, 255, 255, 0.2)',
+        borderTop: '1px solid var(--color-border)',
+        background: 'var(--color-bg-secondary)',
       }}>
         <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 24px)', fontWeight: 800, marginBottom: 8 }}>
           ¿Listo para empezar?

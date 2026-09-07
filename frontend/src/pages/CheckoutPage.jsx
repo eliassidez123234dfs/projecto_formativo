@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { getCheckoutSummary, confirmCheckout } from '../services/api'
 import { formatCOP } from '../utils/format'
+import { useCart } from '../context/CartContext'
 
 const cardStyle = {
   border: '1px solid var(--color-border)',
@@ -13,6 +14,7 @@ const cardStyle = {
 }
 
 export default function CheckoutPage() {
+  const { reloadCart } = useCart()
   const [summary, setSummary] = useState({ items: [], total_items: 0, total_amount: '0.00' })
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -52,7 +54,7 @@ export default function CheckoutPage() {
     setSubmitting(true)
     try {
       const data = await confirmCheckout({ customer_name: customerName, customer_email: customerEmail })
-      setMessage(`Orden #${data.order_id} creada por ${formatCOP(data.total)}`)
+      setMessage(`Orden #${data.order_id} creada por ${formatCOP(data.total)}. Tu carrito quedó vacío.`)
       setMessageType('success')
       setCustomerName('')
       setCustomerEmail('')
@@ -61,7 +63,7 @@ export default function CheckoutPage() {
       setDepartment('')
       setPostalCode('')
       setReference('')
-      await loadSummary()
+      await Promise.all([loadSummary(), reloadCart()])
     } catch (err) {
       const data = err?.response?.data || {}
       setMessage(data.detail || data.customer_name || 'No se pudo confirmar el checkout')

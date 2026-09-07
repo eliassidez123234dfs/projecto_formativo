@@ -1,0 +1,136 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam actorBorderColor #2E4057
+skinparam actorFontColor #2E4057
+skinparam actorFontSize 12
+skinparam usecaseFontSize 11
+skinparam usecaseBorderColor #2E4057
+skinparam usecaseFontColor #333333
+skinparam arrowColor #2E4057
+
+title "Diagrama de Casos de Uso - RED Estampación"
+
+' ============================================================
+' ACTORES
+' ============================================================
+actor "Visitante" as Visitante
+actor "Usuario" as Usuario
+actor "Administrador" as Admin
+actor "Sistema de Pago\n(Wompi)" as Wompi <<SistemaExterno>>
+actor "Cloudinary" as Cloudinary <<SistemaExterno>>
+
+' ============================================================
+' CAJAS DE LÍMITE (SISTEMA)
+' ============================================================
+rectangle "Sistema RED Estampación" {
+  rectangle "Landing & Catálogo" {
+    usecase "Ver Landing Page" as UC01
+    usecase "Catalogar Productos" as UC02
+    usecase "Ver Detalle 3D" as UC03
+    usecase "Filtrar y Buscar\nProductos" as UC04
+  }
+
+  rectangle "Autenticación" {
+    usecase "Iniciar Sesión" as UC05
+    usecase "Registrarse" as UC06
+    usecase "Recuperar Contraseña" as UC07
+    usecase "Cerrar Sesión" as UC08
+  }
+
+  rectangle "Carrito & Checkout" {
+    usecase "Gestionar Carrito\nde Compras" as UC09
+    usecase "Realizar Checkout" as UC10
+    usecase "Seleccionar Diseño\nPersonalizado" as UC11
+    usecase "Ver Historial de\nPedidos" as UC12
+  }
+
+  rectangle "Perfil de Usuario" {
+    usecase "Ver Perfil" as UC13
+    usecase "Actualizar Datos\nPersonales" as UC14
+    usecase "Cambiar Contraseña" as UC15
+  }
+
+  rectangle "Panel de Administración" {
+    usecase "Gestionar Productos\n(CRUD)" as UC16
+    usecase "Gestionar Usuarios" as UC17
+    usecase "Gestionar Pedidos" as UC18
+    usecase "Gestionar Carritos" as UC19
+    usecase "Ver Logs de\nAuditoría" as UC20
+    usecase "Gestionar Mensajes\nde Contacto" as UC21
+    usecase "Gestionar Modelos\n3D" as UC22
+    usecase "Gestionar Categorías" as UC23
+    usecase "Visualizar\nDashboard" as UC24
+  }
+
+  rectangle "Sistema Externo" {
+    usecase "Procesar Pago\ncon Wompi" as UC25
+    usecase "Almacenar Imágenes\nen Cloudinary" as UC26
+  }
+}
+
+' ============================================================
+' RELACIONES - VISITANTE
+' ============================================================
+Visitante --> UC01
+Visitante --> UC02
+Visitante --> UC03
+Visitante --> UC04
+Visitante --> UC06
+
+' ============================================================
+' RELACIONES - USUARIO
+' ============================================================
+Usuario --> UC05
+Usuario --> UC08
+Usuario --> UC09
+Usuario --> UC10
+Usuario --> UC11
+Usuario --> UC12
+Usuario --> UC13
+Usuario --> UC14
+Usuario --> UC15
+Usuario --> UC02
+Usuario --> UC03
+Usuario --> UC04
+Usuario --> UC01
+USUARIO .> UC07 : <<extend>>
+
+' ============================================================
+' RELACIONES - ADMINISTRADOR
+' ============================================================
+Admin --> UC16
+Admin --> UC17
+Admin --> UC18
+Admin --> UC19
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+Admin --> UC23
+Admin --> UC24
+Admin --> UC05
+Admin --> UC08
+Admin --> UC09
+Admin --> UC01
+Admin --> UC02
+Admin --> UC03
+
+' ============================================================
+' RELACIONES - SISTEMAS EXTERNOS
+' ============================================================
+UC25 <-- Wompi
+UC10 ..> UC25 : <<include>>
+UC25 ..> UC10 : <<include>>
+UC26 <-- Cloudinary
+UC16 ..> UC26 : <<include>>
+
+' ============================================================
+' LEYENDA
+' ============================================================
+legend right
+  <<SistemaExterno>> = Actor externo al sistema
+  <<include>> = Relación de inclusión
+  <<extend>> = Relación de extensión
+end legend
+
+@enduml

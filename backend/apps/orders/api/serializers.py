@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.orders.models import Order
+from apps.orders.models import Invoice, Order, OrderItem
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -8,10 +8,22 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = (
             'id',
+            'order_number',
             'customer_name',
             'customer_email',
             'status',
             'total',
+            'shipping_name',
+            'shipping_email',
+            'shipping_phone',
+            'shipping_address',
+            'shipping_city',
+            'shipping_zipcode',
+            'payment_transaction_id',
+            'payment_reference',
+            'payment_wompi_status',
+            'payment_confirmed_at',
+            'payment_rejection_reason',
             'image',
             'image_url',
             'cloudinary_public_id',
@@ -22,5 +34,92 @@ class OrderSerializer(serializers.ModelSerializer):
             'notes',
             'created_at',
             'updated_at',
+            'delivered_at',
         )
         read_only_fields = ('id', 'created_at', 'updated_at')
+
+
+class MyOrderItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    variant_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'product_name', 'variant_label', 'quantity', 'unit_price']
+
+    def get_variant_label(self, obj):
+        return f'Talla {obj.variant.size} — {obj.variant.color}'
+
+
+class MyOrderSerializer(serializers.ModelSerializer):
+    """Resumen de un pedido para el perfil del usuario (lista ligera)."""
+    status_label = serializers.CharField(source='get_status_display', read_only=True)
+    items_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'order_number', 'status', 'status_label', 'total',
+            'created_at', 'delivered_at', 'items_count',
+        ]
+
+    def get_items_count(self, obj):
+        return obj.items.count()
+
+
+class AdminOrderItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    variant_label = serializers.SerializerMethodField()
+    subtotal = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'product_name', 'variant_label', 'quantity', 'unit_price', 'subtotal']
+
+    def get_variant_label(self, obj):
+        return f'Talla {obj.variant.size} — {obj.variant.color}'
+
+    def get_subtotal(self, obj):
+        return str(obj.subtotal)
+
+
+class AdminOrderSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'order_number', 'customer_name', 'customer_email',
+            'status', 'status_display', 'total', 'created_at',
+        ]
+
+
+class AdminOrderDetailSerializer(serializers.ModelSerializer):
+    items = AdminOrderItemSerializer(many=True, read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'order_number', 'customer_name', 'customer_email',
+            'status', 'status_display', 'total', 'created_at',
+            'shipping_name', 'shipping_email', 'shipping_phone',
+            'shipping_address', 'shipping_city', 'shipping_zipcode',
+            'payment_transaction_id', 'payment_reference',
+            'payment_wompi_status', 'payment_confirmed_at',
+            'payment_rejection_reason', 'items',
+        ]
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    order_number = serializers.CharField(source='order.order_number', read_only=True)
+    customer_name = serializers.CharField(source='order.customer_name', read_only=True)
+    items = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Invoice
+        fields = ['id', 'invoice_number', 'order', 'order_number', 'customer_name',
+                  'subtotal', 'total', 'generated_at', 'pdf_url', 'items']
+
+    def get_items(self, obj):
+        return AdminOrderItemSerializer(obj.order.items.all(), many=True).data

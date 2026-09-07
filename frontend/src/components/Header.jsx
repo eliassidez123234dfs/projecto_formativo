@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { ThemeToggle } from './ThemeToggle'
+import { subscribe, getCurrentUser, clearAuth, isAuthenticated } from '../services/authService'
 
 export const Header = ({ cartCount = 0 }) => {
   const navigate = useNavigate()
@@ -7,13 +9,16 @@ export const Header = ({ cartCount = 0 }) => {
   const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef(null)
   const btnRef = useRef(null)
+  const [user, setUser] = useState(() => getCurrentUser())
+  const [loggedIn, setLoggedIn] = useState(() => isAuthenticated())
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
-  const loggedIn = Boolean(token)
-  let usuario = null
-  try {
-    usuario = localStorage.getItem('usuario') ? JSON.parse(localStorage.getItem('usuario')) : null
-  } catch { /* ignore */ }
+  useEffect(() => {
+    const unsub = subscribe((u) => {
+      setUser(u)
+      setLoggedIn(!!u || isAuthenticated())
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     function handleClick(e) {
@@ -26,14 +31,12 @@ export const Header = ({ cartCount = 0 }) => {
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('usuario')
+    clearAuth()
     setMenuOpen(false)
     navigate('/')
   }
 
-  const initials = usuario?.usuario?.charAt(0).toUpperCase() || '?'
+  const initials = user?.usuario?.charAt(0).toUpperCase() || '?'
 
   return (
     <header style={{
@@ -62,6 +65,8 @@ export const Header = ({ cartCount = 0 }) => {
             Catálogo
           </Link>
 
+          <ThemeToggle />
+
           {!loggedIn ? (
             <div style={{ display: 'flex', gap: 10 }}>
               <Link to="/login" style={{
@@ -87,7 +92,7 @@ export const Header = ({ cartCount = 0 }) => {
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <Link to="/cart" style={{
+              <Link to="/cart" state={{ planned: true }} style={{
                 color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 500,
                 textDecoration: 'none', position: 'relative', padding: 4,
               }}>
@@ -141,8 +146,8 @@ export const Header = ({ cartCount = 0 }) => {
                     minWidth: 200, padding: 6, zIndex: 200,
                   }}>
                     <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--color-border-light)', marginBottom: 4 }}>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{usuario?.usuario || ''}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{usuario?.correo || ''}</p>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{user?.usuario || ''}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{user?.correo || ''}</p>
                     </div>
 
                     <Link to="/perfil" onClick={() => setMenuOpen(false)} style={{
@@ -155,7 +160,7 @@ export const Header = ({ cartCount = 0 }) => {
                     >
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Mi Perfil
                     </Link>
-                    <Link to="/cart" onClick={() => setMenuOpen(false)} style={{
+                    <Link to="/cart" state={{ planned: true }} onClick={() => setMenuOpen(false)} style={{
                       display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
                       borderRadius: 8, textDecoration: 'none', color: 'var(--color-text)',
                       fontSize: 14, transition: 'background 0.1s',
@@ -166,7 +171,7 @@ export const Header = ({ cartCount = 0 }) => {
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Mi Carrito {cartCount > 0 && `(${cartCount})`}
                     </Link>
 
-                    {usuario?.rol === 'Administrador' && (
+                    {user?.rol === 'Administrador' && (
                       <Link to="/dashboard" onClick={() => setMenuOpen(false)} style={{
                         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
                         borderRadius: 8, textDecoration: 'none', color: 'var(--color-text)',
@@ -212,7 +217,11 @@ export const Header = ({ cartCount = 0 }) => {
         <div style={{ padding: '12px 24px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Link to="/catalog" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none' }}>Catálogo</Link>
-            <Link to="/cart" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none' }}>Carrito{cartCount > 0 ? ` (${cartCount})` : ''}</Link>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
+              <span style={{ color: 'var(--color-text)', fontSize: 14 }}>Modo claro/oscuro</span>
+              <ThemeToggle />
+            </div>
+            <Link to="/cart" state={{ planned: true }} onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none' }}>Carrito{cartCount > 0 ? ` (${cartCount})` : ''}</Link>
             {loggedIn ? (
               <>
                 <Link to="/perfil" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none' }}>Mi Perfil</Link>

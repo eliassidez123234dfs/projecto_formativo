@@ -1,8 +1,15 @@
 :root {
+  color-scheme: light;
+
   --color-primary: #dc2626;
   --color-primary-dark: #b91c1c;
   --color-primary-light: #fee2e2;
   --color-primary-dark: #991b1b;
+  --color-primary-gradient: linear-gradient(135deg, #dc2626, #991b1b);
+
+  --color-white: #ffffff;
+  --color-surface: #ffffff;
+  --color-gray-500: #6b7280;
 
   --color-sidebar: #0f172a;
   --color-sidebar-hover: #1e293b;
@@ -28,6 +35,31 @@
   --color-info: #3b82f6;
   --color-info-light: #dbeafe;
 
+  --color-badge-bg: #fee2e2;
+  --color-badge-text: #991b1b;
+
+  --color-success-dark: #166534;
+  --color-success-border: #DCFCE7;
+  --color-error-dark: #991b1b;
+  --color-error-border: #FECACA;
+  --color-warning-dark: #92400e;
+  --color-info-dark: #1E40AF;
+
+  --color-sidebar-text: rgba(255, 255, 255, 0.55);
+  --color-sidebar-text-hover: rgba(255, 255, 255, 0.9);
+  --color-sidebar-text-muted: rgba(255, 255, 255, 0.4);
+  --color-sidebar-text-faint: rgba(255, 255, 255, 0.25);
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
+  --color-sidebar-active-bg: rgba(220, 38, 38, 0.1);
+
+  --color-publish: #2563eb;
+  --color-publish-bg: #eff6ff;
+  --color-publish-border: #bfdbfe;
+  --color-publish-text: #1e3a8a;
+
+  --color-input-bg: #ffffff;
+  --color-overlay: rgba(15, 23, 42, 0.55);
+
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
 
@@ -50,9 +82,14 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
+
   --color-primary: #ef4444;
   --color-primary-dark: #dc2626;
   --color-primary-light: #450a0a;
+  --color-primary-gradient: linear-gradient(135deg, #ef4444, #b91c1c);
+
+  --color-surface: #1e293b;
 
   --color-sidebar: #0a0f1a;
   --color-sidebar-hover: #141b2d;
@@ -69,15 +106,45 @@
   --color-border: #334155;
   --color-border-light: #1e293b;
 
+  --color-success: #34d399;
   --color-success-light: #064e3b;
+  --color-error: #f87171;
   --color-error-light: #450a0a;
+  --color-warning: #fbbf24;
   --color-warning-light: #451a03;
+  --color-info: #60a5fa;
   --color-info-light: #1e3a5f;
+
+  --color-badge-bg: rgba(220, 38, 38, 0.18);
+  --color-badge-text: #fca5a5;
+
+  --color-success-dark: #6ee7b7;
+  --color-success-border: #065f46;
+  --color-error-dark: #fca5a5;
+  --color-error-border: #7f1d1d;
+  --color-warning-dark: #fcd34d;
+  --color-info-dark: #93c5fd;
+
+  --color-sidebar-text: rgba(255, 255, 255, 0.55);
+  --color-sidebar-text-hover: rgba(255, 255, 255, 0.9);
+  --color-sidebar-text-muted: rgba(255, 255, 255, 0.4);
+  --color-sidebar-text-faint: rgba(255, 255, 255, 0.25);
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
+  --color-sidebar-active-bg: rgba(239, 68, 68, 0.15);
+
+  --color-publish: #60a5fa;
+  --color-publish-bg: #1e3a5f;
+  --color-publish-border: #1e40af;
+  --color-publish-text: #93c5fd;
+
+  --color-input-bg: #0f172a;
+  --color-overlay: rgba(0, 0, 0, 0.65);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
 }
 
 *, *::before, *::after {
@@ -129,9 +196,55 @@ a:hover {
   color: var(--color-primary-dark);
 }
 
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-bg-tertiary, #f1f5f9);
+  color: var(--color-text-secondary, #64748b);
+  cursor: pointer;
+  transition: all var(--transition-fast, 150ms ease);
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  color: var(--color-text, #0f172a);
+  border-color: var(--color-primary, #dc2626);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
+}
+
+.theme-toggle svg {
+  display: block;
+}
+
 button, input, select, textarea {
   font-family: inherit;
   font-size: inherit;
+}
+
+input, select, textarea {
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 8px);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+select {
+  appearance: auto;
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }

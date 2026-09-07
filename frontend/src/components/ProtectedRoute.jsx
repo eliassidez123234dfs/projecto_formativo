@@ -1,11 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom'
+import { getCurrentUser } from '../services/authService'
 
 export default function ProtectedRoute({ children }) {
-  let usuario = null
-  try {
-    const raw = localStorage.getItem('usuario')
-    if (raw) usuario = JSON.parse(raw)
-  } catch {}
+  const usuario = getCurrentUser()
 
   if (!usuario || usuario.rol !== 'Administrador') {
     return <Navigate to="/login" replace />

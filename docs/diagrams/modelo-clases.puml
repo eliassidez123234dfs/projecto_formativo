@@ -1,0 +1,268 @@
+@startuml
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+skinparam classBorderColor #2E4057
+skinparam classHeaderBackgroundColor #2E4057
+skinparam classFontColor #2E4057
+skinparam classFontSize 12
+skinparam classAttributeFontSize 10
+
+title "Diagrama de Clases - RED Estampación"
+
+' ============================================================
+' ENUMERACIONES
+' ============================================================
+enum RolUsuario {
+  Administrador
+  Usuario
+}
+
+enum EstadoUsuario {
+  Activo
+  Inactivo
+  Bloqueado
+}
+
+enum EstadoOrden {
+  pendiente
+  pagado
+  enviado
+  entregado
+  cancelado
+}
+
+' ============================================================
+' ENTIDADES PRINCIPALES
+' ============================================================
+
+class Usuario {
+  + id: AutoField
+  + usuario: CharField(100, unique)
+  + correo: EmailField(unique)
+  + contrasena: CharField(255)
+  + estado: EstadoUsuario
+  + rol: RolUsuario
+  + fecha_registro: DateTimeField
+  + fecha_ultima_sesion: DateTimeField
+  + email_verificado: BooleanField
+  + intentos_fallidos: IntegerField
+  + fecha_bloqueo: DateTimeField
+  + fecha_desbloqueo: DateTimeField
+  + eliminado: BooleanField
+  + fecha_eliminacion: DateTimeField
+  + admin_desbloqueador: ForeignKey(Usuario)
+  + admin_eliminador: ForeignKey(Usuario)
+  --
+  + is_authenticated: bool
+  + is_anonymous: bool
+}
+
+class Product {
+  + id: AutoField
+  + name: CharField(100, unique)
+  + description: CharField(500)
+  + base_price: DecimalField(10,2)
+  + is_active: BooleanField
+  + is_approved: BooleanField
+  + created_at: DateTimeField
+  + updated_at: DateTimeField
+  --
+  + main_image: ProductImage
+  + has_main_image: bool
+  + has_valid_variant: bool
+  + can_be_published: bool
+  + checklist: dict
+  + has_active_order_items: bool
+}
+
+class ProductImage {
+  + id: AutoField
+  + image: ImageField
+  + cloudinary_url: URLField(500)
+  + is_main: BooleanField
+  + order: PositiveSmallIntegerField
+  + created_at: DateTimeField
+  --
+  + image_url: str
+}
+
+class Variant {
+  + id: AutoField
+  + size: CharField(20)
+  + color: CharField(20)
+  + stock: PositiveIntegerField
+  + created_at: DateTimeField
+}
+
+class Category {
+  + id: AutoField
+  + name: CharField(100, unique)
+  + description: TextField
+  + is_active: BooleanField
+  + created_at: DateTimeField
+  + updated_at: DateTimeField
+  --
+  + product_count: int
+}
+
+class ProductCategory {
+  + product: ForeignKey(Product)
+  + category: ForeignKey(Category)
+  + created_at: DateTimeField
+}
+
+class Cart {
+  + id: AutoField
+  + session_key: CharField(64, unique)
+  + created_at: DateTimeField
+  + updated_at: DateTimeField
+  --
+  + total_items: int
+  + total_amount: Decimal
+}
+
+class CartItem {
+  + id: AutoField
+  + quantity: PositiveIntegerField
+  + unit_price: DecimalField(10,2)
+  + created_at: DateTimeField
+  + updated_at: DateTimeField
+  --
+  + subtotal: Decimal
+}
+
+class Order {
+  + id: AutoField
+  + order_number: CharField(20, unique)
+  + status: EstadoOrden
+  + total: DecimalField(10,2)
+  + customer_name: CharField(150)
+  + customer_email: EmailField
+  + shipping_name: CharField(150)
+  + shipping_email: EmailField
+  + shipping_phone: CharField(20)
+  + shipping_address: TextField
+  + shipping_city: CharField(100)
+  + shipping_zipcode: CharField(20)
+  + payment_transaction_id: CharField(100)
+  + payment_reference: CharField(100)
+  + payment_wompi_status: CharField(50)
+  + payment_confirmed_at: DateTimeField
+  + payment_rejection_reason: TextField
+  + image: TextField
+  + image_url: URLField
+  + cloudinary_public_id: CharField(255)
+  + design_color: CharField(50)
+  + logo_texture: TextField
+  + full_texture: TextField
+  + logo_scale: FloatField
+  + notes: TextField
+  + created_at: DateTimeField
+  + updated_at: DateTimeField
+  --
+  + is_active_order: bool
+}
+
+class OrderItem {
+  + id: AutoField
+  + quantity: PositiveIntegerField
+  + unit_price: DecimalField(10,2)
+}
+
+class Model3D {
+  + id: AutoField
+  + name: CharField(255, unique)
+  + description: TextField
+  + cloudinary_url: URLField(500)
+  + cloudinary_public_id: CharField(255)
+  + file_type: CharField(20)
+  + file_size: BigIntegerField
+  + is_active: BooleanField
+  + is_approved: BooleanField
+  + created_at: DateTimeField
+  + updated_at: DateTimeField
+}
+
+class Model3DImage {
+  + id: AutoField
+  + cloudinary_url: URLField(500)
+  + cloudinary_public_id: CharField(255)
+  + is_main: BooleanField
+  + order: PositiveSmallIntegerField
+  + created_at: DateTimeField
+}
+
+class Log_Auditoria {
+  + id: AutoField
+  + accion: CharField(255)
+  + datos_anteriores: JSONField
+  + datos_nuevos: JSONField
+  + fecha_accion: DateTimeField
+  + ip_admin: CharField(45)
+}
+
+class Contacto {
+  + id: AutoField
+  + nombre: CharField(100)
+  + correo: EmailField
+  + asunto: CharField(150)
+  + mensaje: TextField
+  + ip_origen: CharField(45)
+  + fecha_envio: DateTimeField
+  + leido: BooleanField
+  + fecha_lectura: DateTimeField
+}
+
+' ============================================================
+' RELACIONES
+' ============================================================
+
+Usuario "1" -- "0..*" Usuario : admin_desbloqueador >
+Usuario "1" -- "0..*" Usuario : admin_eliminador >
+
+Product "1" -- "0..5" ProductImage : images
+Product "1" -- "1..4" Variant : variants
+Product "1" -- "0..*" ProductCategory : categories
+Category "1" -- "0..*" ProductCategory : products
+
+Cart "1" -- "0..*" CartItem : items
+Cart "1" -- "0..1" Order : order
+
+Product "1" -- "0..*" CartItem : items
+Variant "1" -- "0..*" CartItem : items
+
+Usuario "1" -- "0..*" Order : orders
+Order "1" -- "0..*" OrderItem : items
+Product "1" -- "0..*" OrderItem : items
+Variant "1" -- "0..*" OrderItem : items
+
+Usuario "1" -- "0..*" Log_Auditoria : auditorias_realizadas
+Usuario "1" -- "0..*" Log_Auditoria : auditorias_recibidas
+
+Usuario "1" -- "0..*" Cart : carts
+
+Model3D "1" -- "0..*" Model3DImage : preview_images
+
+' ============================================================
+' NOTAS
+' ============================================================
+note top of ProductImage
+  Máximo 5 imágenes por producto.
+  Resolución mínima 400x400px.
+  Solo JPG/PNG, máx 2MB.
+end note
+
+note top of Variant
+  Máximo 4 tallas y 10 colores
+  por producto. Combinación
+  talla+color única.
+end note
+
+note right of Log_Auditoria
+  Registro de auditoría para
+  todas las acciones del
+  panel administrativo (RI-019)
+end note
+
+@enduml

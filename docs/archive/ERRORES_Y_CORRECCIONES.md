@@ -1,3 +1,5 @@
+> ⚠️ **Documento Original** — Log de errores y correcciones de la fase inicial. Para issues actuales usar GitHub Issues.
+
 # 📊 Análisis de Errores y Correcciones - Proyecto Formativo
 
 ## ✅ Análisis Completado: 12 de Mayo de 2026

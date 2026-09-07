@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { buildApiUrl } from '../services/api'
+import { setTokens, isAuthenticated } from '../services/authService'
+import { ThemeToggle } from '../components/ThemeToggle'
 
 function passwordStrength(pw) {
   let score = 0
@@ -35,8 +37,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
   }, [mode])
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    if (token) navigate('/dashboard')
+    if (isAuthenticated()) navigate('/dashboard')
   }, [navigate])
 
   useEffect(() => {
@@ -118,9 +119,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
         setErrors(errData)
         setFieldErrors(extractFieldErrors(errData))
       } else {
-        localStorage.setItem('access_token', data.access)
-        localStorage.setItem('refresh_token', data.refresh)
-        localStorage.setItem('usuario', JSON.stringify(data.usuario))
+        // Usar authService como fuente única de verdad
+        setTokens(data.access, data.refresh, data.usuario)
         const usr = data.usuario || {}
         navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
       }
@@ -155,6 +155,9 @@ export default function AuthPage({ defaultMode = 'login' }) {
 
   return (
     <div className="auth-page">
+      <div className="auth-theme-toggle">
+        <ThemeToggle />
+      </div>
       <div className="auth-brand">
         <div className="auth-brand-content">
           <div className="auth-logo">RED</div>
@@ -290,6 +293,20 @@ export default function AuthPage({ defaultMode = 'login' }) {
           display: flex;
           min-height: 100vh;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          position: relative;
+        }
+
+        .auth-theme-toggle {
+          position: fixed;
+          top: 16px;
+          right: 16px;
+          z-index: 20;
+        }
+
+        [data-theme="dark"] .auth-theme-toggle .theme-toggle {
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.25);
+          color: #fff;
         }
 
         .auth-brand {
@@ -309,7 +326,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
           top: 0;
           width: 160px;
           height: 100%;
-          background: white;
+          background: var(--color-bg);
           clip-path: ellipse(80px 100% at 80px 50%);
         }
 
@@ -361,7 +378,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
           align-items: center;
           justify-content: center;
           padding: 2rem;
-          background: white;
+          background: var(--color-bg);
         }
 
         .auth-form-container {
@@ -376,13 +393,13 @@ export default function AuthPage({ defaultMode = 'login' }) {
         .auth-form-header h2 {
           font-size: 1.5rem;
           font-weight: 700;
-          color: #111827;
+          color: var(--color-text);
           margin: 0 0 0.4rem;
         }
 
         .auth-form-header p {
           font-size: 0.9rem;
-          color: #6B7280;
+          color: var(--color-text-secondary);
           margin: 0;
         }
 
@@ -404,15 +421,15 @@ export default function AuthPage({ defaultMode = 'login' }) {
         }
 
         .auth-alert--error {
-          background: #FEF2F2;
-          color: #991B1B;
-          border: 1px solid #FECACA;
+          background: var(--color-error-light);
+          color: var(--color-error);
+          border: 1px solid rgba(239, 68, 68, 0.2);
         }
 
         .auth-alert--success {
-          background: #ECFDF5;
-          color: #065F46;
-          border: 1px solid #A7F3D0;
+          background: var(--color-success-light);
+          color: var(--color-success);
+          border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
         .auth-field {
@@ -423,18 +440,18 @@ export default function AuthPage({ defaultMode = 'login' }) {
           display: block;
           font-size: 0.85rem;
           font-weight: 600;
-          color: #374151;
+          color: var(--color-text);
           margin-bottom: 0.4rem;
         }
 
         .auth-field input {
           width: 100%;
           padding: 11px 14px;
-          border: 1px solid #D1D5DB;
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           font-size: 0.9rem;
-          color: #111827;
-          background: white;
+          color: var(--color-text);
+          background: var(--color-input-bg);
           outline: none;
           transition: border-color 0.15s, box-shadow 0.15s;
           box-sizing: border-box;
@@ -452,7 +469,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
         .field-error {
           display: block;
           font-size: 0.75rem;
-          color: #DC2626;
+          color: var(--color-error);
           margin-top: 4px;
         }
 
@@ -466,7 +483,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
         .pw-bar {
           flex: 1;
           height: 4px;
-          background: #E5E7EB;
+          background: var(--color-bg-tertiary);
           border-radius: 2px;
           overflow: hidden;
         }
@@ -515,7 +532,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
         }
 
         .auth-submit:disabled {
-          background: #9CA3AF;
+          background: var(--color-text-muted);
           cursor: not-allowed;
         }
 
@@ -523,19 +540,19 @@ export default function AuthPage({ defaultMode = 'login' }) {
           text-align: center;
           margin-top: 1.5rem;
           padding-top: 1.25rem;
-          border-top: 1px solid #E5E7EB;
+          border-top: 1px solid var(--color-border);
         }
 
         .auth-switch p {
           margin: 0;
           font-size: 0.85rem;
-          color: #6B7280;
+          color: var(--color-text-secondary);
         }
 
         .auth-switch button {
           background: none;
           border: none;
-          color: #DC2626;
+          color: var(--color-primary);
           font-weight: 700;
           font-size: 0.85rem;
           cursor: pointer;

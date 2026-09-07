@@ -1,13 +1,33 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useCart } from '../context/CartContext';
-import { Button } from '../components/Button';
 import { Header } from '../components/Header';
 import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 
 export const Cart = () => {
   const { cart, loading, updateQuantity, removeItem, clearCartItems } = useCart();
+  const location = useLocation();
+  const plannedEntry = location.state?.planned === true;
+  const items = cart?.items || [];
+  const totalItems = cart?.total_items || 0;
+
+  const empty = items.length === 0;
+  const showEmptyView = empty && plannedEntry;
+
+  const sawItemsRef = useRef(false);
+
+  useEffect(() => {
+    if (items.length > 0) sawItemsRef.current = true;
+  }, [items.length]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (empty && !plannedEntry && !sawItemsRef.current) {
+      toast('El carrito está vacío');
+    }
+  }, [empty, plannedEntry, loading, items.length]);
 
   if (loading) {
     return (
@@ -36,10 +56,17 @@ export const Cart = () => {
     );
   }
 
-  const items = cart?.items || [];
-  const totalItems = cart?.total_items || 0;
-
   if (items.length === 0) {
+    if (!showEmptyView) {
+      return (
+        <>
+          <Header cartCount={0} />
+          <div className="container" style={{ paddingTop: '2rem' }}>
+            <h1 style={{ fontSize: 24, fontWeight: 800 }}>Carrito de Compras</h1>
+          </div>
+        </>
+      );
+    }
     return (
       <>
         <Header cartCount={0} />
@@ -47,12 +74,9 @@ export const Cart = () => {
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>Carrito de Compras</h1>
           <div style={{ padding: '60px 20px' }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Tu carrito está vacío</h3>
-            <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>
+            <p style={{ color: 'var(--color-text-muted)' }}>
               Explora nuestro catálogo y encuentra lo que buscas.
             </p>
-            <Link to="/catalog" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>
-              Ir al catálogo
-            </Link>
           </div>
         </div>
       </>

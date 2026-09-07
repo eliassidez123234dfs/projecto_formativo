@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { ThemeToggle } from './ThemeToggle'
+import { subscribe, getCurrentUser, clearAuth } from '../services/authService'
 import './admin.css'
 
 const Icons = {
@@ -118,7 +120,12 @@ export default function AdminLayout({ children, title, subtitle }) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try { return localStorage.getItem('sidebarOpen') !== 'false' } catch { return true }
   })
-  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+  const [usuario, setUsuario] = useState(() => getCurrentUser())
+
+  useEffect(() => {
+    const unsub = subscribe((u) => setUsuario(u))
+    return unsub
+  }, [])
 
   useEffect(() => {
     try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch {}
@@ -146,9 +153,7 @@ export default function AdminLayout({ children, title, subtitle }) {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('usuario')
+    clearAuth()
     navigate('/login')
   }
 
@@ -232,6 +237,9 @@ export default function AdminLayout({ children, title, subtitle }) {
           <div className="header-text">
             {title && <h1>{title}</h1>}
             {subtitle && <p className="subtitle">{subtitle}</p>}
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+            <ThemeToggle />
           </div>
         </div>
 

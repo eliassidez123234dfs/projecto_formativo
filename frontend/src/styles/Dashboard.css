@@ -354,3 +354,71 @@
 .form-group:nth-child(2) { animation-delay: 100ms; }
 .form-group:nth-child(3) { animation-delay: 150ms; }
 .form-group:nth-child(4) { animation-delay: 200ms; }
+
+/* ============================================
+   DARK MODE — Auth / Dashboard
+   ============================================ */
+[data-theme="dark"] .auth-page {
+  background-color: var(--color-bg);
+}
+
+[data-theme="dark"] .auth-form-section {
+  border-right-color: var(--color-border);
+}
+
+[data-theme="dark"] .auth-form-header p {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .auth-tab {
+  color: var(--color-text-muted);
+}
+
+[data-theme="dark"] .auth-tab.active {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .auth-tab:hover {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .auth-tabs {
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .form-footer {
+  border-top-color: var(--color-border);
+}
+
+[data-theme="dark"] .form-footer p {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .auth-benefits-section {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-bg-secondary) 100%);
+}
+
+[data-theme="dark"] .auth-benefits-header h2 {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .auth-benefits-header p {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .benefit-content h3 {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .benefit-content p {
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .auth-benefits-highlight {
+  background-color: var(--color-bg);
+  border-left-color: var(--color-primary);
+}
+
+[data-theme="dark"] .auth-benefits-highlight p {
+  color: var(--color-text-secondary);
+}

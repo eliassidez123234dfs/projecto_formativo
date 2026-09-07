@@ -2,7 +2,7 @@
 
 ## 6.1 Metodologia de Desarrollo
 
-El proyecto se desarrollo bajo la metodologia **SCRUM**, adaptada al contexto de un proyecto formativo SENA/ADSO. Esta metodologia agil permitio organizar el trabajo en ciclos iterativos (sprints) con entregas incrementales de funcionalidad.
+El proyecto se desarrollo bajo las metodologias **SCRUM** y **KANBAN**, adaptada al contexto de un proyecto formativo SENA/ADSO. Esta metodologia agil permitio organizar el trabajo en ciclos iterativos (sprints) con entregas incrementales de funcionalidad y asignar y monitoriar la realización de las tareas y requisitos.
 
 ### Roles del Equipo
 
