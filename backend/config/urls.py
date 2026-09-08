@@ -21,6 +21,7 @@ from apps.users.api.viewset import (
 from apps.users.api.admin_viewset import AdminUsuarioViewSet
 from apps.users.api.stats_viewset import AdminStatsViewSet
 from apps.landing.api.viewset import ContactoViewSet
+from apps.users.api.serializers import UsuarioSerializer
 from apps.users.models import Token_Verificacion
 from config.health import health_check
 
