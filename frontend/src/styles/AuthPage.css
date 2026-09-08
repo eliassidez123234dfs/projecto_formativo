@@ -81,6 +81,37 @@
           max-width: 400px;
         }
 
+        .auth-back-home {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45rem;
+          margin-bottom: 2rem;
+          padding: 0;
+          border: none;
+          background: transparent;
+          color: #6B7280;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: color 0.15s ease, transform 0.15s ease;
+        }
+
+        .auth-back-home span {
+          font-size: 1.15rem;
+          line-height: 1;
+        }
+
+        .auth-back-home:hover {
+          color: #DC2626;
+          transform: translateX(-2px);
+        }
+
+        .auth-back-home:focus-visible {
+          outline: 3px solid rgba(220, 38, 38, 0.2);
+          outline-offset: 4px;
+          border-radius: 4px;
+        }
+
         .auth-form-header {
           margin-bottom: 2rem;
         }

@@ -172,6 +172,11 @@ export default function AuthPage({ defaultMode = 'login' }) {
 
       <div className="auth-form-panel">
         <div className="auth-form-container">
+          <button type="button" className="auth-back-home" onClick={() => navigate('/')}>
+            <span aria-hidden="true">←</span>
+            Volver al inicio
+          </button>
+
           <div className="auth-form-header">
             <h2>{mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
             <p>
