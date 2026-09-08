@@ -444,7 +444,7 @@ class ProductImageViewSet(viewsets.ModelViewSet):
 
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.AllowAny])
 def link_design_to_product(request):
     """Vincula una imagen de Cloudinary (diseño del editor 3D) a un producto existente.
 
