@@ -3,6 +3,7 @@ from typing import Any
 import os
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 # Definir nuestras variables de ambiente
 env: Any = environ.Env()
@@ -247,16 +248,17 @@ SIMPLE_JWT = {
 }
 
 # CORS configuration
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    'http://192.168.1.93:5173',
-    'http://192.168.137.7:5173',
-]
+CORS_ALLOWED_ORIGINS = env.list(
+    'CORS_ALLOWED_ORIGINS',
+    default=[
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+    ],
+)
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -271,6 +273,13 @@ else:
     CSRF_COOKIE_SAMESITE = 'None'
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=31536000 if not DEBUG else 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=not DEBUG)
+SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', default=not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_HTTPONLY = True
 
 # URLs para enlaces en emails
 FRONTEND_URL = env('FRONTEND_URL', default='http://127.0.0.1:5173')
@@ -342,6 +351,8 @@ if not DEBUG and env('DATABASE_URL', default=''):
         'default': env.db('DATABASE_URL'),
     }
     DATABASES['default']['ATOMIC_REQUESTS'] = True
+elif not DEBUG:
+    raise ImproperlyConfigured('DATABASE_URL es obligatorio cuando DEBUG=False.')
 
 # -------------------- Logging / Monitoreo de errores --------------------
 LOGS_DIR = BASE_DIR / 'logs'

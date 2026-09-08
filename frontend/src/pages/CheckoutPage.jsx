@@ -121,6 +121,7 @@ export default function CheckoutPage() {
         total: response.total,
         customer_name: response.customer_name || customerName,
         customer_email: response.customer_email || customerEmail,
+        download_pdf_url: response.download_pdf_url,
       })
 
       // Refrescar el estado global del carrito para que quede en 0
@@ -143,7 +144,10 @@ export default function CheckoutPage() {
     if (!completedOrder?.order_id) return
     setDownloadingPdf(true)
     try {
-      const blob = await downloadInvoicePdf(completedOrder.order_id)
+      const accessToken = completedOrder.download_pdf_url
+        ? new URL(completedOrder.download_pdf_url, window.location.origin).searchParams.get('access')
+        : ''
+      const blob = await downloadInvoicePdf(completedOrder.order_id, accessToken)
       const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
       const link = document.createElement('a')
       link.href = url

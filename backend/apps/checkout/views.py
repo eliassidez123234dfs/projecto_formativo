@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -15,6 +16,8 @@ from rest_framework.response import Response
 from apps.carts.models import Cart
 from apps.orders.models import Order, OrderItem
 from .utils import generate_order_invoice_pdf
+
+invoice_signer = TimestampSigner(salt='order-invoice')
 
 
 def _get_cart_from_session(request):
@@ -190,7 +193,7 @@ def checkout_confirm(request):
 			'total': str(order.total),
 			'customer_name': order.customer_name,
 			'customer_email': order.customer_email,
-			'download_pdf_url': f'/api/checkout/orders/{order.id}/invoice-pdf/',
+			'download_pdf_url': f'/api/checkout/orders/{order.id}/invoice-pdf/?access={invoice_signer.sign(order.id)}',
 			'detail': '¡Pedido confirmado con éxito! Se ha registrado en estado pendiente y el stock fue actualizado.',
 		},
 		status=status.HTTP_201_CREATED,
@@ -205,6 +208,17 @@ def download_order_invoice_pdf(request, order_id):
 	Genera y entrega para descarga la factura personalizada en PDF para la orden especificada.
 	"""
 	order = get_object_or_404(Order.objects.prefetch_related('items__product', 'items__variant').select_related('user'), pk=order_id)
+	user_is_owner = request.user.is_authenticated and order.user_id == request.user.id
+	user_is_admin = request.user.is_authenticated and getattr(request.user, 'rol', None) == 'Administrador'
+	access_token = request.GET.get('access', '')
+	guest_access = False
+	if access_token:
+		try:
+			guest_access = int(invoice_signer.unsign(access_token, max_age=60 * 60)) == order.id
+		except (BadSignature, SignatureExpired, ValueError):
+			guest_access = False
+	if not (user_is_owner or user_is_admin or (order.user_id is None and guest_access)):
+		return Response({'detail': 'No tienes permiso para descargar esta factura.'}, status=403)
 	pdf_content = generate_order_invoice_pdf(order)
 
 	response = HttpResponse(pdf_content, content_type='application/pdf')

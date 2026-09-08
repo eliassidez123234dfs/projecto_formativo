@@ -197,7 +197,7 @@ class LoginEndpointTests(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.url = '/api/login/login/'
+        self.url = '/api/login/'
         self.usuario = Usuario.objects.create(
             usuario='testuser',
             correo='test@example.com',
@@ -655,7 +655,7 @@ class TokenBlacklistTests(TestCase):
         )
         
         response = self.client.post(
-            '/api/login/login/',
+            '/api/login/',
             data=json.dumps({
                 'correo': 'test@test.com',
                 'contrasena': 'TestPass1!',

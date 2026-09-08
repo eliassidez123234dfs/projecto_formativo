@@ -21,6 +21,7 @@ from apps.users.api.admin_viewset import AdminUsuarioViewSet
 from apps.users.api.stats_viewset import AdminStatsViewSet
 from apps.landing.api.viewset import ContactoViewSet
 from apps.users.models import Token_Verificacion
+from config.health import health_check
 
 # Crear router
 router = DefaultRouter()
@@ -59,6 +60,7 @@ def verificar_email_directo(request):
         return redirect(f"{settings.FRONTEND_URL}/login?error=token-invalido")
 
 urlpatterns = [
+    path('api/health/', health_check, name='health-check'),
     # Admin
     path('admin/', admin.site.urls),
 

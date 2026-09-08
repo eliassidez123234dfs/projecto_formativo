@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CartProvider } from './context/CartContext';
@@ -32,6 +33,17 @@ import AdminProductApproval from './pages/AdminProductApproval';
 import AdminCloudinary from './pages/AdminCloudinary';
 import UserProfile from './pages/UserProfile';
 import CheckoutPage from './pages/CheckoutPage';
+
+function EditorRedirect() {
+  useEffect(() => {
+    const editorUrl = import.meta.env.VITE_TSHIRT3D_URL || (
+      import.meta.env.DEV ? 'http://127.0.0.1:5174/' : '/editor/'
+    );
+    window.location.replace(`${editorUrl}${window.location.search}`);
+  }, []);
+
+  return null;
+}
 
 function App() {
   return (
@@ -88,8 +100,11 @@ function App() {
             </Route>
             <Route path="/checkout" element={<CheckoutPage />} />
 
+            <Route path="/editor/*" element={<EditorRedirect />} />
+
             {/* Opcional: si quieres mantener también /catalogo como alias de /catalog */}
             <Route path="/catalogo" element={<Catalog />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </ErrorBoundary>
         </BrowserRouter>

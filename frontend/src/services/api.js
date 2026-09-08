@@ -173,8 +173,10 @@ export const confirmCheckout = async (data) => {
   return response.data;
 };
 
-export const downloadInvoicePdf = async (orderId) => {
+export const downloadInvoicePdf = async (orderId, accessToken = '') => {
+  const params = accessToken ? { access: accessToken } : undefined
   const response = await publicApi.get(`checkout/orders/${orderId}/invoice-pdf/`, {
+    params,
     responseType: 'blob',
   });
   return response.data;
