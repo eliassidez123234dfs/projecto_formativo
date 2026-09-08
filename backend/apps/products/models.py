@@ -149,8 +149,8 @@ class ProductImage(models.Model):
 				extension = Path(file_name).suffix.lower()
 			except (AttributeError, TypeError):
 				pass
-		if extension and extension not in {'.jpg', '.jpeg', '.png'}:
-			raise ValidationError({'image': 'Solo se permiten imágenes JPG o PNG.'})
+		if extension and extension not in {'.jpg', '.jpeg', '.png', '.webp'}:
+			raise ValidationError({'image': 'Solo se permiten imágenes JPG, PNG o WEBP.'})
 
 		file_size = getattr(self.image, 'size', 0) or getattr(self.image, 'file', None) and getattr(self.image.file, 'size', 0) or 0
 		if file_size > 2 * 1024 * 1024:
