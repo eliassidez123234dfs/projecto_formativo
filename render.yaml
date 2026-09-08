@@ -16,7 +16,7 @@ services:
       echo "=== PREDEPLOY: Migraciones OK ==="
       python manage.py ensure_admin
       echo "=== PREDEPLOY: ensure_admin OK ==="
-    startCommand: gunicorn config.wsgi:application --config gunicorn.conf.py
+    startCommand: python manage.py ensure_admin && gunicorn config.wsgi:application --config gunicorn.conf.py
     healthCheckPath: /api/health/
     envVars:
       - key: ENVIRONMENT
