@@ -195,6 +195,37 @@ export const addDesignToCart = async () => {
   return response.json();
 };
 
+/** Vincula una imagen de Cloudinary a un producto existente. */
+export const linkDesignToProduct = async (cloudinaryUrl, productId, isMain = false) => {
+  const headers = { "Content-Type": "application/json" };
+  const csrfToken = getCookie("csrftoken");
+  if (csrfToken) headers["X-CSRFToken"] = csrfToken;
+
+  const response = await fetch(`${BACKEND_API_URL}/products/link-design/`, {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: JSON.stringify({
+      product_id: productId,
+      cloudinary_url: cloudinaryUrl,
+      is_main: isMain,
+    }),
+  });
+
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const body = await response.json();
+      detail = body?.error || JSON.stringify(body);
+    } catch {
+      detail = await response.text();
+    }
+    throw new Error(`No se pudo vincular el diseño al producto: ${detail}`);
+  }
+
+  return response.json();
+};
+
 export const reader = (file) =>
   new Promise((resolve) => {
     const fileReader = new FileReader();

@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useSnapshot } from "valtio";
 
 import state from "../store";
-import { reader, uploadCanvasToCloudinary, createModel3D, addDesignToCart } from "../config/helpers";
+import { reader, uploadCanvasToCloudinary, linkDesignToProduct } from "../config/helpers";
 import { EditorTabs, FilterTabs, DecalTypes } from "../config/constants";
 import { fadeAnimation, slideAnimation } from "../config/motion";
 import { ColorPicker, FilePicker, Tab } from "../components";
@@ -138,27 +138,15 @@ const Customizer = () => {
                   const result = await uploadCanvasToCloudinary({ folder: "tshirtify_designs" });
                   const uploadedUrl = result.secure_url || result.url || "";
 
-                  setSaveStatus("Guardando modelo...");
-                  try {
-                    await createModel3D({
-                      name: `TshirtDesign ${Date.now()}`,
-                      description: "Diseño generado desde Tshirt3D",
-                      cloudinary_url: uploadedUrl,
-                      cloudinary_public_id: result.public_id || null,
-                      file_type: "png",
-                      file_size: result.bytes || null,
-                      is_active: true,
-                      is_approved: false,
-                    });
-                  } catch (backendError) {
-                    // Continuar aunque falle el backend
+                  if (state.productId) {
+                    setSaveStatus("Vinculando diseño al producto...");
+                    await linkDesignToProduct(uploadedUrl, state.productId);
+                    setSaveOk(true);
+                    setSaveMessage(`El diseño se guardó como imagen del producto #${state.productId}. Ya aparece en el catálogo.`);
+                  } else {
+                    setSaveOk(true);
+                    setSaveMessage("El diseño se guardó en Cloudinary. Para vincularlo a un producto, crea uno desde el admin.");
                   }
-
-                  setSaveStatus("Agregando al carrito...");
-                  await addDesignToCart();
-
-                  setSaveOk(true);
-                  setSaveMessage("El diseño se guardó y se agregó al carrito para imprimir.");
                 } catch (error) {
                   setSaveOk(false);
                   setSaveMessage(friendlyError(error));
@@ -235,13 +223,19 @@ const Customizer = () => {
                         </span>
                       )}
                     </p>
-                    {saveOk && (
+                    {saveOk && state.productId && (
                       <div className="flex flex-wrap gap-2 mt-3">
                         <a
-                          href={`${FRONTEND_URL}/cart`}
+                          href={`${FRONTEND_URL}/product/${state.productId}`}
                           className="inline-block text-[11px] font-semibold text-emerald-300 border border-emerald-400/40 rounded-full px-3 py-1 hover:bg-emerald-400/10"
                         >
-                          Ver carrito →
+                          Ver producto →
+                        </a>
+                        <a
+                          href={`${FRONTEND_URL}/catalog`}
+                          className="inline-block text-[11px] font-semibold text-slate-300 border border-slate-400/40 rounded-full px-3 py-1 hover:bg-slate-400/10"
+                        >
+                          Catálogo
                         </a>
                       </div>
                     )}

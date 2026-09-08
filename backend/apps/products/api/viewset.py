@@ -5,9 +5,10 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils.timezone import now
 from rest_framework import status, viewsets, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from django.views.decorators.csrf import csrf_exempt
 
 from apps.users.api.admin_viewset import AdminPermission
 from apps.products.models import Product, ProductAudit, ProductImage, Review, Variant
@@ -439,3 +440,51 @@ class ProductImageViewSet(viewsets.ModelViewSet):
         if self.action in {'list', 'retrieve'}:
             return [permissions.AllowAny()]
         return [AdminPermission()]
+
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def link_design_to_product(request):
+    """Vincula una imagen de Cloudinary (diseño del editor 3D) a un producto existente.
+
+    Body: { "product_id": 123, "cloudinary_url": "https://res.cloudinary.com/...", "is_main": false }
+    """
+    import io
+    import requests as http_requests
+    from django.core.files.base import ContentFile
+    from apps.products.models import Product, ProductImage
+
+    data = request.data
+    product_id = data.get('product_id')
+    cloudinary_url = data.get('cloudinary_url')
+    is_main = data.get('is_main', False)
+
+    if not product_id or not cloudinary_url:
+        return Response({'error': 'product_id y cloudinary_url son requeridos.'}, status=400)
+
+    try:
+        product = Product.objects.get(pk=int(product_id))
+    except (Product.DoesNotExist, TypeError, ValueError):
+        return Response({'error': 'Producto no encontrado.'}, status=404)
+
+    # Descargar imagen desde Cloudinary
+    try:
+        img_response = http_requests.get(cloudinary_url, timeout=15)
+        img_response.raise_for_status()
+    except Exception:
+        return Response({'error': 'No se pudo descargar la imagen de Cloudinary.'}, status=502)
+
+    # Crear ProductImage
+    filename = f"design_{product.id}_{now().strftime('%Y%m%d%H%M%S')}.png"
+    img_file = ContentFile(img_response.content, name=filename)
+
+    image = ProductImage(product=product, image=img_file, is_main=is_main)
+    image.save()
+
+    return Response({
+        'ok': True,
+        'image_id': image.id,
+        'image_url': image.image.url if image.image else None,
+        'product_id': product.id,
+    }, status=201)
