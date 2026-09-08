@@ -8,7 +8,40 @@ class Command(BaseCommand):
     help = "Falsifica migraciones problemáticas y crea admin"
 
     def handle(self, *args, **options):
-        self.stdout.write("=== Arreglando migraciones conflictivas ===")
+        self.stdout.write("=== Paso 0: Agregar columnas faltantes con SQL ===")
+        with connection.cursor() as cursor:
+            # Verificar y agregar is_superuser
+            cursor.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'usuarios' AND column_name = 'is_superuser'
+            """)
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE usuarios ADD COLUMN is_superuser BOOLEAN DEFAULT FALSE")
+                self.stdout.write(self.style.SUCCESS("  Columna is_superuser agregada"))
+            else:
+                self.stdout.write("  Columna is_superuser ya existe")
+
+            # Verificar y agregar token_version
+            cursor.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'usuarios' AND column_name = 'token_version'
+            """)
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE usuarios ADD COLUMN token_version INTEGER DEFAULT 0")
+                self.stdout.write(self.style.SUCCESS("  Columna token_version agregada"))
+            else:
+                self.stdout.write("  Columna token_version ya existe")
+
+            # Verificar y agregar is_staff
+            cursor.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'usuarios' AND column_name = 'is_staff'
+            """)
+            if cursor.fetchone():
+                cursor.execute("ALTER TABLE usuarios DROP COLUMN is_staff")
+                self.stdout.write(self.style.SUCCESS("  Columna is_staff eliminada"))
+
+        self.stdout.write("\n=== Paso 1: Arreglando migraciones conflictivas ===")
 
         problematic = [
             ('orders', '0004_add_shipping_payment_fields'),
