@@ -88,6 +88,7 @@ export default function AdminContact() {
           <div className="empty-state"><p>No hay mensajes de contacto.</p></div>
         ) : (
           <>
+            <div className="table-responsive">
             <table className="admin-table">
 
               <thead>
@@ -134,6 +135,7 @@ export default function AdminContact() {
                 ))}
               </tbody>
             </table>
+            </div>
             <Pagination page={page} totalPages={totalPages} count={stats.total} label="mensajes" onPageChange={setPage} />
           </>
         )}

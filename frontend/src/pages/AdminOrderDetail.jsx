@@ -35,7 +35,7 @@ function DetailCard({ title, children, fullWidth }) {
 
 function InfoRow({ label, value }) {
   return (
-    <div style={{
+    <div className="info-row" style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '10px 0', borderBottom: '1px solid var(--color-border-light)',
     }}>
@@ -97,7 +97,7 @@ export default function AdminOrderDetail() {
         </a>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+      <div className="detail-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
         <DetailCard title="Información de la Orden">
           <InfoRow label="ID" value={<code>#{order.id}</code>} />
           <InfoRow label="Estado Actual" value={
@@ -147,7 +147,8 @@ export default function AdminOrderDetail() {
           {(!order.items || order.items.length === 0) ? (
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 14 }}>Sin items.</p>
           ) : (
-            <table className="admin-table">
+            <div className="table-responsive">
+              <table className="admin-table">
               <thead>
                 <tr>
                   <th>Producto</th>
@@ -180,6 +181,7 @@ export default function AdminOrderDetail() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </DetailCard>
       </div>

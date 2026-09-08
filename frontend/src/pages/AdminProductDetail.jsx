@@ -50,7 +50,7 @@ function DetailCard({ title, children, fullWidth }) {
 
 function InfoRow({ label, value }) {
   return (
-    <div style={{
+    <div className="info-row" style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '10px 0', borderBottom: '1px solid var(--color-border-light)',
     }}>
@@ -169,7 +169,7 @@ export default function AdminProductDetail() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+      <div className="detail-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
         <DetailCard title="Información General">
           <InfoRow label="Nombre" value={product.name} />
           <InfoRow label="Descripción" value={product.description || '-'} />

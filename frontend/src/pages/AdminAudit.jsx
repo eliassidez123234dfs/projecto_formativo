@@ -130,6 +130,7 @@ export default function AdminAudit() {
           <div className="empty-state"><p>{hasActiveFilters ? 'No hay registros con los filtros seleccionados.' : 'No hay registros de auditoría.'}</p></div>
         ) : (
           <>
+            <div className="table-responsive">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -154,6 +155,7 @@ export default function AdminAudit() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             <Pagination page={page} totalPages={totalPages} count={count} label="registros" onPageChange={setPage} />
           </>

@@ -118,7 +118,18 @@ export default function AdminLayout({ children, title, subtitle }) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try { return localStorage.getItem('sidebarOpen') !== 'false' } catch { return true }
   })
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768)
   const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const closeMobileSidebar = () => {
+    if (isMobile) setSidebarOpen(false)
+  }
 
   useEffect(() => {
     try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch {}
@@ -176,6 +187,7 @@ export default function AdminLayout({ children, title, subtitle }) {
                   href={item.href}
                   className={className}
                   title={title}
+                  onClick={closeMobileSidebar}
                 >
                   <span className="nav-item-icon"><item.icon /></span>
                   {sidebarOpen && <span className="nav-label">{item.label}</span>}
@@ -189,6 +201,7 @@ export default function AdminLayout({ children, title, subtitle }) {
                 to={item.href}
                 className={className}
                 title={title}
+                onClick={closeMobileSidebar}
               >
                 <span className="nav-item-icon"><item.icon /></span>
                 {sidebarOpen && <span className="nav-label">{item.label}</span>}
@@ -219,6 +232,10 @@ export default function AdminLayout({ children, title, subtitle }) {
           </div>
         </div>
       </aside>
+
+      {isMobile && sidebarOpen && (
+        <div className="sidebar-overlay active" onClick={() => setSidebarOpen(false)} />
+      )}
 
       <div className="main-content">
         <div className="content-header">

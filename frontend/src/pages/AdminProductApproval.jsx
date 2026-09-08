@@ -120,6 +120,7 @@ export default function AdminProductApproval() {
           <div className="empty-state"><p>No hay productos pendientes de aprobación.</p></div>
         ) : (
           <>
+            <div className="table-responsive">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -183,6 +184,7 @@ export default function AdminProductApproval() {
                 ))}
               </tbody>
             </table>
+            </div>
             <Pagination page={page} totalPages={totalPages} count={count} label="productos" onPageChange={setPage} />
           </>
         )}

@@ -37,14 +37,15 @@ export default function AdminCartDetail() {
       </div>
 
       <div className="card">
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 24, fontSize: 14 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 14 }}>
           <div><strong>Usuario:</strong> {cart.user_name}</div>
           <div><strong>Items:</strong> {cart.total_items}</div>
           <div><strong>Total:</strong> {formatCOP(cart.total_amount)}</div>
           <div><strong>Creado:</strong> {new Date(cart.created_at).toLocaleDateString()}</div>
         </div>
 
-        <table className="admin-table">
+        <div className="table-responsive">
+          <table className="admin-table">
           <thead>
             <tr>
               <th>Producto</th>
@@ -87,6 +88,7 @@ export default function AdminCartDetail() {
             </tr>
           </tfoot>
         </table>
+        </div>
       </div>
     </AdminLayout>
   )

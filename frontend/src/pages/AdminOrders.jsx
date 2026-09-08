@@ -117,6 +117,7 @@ export default function AdminOrders() {
           <div className="empty-state"><p>No hay órdenes registradas.</p></div>
         ) : (
           <>
+            <div className="table-responsive">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -176,6 +177,7 @@ export default function AdminOrders() {
                 ))}
               </tbody>
             </table>
+            </div>
             <Pagination page={page} totalPages={totalPages} count={orders.count} label="órdenes" onPageChange={setPage} />
           </>
         )}

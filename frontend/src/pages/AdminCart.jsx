@@ -44,6 +44,7 @@ export default function AdminCart() {
           <div className="empty-state"><p>No hay carritos de usuarios registrados.</p></div>
         ) : (
           <>
+            <div className="table-responsive">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -72,6 +73,7 @@ export default function AdminCart() {
                 ))}
               </tbody>
             </table>
+            </div>
             <Pagination page={page} totalPages={totalPages} count={carts.count} label="carritos" onPageChange={setPage} />
           </>
         )}
