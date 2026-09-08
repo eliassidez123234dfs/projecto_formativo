@@ -129,6 +129,20 @@ class Command(BaseCommand):
                 cursor.execute("ALTER TABLE orders_order DROP COLUMN shipping_department")
                 self.stdout.write(self.style.SUCCESS("  - orders_order.shipping_department eliminada"))
 
+        self.stdout.write("\n=== Paso 1.5: Crear tablas faltantes (editor_session) ===")
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS models3d_editorsession (
+                    id BIGSERIAL PRIMARY KEY,
+                    token UUID NOT NULL UNIQUE,
+                    data JSONB NOT NULL DEFAULT '{}',
+                    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    used BOOLEAN NOT NULL DEFAULT FALSE
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_editorsession_token ON models3d_editorsession(token)")
+            self.stdout.write(self.style.SUCCESS("  Tabla models3d_editorsession verificada"))
+
         self.stdout.write("\n=== Paso 1: Falsificar migraciones conflictivas ===")
 
         problematic = [
@@ -160,6 +174,7 @@ class Command(BaseCommand):
             ('landing', '0003_merge_20260907_1733'),
             ('models3d', '0002_cloudinaryresource'),
             ('models3d', '0003_alter_model3d_file_type'),
+            ('models3d', '0004_editorsession'),
             ('token_blacklist', '0002_outstandingtoken_jti_hex'),
             ('token_blacklist', '0003_auto_20171017_2007'),
             ('token_blacklist', '0004_auto_20171017_2013'),
