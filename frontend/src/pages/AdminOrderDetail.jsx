@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { fetchAdminOrderDetail } from '../services/api'
+import { fetchAdminOrderDetail, downloadAdminOrderInvoicePdf } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
+
 
 const STATUS_LABELS = {
   pending: 'Pendiente',
@@ -67,9 +68,18 @@ export default function AdminOrderDetail() {
 
   return (
     <AdminLayout title={`Orden #${order.id}`} subtitle={order.customer_name || order.user_name}>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <Link to="/admin-orders" className="btn btn-sm btn-ghost">← Volver a órdenes</Link>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={() => downloadAdminOrderInvoicePdf(order.id, order.order_number)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          📄 Descargar Factura PDF
+        </button>
       </div>
+
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
         <DetailCard title="Información de la Orden">

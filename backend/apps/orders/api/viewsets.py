@@ -34,3 +34,27 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response([])
         orders = Order.objects.filter(user=user)[:50]
         return Response(MyOrderSerializer(orders, many=True).data)
+
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
+    def factura_pdf(self, request, pk=None):
+        """Descargar directamente la factura PDF de una orden."""
+        from django.http import HttpResponse
+        from apps.orders.invoice_service import generate_invoice_pdf
+        from apps.orders.models import Invoice
+
+        order = self.get_object()
+        invoice = getattr(order, 'invoice', None)
+        if not invoice:
+            items_total = sum((item.unit_price * item.quantity) for item in order.items.all())
+            invoice = Invoice.objects.create(
+                order=order,
+                subtotal=items_total,
+                total=order.total or items_total
+            )
+
+        pdf_bytes = generate_invoice_pdf(order, invoice)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        filename = f"Factura_{order.order_number or f'ORD-{order.id:06d}'}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+

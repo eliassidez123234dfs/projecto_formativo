@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchAdminOrders } from '../services/api'
+import { fetchAdminOrders, downloadAdminOrderInvoicePdf } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
+
 
 const STATUS_LABELS = {
   pending: 'Pendiente',
@@ -126,10 +127,21 @@ export default function AdminOrders() {
                     <td>{order.items?.length || 0}</td>
                     <td>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</td>
                     <td>
-                      <Link to={`/admin-orders/${order.id}`} className="btn btn-sm btn-secondary">
-                        Ver detalle
-                      </Link>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <Link to={`/admin-orders/${order.id}`} className="btn btn-sm btn-secondary">
+                          Ver detalle
+                        </Link>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          title="Descargar Factura PDF"
+                          onClick={() => downloadAdminOrderInvoicePdf(order.id, order.order_number)}
+                        >
+                          📄 Factura
+                        </button>
+                      </div>
                     </td>
+
                   </tr>
                 ))}
               </tbody>

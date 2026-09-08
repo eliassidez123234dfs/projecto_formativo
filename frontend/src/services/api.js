@@ -241,11 +241,48 @@ export const confirmCheckout = async (data) => {
   return response.data;
 };
 
+/**
+ * Descarga la factura en PDF de una orden directamente al navegador.
+ */
+export const downloadOrderInvoicePdf = async (orderId, orderNumber = null) => {
+  const response = await api.get(`orders/${orderId}/factura_pdf/`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([response.data], { type: 'application/pdf' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Factura_${orderNumber || `ORD-${orderId}`}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+/**
+ * Descarga la factura en PDF de una orden desde el panel de administración.
+ */
+export const downloadAdminOrderInvoicePdf = async (orderId, orderNumber = null) => {
+  const response = await api.get(`admin/orders/${orderId}/factura_pdf/`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([response.data], { type: 'application/pdf' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Factura_${orderNumber || `ORD-${orderId}`}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 // Pedidos del usuario autenticado (perfil: historial de pedidos)
 export const fetchMyOrders = async () => {
   const response = await api.get('orders/mis/');
   return response.data;
 };
+
 
 // ─────────── PRODUCTS (gestión admin, con token) ───────────
 export const fetchProducts = async (params = {}) => {
