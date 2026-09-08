@@ -44,6 +44,16 @@ class OrderViewSetTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.url = '/api/orders/'
+        self.usuario = Usuario.objects.create(
+            usuario='cliente',
+            correo='cliente@test.com',
+            contrasena=make_password('TestPass1!'),
+            estado='Activo',
+            email_verificado=True,
+        )
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(self.usuario)
+        self.auth_headers = {'HTTP_AUTHORIZATION': f'Bearer {refresh.access_token}'}
         self.order_data = {
             'customer_name': 'Juan Pérez',
             'customer_email': 'juan@test.com',
@@ -53,55 +63,53 @@ class OrderViewSetTests(TestCase):
 
     def test_listar_ordenes(self):
         Order.objects.create(
+            user=self.usuario,
             customer_name='Test',
             customer_email='test@test.com',
             status='pendiente',
             total='10000.00',
         )
-        response = self.client.get(self.url)
+        response = self.client.get(self.url, **self.auth_headers)
         self.assertEqual(response.status_code, 200)
 
     def test_crear_orden_sin_autenticacion(self):
-        """KNOWN ISSUE: OrderViewSet usa AllowAny, cualquier persona puede crear órdenes.
-        Debería requerir autenticación (IsAuthenticated) para seguridad."""
         response = self.client.post(
             self.url,
             data=json.dumps(self.order_data),
             content_type='application/json',
         )
-        # AllowAny permite crear órdenes sin auth — issue conocido de seguridad
-        self.assertEqual(response.status_code, 201)
-        self.assertTrue(Order.objects.filter(customer_email='juan@test.com').exists())
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(Order.objects.filter(customer_email='juan@test.com').exists())
 
     def test_crear_orden_campos_requeridos(self):
-        # La API actualmente no valida campos requeridos (problema conocido)
         response = self.client.post(
             self.url,
             data=json.dumps({}),
             content_type='application/json',
+            **self.auth_headers,
         )
-        # Nota: La API permite crear órdenes vacías porque no valida campos
-        # Esto es un PROBLEMA DE SEGURIDAD/VALIDACIÓN conocido
         self.assertIn(response.status_code, [201, 400, 422])
 
     def test_detalle_orden(self):
         order = Order.objects.create(
+            user=self.usuario,
             customer_name='Test',
             customer_email='test@test.com',
             status='pendiente',
             total='10000.00',
         )
-        response = self.client.get(f'{self.url}{order.id}/')
+        response = self.client.get(f'{self.url}{order.id}/', **self.auth_headers)
         self.assertEqual(response.status_code, 200)
 
     def test_eliminar_orden(self):
         order = Order.objects.create(
+            user=self.usuario,
             customer_name='Test',
             customer_email='test@test.com',
             status='pendiente',
             total='10000.00',
         )
-        response = self.client.delete(f'{self.url}{order.id}/')
+        response = self.client.delete(f'{self.url}{order.id}/', **self.auth_headers)
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Order.objects.filter(id=order.id).exists())
 

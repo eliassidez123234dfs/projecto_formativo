@@ -22,7 +22,7 @@ from apps.users.api.admin_viewset import AdminUsuarioViewSet
 from apps.users.api.stats_viewset import AdminStatsViewSet
 from apps.landing.api.viewset import ContactoViewSet
 from apps.users.models import Token_Verificacion
-from apps.users.api.serializers import UsuarioSerializer
+from config.health import health_check
 
 # Crear router
 router = DefaultRouter()
@@ -298,17 +298,7 @@ def verificar_email_directo(request):
         return redirect(f"{settings.FRONTEND_URL}/login?error=token-invalido")
 
 urlpatterns = [
-    # Health check (Render, monitoreo)
     path('api/health/', health_check, name='health-check'),
-
-    # Datos del usuario autenticado (restoreSession en frontend)
-    path('api/me/', me_view, name='me'),
-
-    # Sesión del editor 3D (datos sensibles fuera de la URL)
-    path('api/editor-session/save/', editor_session_save, name='editor-session-save'),
-    path('api/editor-session/', editor_session_get, name='editor-session-get'),
-    path('api/editor-session/commit/', editor_session_commit, name='editor-session-commit'),
-
     # Admin
     path('admin/', admin.site.urls),
 

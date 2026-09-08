@@ -37,6 +37,22 @@ export const Product3D = () => {
     )
   }
 
+  const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor);
+
+  const openEditor = () => {
+    const base = import.meta.env.VITE_TSHIRT3D_URL || (
+      import.meta.env.DEV ? 'http://127.0.0.1:5174/' : '/editor/'
+    );
+    const qs = new URLSearchParams({ mode });
+    if (id) qs.set('productId', id);
+    if (selectedVariant) {
+      qs.set('variantId', String(selectedVariant.id));
+      if (selectedVariant.color_hex) qs.set('color', selectedVariant.color_hex);
+      qs.set('colorName', selectedVariant.color);
+    }
+    window.open(`${base}?${qs.toString()}`, '_blank');
+  };
+
   return (
     <div className="container py-4">
       <Link to={id ? `/product/${id}` : '/catalog'} className="text-decoration-none mb-3 d-inline-block" style={{ color: 'var(--color-red)' }}>

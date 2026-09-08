@@ -1,6 +1,9 @@
-const API_BASE = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/").replace(/\/+$/, "");
-const API_URL = `${API_BASE}/orders/`;
-const MODELS3D_API_URL = `${API_BASE}/models3d/models/`;
+const API_URL = import.meta.env.VITE_API_URL ?? (
+  import.meta.env.DEV ? "http://127.0.0.1:8000/api/orders/" : "/api/orders/"
+);
+const MODELS3D_API_URL = import.meta.env.VITE_MODELS3D_API_URL ?? (
+  import.meta.env.DEV ? "http://127.0.0.1:8000/api/models3d/models/" : "/api/models3d/models/"
+);
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const CLOUDINARY_URL =

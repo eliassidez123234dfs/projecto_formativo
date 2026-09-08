@@ -173,8 +173,10 @@ export const confirmCheckout = async (data) => {
   return response.data;
 };
 
-export const downloadInvoicePdf = async (orderId) => {
+export const downloadInvoicePdf = async (orderId, accessToken = '') => {
+  const params = accessToken ? { access: accessToken } : undefined
   const response = await publicApi.get(`checkout/orders/${orderId}/invoice-pdf/`, {
+    params,
     responseType: 'blob',
   });
   return response.data;
@@ -369,6 +371,11 @@ export const fetchAdminOrderDetail = async (id) => {
 export const updateAdminOrderStatus = async (id, status) => {
   const response = await api.patch(`admin/orders/${id}/`, { status });
   return response.data;
+};
+
+export const fetchMyOrders = async () => {
+  const response = await api.get('orders/');
+  return response.data.results || response.data;
 };
 
 

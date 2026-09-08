@@ -1,80 +1,46 @@
-version: '3.8'
-
 services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.prod
-    ports:
-      - "8000:8000"
+      dockerfile: Dockerfile
+    command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-"]
     env_file:
-      - .env
-    environment:
-      - DEBUG=False
+      - .env.prod
+    expose:
+      - "8000"
     volumes:
-      - media_data:/app/media
-      - static_data:/app/static
-    command: gunicorn config.wsgi:application --config gunicorn.conf.py
+      - backend_media:/app/media
+      - backend_static:/app/static
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
-    depends_on:
-      mongo:
-        condition: service_started
-    networks:
-      - app_network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: /api/
+        VITE_TSHIRT3D_URL: /editor/
     ports:
       - "80:80"
     depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - app_network
+      backend:
+        condition: service_healthy
 
-  mongo:
-    image: mongo:7
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - app_network
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - app_network
+  tshirt3d:
+    build:
+      context: ./microservices/Tshirt3D
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: /api/orders/
+        VITE_MODELS3D_API_URL: /api/models3d/models/
+        VITE_FRONTEND_URL: /
+    expose:
+      - "80"
 
 volumes:
-  mongo_data:
-  redis_data:
-  media_data:
-  static_data:
-
-networks:
-  app_network:
-    driver: bridge
+  backend_media:
+  backend_static:

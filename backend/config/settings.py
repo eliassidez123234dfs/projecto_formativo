@@ -36,6 +36,7 @@ import sys
 # Los secretos y valores específicos del entorno se inyectan desde .env,
 # evitando datos sensibles en el repositorio.
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 env: Any = environ.Env()
 
@@ -490,13 +491,7 @@ SIMPLE_JWT = {
     'TOKEN_USER_CLASS': 'apps.users.Usuario',
 }
 
-# =============================================================================
-#  CORS (CROSS-ORIGIN RESOURCE SHARING) — RN-015
-#  Permite que el frontend React (Vite en localhost, Vercel/Render en prod)
-#  consuma la API desde un ORIGEN diferente (cross-origin).
-#  Sin CORS, el navegador bloquearía las peticiones por política del mismo origen.
-#  CORS_ALLOW_CREDENTIALS=True habilita cookies httpOnly para JWT.
-# =============================================================================
+# CORS configuration
 CORS_ALLOWED_ORIGINS = env.list(
     'CORS_ALLOWED_ORIGINS',
     default=[
@@ -506,10 +501,9 @@ CORS_ALLOWED_ORIGINS = env.list(
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
-        'http://192.168.1.93:5173',
-        'http://192.168.137.7:5173',
-    ]
+    ],
 )
+
 CORS_ALLOW_CREDENTIALS = True
 
 # =============================================================================
@@ -546,13 +540,16 @@ else:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-# =============================================================================
-#  URLs del Frontend y Backend
-#  Se usan para construir enlaces en correos electrónicos (verificación,
-#  restablecimiento de contraseña) y redirecciones post-pago.
-# =============================================================================
-FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
-BACKEND_URL = env('BACKEND_URL', default='http://localhost:8000')
+SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=31536000 if not DEBUG else 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=not DEBUG)
+SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', default=not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_HTTPONLY = True
+
+# URLs para enlaces en emails
+FRONTEND_URL = env('FRONTEND_URL', default='http://127.0.0.1:5173')
+BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8000')
 
 # =============================================================================
 #  CORREO ELECTRÓNICO — EmailService

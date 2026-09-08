@@ -89,7 +89,9 @@ const Customizer = () => {
             type="button"
             className="editor-back-btn"
             onClick={() => {
-              window.location.href = `${FRONTEND_URL}/catalog`;
+              window.location.href = import.meta.env.VITE_FRONTEND_URL || (
+                import.meta.env.DEV ? 'http://127.0.0.1:5173/admin' : '/admin'
+              );
             }}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
