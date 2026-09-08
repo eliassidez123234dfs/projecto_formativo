@@ -72,8 +72,8 @@ class EmailService:
         Returns:
             True si el envío fue exitoso, False en caso contrario.
         """
-        try:
-            if settings.RESEND_API_KEY:
+        if settings.RESEND_API_KEY:
+            try:
                 payload = json.dumps({
                     'from': settings.DEFAULT_FROM_EMAIL,
                     'to': recipient_list,
@@ -93,6 +93,9 @@ class EmailService:
                     if response.status not in (200, 201):
                         raise RuntimeError(f'Resend respondió HTTP {response.status}')
                 return True
+            except Exception as exc:
+                logger.warning('Resend falló (%s), intentando SMTP como fallback...', exc)
+        try:
             send_mail(
                 subject,
                 message,
