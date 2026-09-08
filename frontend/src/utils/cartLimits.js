@@ -45,6 +45,7 @@ export function useAddAttemptGuard() {
 export function extractCartError(error, fallback = 'Error al agregar al carrito') {
   const data = error?.response?.data;
   if (data && typeof data !== 'string') {
+    if (data.userMessage) return data.userMessage;
     const value = data.error || data.quantity || data.detail || data.product_id || data.variant_id;
     if (Array.isArray(value)) return value[0];
     if (value) return value;

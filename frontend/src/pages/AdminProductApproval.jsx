@@ -12,6 +12,7 @@ function errMsg(error, fallback) {
   const data = error?.response?.data
   if (!data) return fallback
   if (typeof data === 'string') return data
+  if (data.userMessage) return data.userMessage
   return Object.values(data).flat().join(' | ') || fallback
 }
 
