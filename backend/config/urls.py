@@ -277,6 +277,79 @@ def editor_session_commit(request):
 
     return JsonResponse(CartItemSerializer(item, context={'request': request}).data, status=201)
 
+
+@csrf_exempt
+@api_view(['POST'])
+@perm_decorator([AllowAny])
+def editor_session_link_design(request):
+    """Vincula un diseño de Cloudinary al producto usando el token de sesión.
+
+    Body: { "token": "uuid", "cloudinary_url": "https://res.cloudinary.com/..." }
+
+    El token fue creado por el admin al abrir el editor. No se necesita JWT.
+    """
+    import io
+    import requests as http_requests
+    from django.core.files.base import ContentFile
+    from apps.products.models import Product, ProductImage
+    from apps.models3d.editor_session import EditorSession
+
+    data = request.data
+    token_str = data.get('token')
+    cloudinary_url = data.get('cloudinary_url')
+
+    if not token_str or not cloudinary_url:
+        return JsonResponse({'error': 'token y cloudinary_url son requeridos.'}, status=400)
+
+    try:
+        session = EditorSession.objects.get(token=token_str, used=False)
+    except (EditorSession.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Sesión del editor no válida o ya utilizada.'}, status=404)
+
+    if session.is_expired():
+        session.delete()
+        return JsonResponse({'error': 'La sesión del editor ha expirado.'}, status=410)
+
+    product_id = session.data.get('productId')
+    if not product_id:
+        return JsonResponse({'error': 'No hay producto asociado a esta sesión.'}, status=400)
+
+    try:
+        product = Product.objects.get(pk=int(product_id))
+    except (Product.DoesNotExist, TypeError, ValueError):
+        return JsonResponse({'error': 'Producto no encontrado.'}, status=404)
+
+    # Descargar imagen desde Cloudinary
+    try:
+        img_response = http_requests.get(cloudinary_url, timeout=15)
+        img_response.raise_for_status()
+    except Exception:
+        return JsonResponse({'error': 'No se pudo descargar la imagen de Cloudinary.'}, status=502)
+
+    # Crear ProductImage
+    filename = f"design_{product.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.png"
+    img_file = ContentFile(img_response.content, name=filename)
+
+    existing_count = ProductImage.objects.filter(product=product).count()
+    image = ProductImage(
+        product=product,
+        image=img_file,
+        is_main=(existing_count == 0),
+        order=existing_count + 1,
+    )
+    image.save()
+
+    session.used = True
+    session.save(update_fields=['used'])
+
+    return JsonResponse({
+        'ok': True,
+        'image_id': image.id,
+        'image_url': image.image.url if image.image else None,
+        'product_id': product.id,
+    }, status=201)
+
+
 # Vista directa para verificar email desde el link del correo
 def verificar_email_directo(request):
     token = request.GET.get('token', '')
@@ -347,6 +420,7 @@ urlpatterns = [
     path('api/editor-session/save/', editor_session_save, name='editor-session-save'),
     path('api/editor-session/', editor_session_get, name='editor-session-get'),
     path('api/editor-session/commit/', editor_session_commit, name='editor-session-commit'),
+    path('api/editor-session/link-design/', editor_session_link_design, name='editor-session-link-design'),
 ]
 
 # Media files

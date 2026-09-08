@@ -140,7 +140,7 @@ const Customizer = () => {
 
                   if (state.productId) {
                     setSaveStatus("Vinculando diseño al producto...");
-                    await linkDesignToProduct(uploadedUrl, state.productId);
+                    await linkDesignToProduct(uploadedUrl);
                     setSaveOk(true);
                     setSaveMessage(`El diseño se guardó como imagen del producto #${state.productId}. Ya aparece en el catálogo.`);
                   } else {
