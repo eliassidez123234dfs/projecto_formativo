@@ -152,12 +152,12 @@ export const Cart = () => {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {items.map((item) => (
-            <div key={item.id} style={{
+            <div key={item.id} className="cart-item" style={{
               display: 'flex', gap: 20, alignItems: 'center', padding: 20,
               border: '1px solid var(--color-border)', borderRadius: 12,
               background: 'var(--color-bg)',
             }}>
-              <div style={{
+              <div className="cart-item-image" style={{
                 width: 90, height: 90, flexShrink: 0,
                 background: '#f9fafb', borderRadius: 8, overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -170,14 +170,14 @@ export const Cart = () => {
                 />
               </div>
 
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="cart-item-info" style={{ flex: 1, minWidth: 0 }}>
                 <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {item.product_name}
                 </h3>
                 <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 4 }}>
                   {item.variant_label || ''}
                 </p>
-                <p style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 15 }}>
+                <p className="cart-item-price" style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: 15 }}>
                   {formatCOP(item.unit_price)}
                 </p>
                 {item.variant_stock != null && (
@@ -189,7 +189,7 @@ export const Cart = () => {
                 )}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="cart-item-controls" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button className="btn btn-sm btn-outline" disabled={item.quantity <= 1}
                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
                   style={{ width: 32, height: 32, padding: 0, borderRadius: 8, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -204,13 +204,13 @@ export const Cart = () => {
                 </button>
               </div>
 
-              <div style={{ minWidth: 80, textAlign: 'right' }}>
+              <div className="cart-item-subtotal" style={{ minWidth: 80, textAlign: 'right' }}>
                 <p style={{ fontWeight: 700, fontSize: 16 }}>{formatCOP(item.subtotal)}</p>
               </div>
 
               {/* Botón para eliminar item individual */}
               <button
-                className="btn btn-sm btn-ghost"
+                className="btn btn-sm btn-ghost cart-item-remove"
                 onClick={() => handleRemoveItem(item.id)}
                 title="Eliminar producto"
                 style={{ color: 'var(--color-error)', padding: '4px 8px' }}
@@ -239,7 +239,7 @@ export const Cart = () => {
           </div>
         </div>
 
-        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+        <div className="cart-actions" style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
           {/* Botón para vaciar todo el carrito */}
           <button
             className="btn btn-outline"
@@ -332,6 +332,37 @@ export const Cart = () => {
         @keyframes popInModal {
           from { opacity: 0; transform: scale(0.92); }
           to { opacity: 1; transform: scale(1); }
+        }
+        @media (max-width: 640px) {
+          .cart-item {
+            flex-wrap: wrap;
+            gap: 12px !important;
+            padding: 16px !important;
+          }
+          .cart-item-image {
+            width: 72px !important;
+            height: 72px !important;
+          }
+          .cart-item-info {
+            flex-basis: calc(100% - 84px) !important;
+          }
+          .cart-item-controls {
+            margin-left: auto;
+          }
+          .cart-item-subtotal {
+            flex-basis: 100%;
+            text-align: left !important;
+            padding-top: 8px;
+            border-top: 1px solid var(--color-border-light);
+          }
+          .cart-item-remove {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+          }
+          .cart-item {
+            position: relative;
+          }
         }
       `}</style>
     </>

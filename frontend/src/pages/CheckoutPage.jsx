@@ -4,6 +4,7 @@ import { Header } from '../components/Header'
 import { useCart } from '../context/CartContext'
 import { getCheckoutSummary, confirmCheckout, downloadInvoicePdf } from '../services/api'
 import { formatCOP } from '../utils/format'
+import { getDepartments, getCitiesForDepartment } from '../data/colombiaDepartments'
 
 const cardStyle = {
   border: '1px solid var(--color-border)',
@@ -30,6 +31,9 @@ export default function CheckoutPage() {
   const [department, setDepartment] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [reference, setReference] = useState('')
+
+  const departments = getDepartments()
+  const cities = getCitiesForDepartment(department)
 
   // Errores de validación por campo
   const [fieldErrors, setFieldErrors] = useState({})
@@ -347,8 +351,31 @@ export default function CheckoutPage() {
                       </div>
 
                       <div>
+                        <label className="checkout-field-label checkout-required" htmlFor="checkout-department">Departamento</label>
+                        <select
+                          id="checkout-department"
+                          className={`checkout-input ${fieldErrors.department ? 'input-error' : ''}`}
+                          value={department}
+                          onChange={e => {
+                            setDepartment(e.target.value)
+                            setCity('')
+                            if (fieldErrors.department) {
+                              setFieldErrors(prev => ({ ...prev, department: null }))
+                            }
+                          }}
+                          required
+                        >
+                          <option value="">Selecciona un departamento</option>
+                          {departments.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                        {fieldErrors.department && <p className="checkout-error-text">{fieldErrors.department}</p>}
+                      </div>
+
+                      <div>
                         <label className="checkout-field-label checkout-required" htmlFor="checkout-city">Ciudad</label>
-                        <input
+                        <select
                           id="checkout-city"
                           className={`checkout-input ${fieldErrors.city ? 'input-error' : ''}`}
                           value={city}
@@ -358,28 +385,15 @@ export default function CheckoutPage() {
                               setFieldErrors(prev => ({ ...prev, city: null }))
                             }
                           }}
-                          placeholder="Ej. Bogotá"
+                          disabled={!department}
                           required
-                        />
+                        >
+                          <option value="">{department ? 'Selecciona una ciudad' : 'Primero selecciona un departamento'}</option>
+                          {cities.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
                         {fieldErrors.city && <p className="checkout-error-text">{fieldErrors.city}</p>}
-                      </div>
-
-                      <div>
-                        <label className="checkout-field-label checkout-required" htmlFor="checkout-department">Departamento</label>
-                        <input
-                          id="checkout-department"
-                          className={`checkout-input ${fieldErrors.department ? 'input-error' : ''}`}
-                          value={department}
-                          onChange={e => {
-                            setDepartment(e.target.value)
-                            if (fieldErrors.department) {
-                              setFieldErrors(prev => ({ ...prev, department: null }))
-                            }
-                          }}
-                          placeholder="Ej. Cundinamarca"
-                          required
-                        />
-                        {fieldErrors.department && <p className="checkout-error-text">{fieldErrors.department}</p>}
                       </div>
 
                       <div>
