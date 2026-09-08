@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import ProductForm from '../components/ProductForm'
 import AdminLayout from '../components/AdminLayout'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
 import { fetchProductAdmin, fetchProductAudits, disapproveProduct } from '../services/api'
+import { openEditor } from '../utils/editor3d'
 
 const ACTION_LABELS = {
   created: 'Creado',
@@ -151,6 +153,23 @@ export default function AdminProductDetail() {
           </span>
         </div>
         <div className="admin-toolbar-right">
+          <button
+            className="btn btn-primary"
+            onClick={async () => {
+              const variant = product.variants?.[0]
+              if (!variant) {
+                toast.error('Este producto no tiene variantes. Agrega talla/color primero.')
+                return
+              }
+              try {
+                await openEditor({ productId: product.id, variant, quantity: 1, mode: 'new' })
+              } catch (err) {
+                toast.error(err?.message || 'No se pudo abrir el editor 3D')
+              }
+            }}
+          >
+            Diseñar en 3D
+          </button>
           {(product.is_approved || product.is_active) && (
             <button className="btn btn-danger" onClick={() => setShowDisapprove(true)}>
               Desaprobar

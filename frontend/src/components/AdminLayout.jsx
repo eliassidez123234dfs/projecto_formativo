@@ -155,7 +155,6 @@ export default function AdminLayout({ children, title, subtitle }) {
     { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },
     { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
     { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard },
-    { label: 'Editor 3D', href: import.meta.env.VITE_TSHIRT3D_URL || (import.meta.env.DEV ? 'http://127.0.0.1:5174/' : '/editor/'), icon: Icons.Box, external: true },
     { label: 'Cloudinary', href: '/admin-cloudinary', icon: Icons.Cloud },
   ]
 
