@@ -15,7 +15,7 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'generate']:
-            return [IsAuthenticated(), AdminPermission()]
+            return [IsAuthenticated()]
         return [IsAuthenticated()]
 
     def get_queryset(self):
@@ -51,3 +51,15 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = self.get_serializer(invoice)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='pdf')
+    def descargar_pdf(self, request, pk=None):
+        from django.http import HttpResponse
+        from apps.orders.invoice_service import generate_invoice_pdf
+        invoice = self.get_object()
+        pdf_content = generate_invoice_pdf(invoice.order, invoice)
+        response = HttpResponse(pdf_content, content_type='application/pdf')
+        filename = f"Factura_{invoice.invoice_number or invoice.id}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+

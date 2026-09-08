@@ -1,34 +1,20 @@
 /**
- * Controlador de cámara y rotación orbital de la escena 3D.
+ * Rig de cámara orbital para la escena 3D.
  *
- * Gestiona la posición de la cámara y la rotación del grupo contenedor
- * de la camiseta para crear un efecto de órbita suave que sigue el
- * movimiento del puntero del ratón.
+ * Controla dos comportamientos en cada frame (useFrame):
+ * 1. Posición de la cámara: se adapta al tamaño de pantalla (responsive)
+ *    y se interpola suavemente con easing.damp3 para evitar saltos.
+ * 2. Rotación del modelo: combina la rotación manual/automática del usuario
+ *    con el movimiento orbital suave que sigue al cursor del mouse.
  *
- * - `useFrame`: Hook de @react-three/fiber que se ejecuta en cada frame
- *   del bucle de renderizado de Three.js. Recibe el estado de la escena
- *   (cámara, clock, pointer, etc.) y el delta de tiempo entre frames.
- * - `easing.damp3` (maath): Interpola suavemente la posición de la cámara
- *   hacia la posición objetivo usando damping exponencial. El factor 0.25
- *   controla la velocidad de la interpolación (más bajo = más lento).
- * - `easing.dampE` (maath): Interpola la rotación (Euler angles) del grupo
- *   en función de la posición del puntero (`state.pointer.x / y`), creando
- *   una rotación natural que sigue al ratón. La división por 7 y 2 suaviza
- *   la sensibilidad del movimiento.
- *
- * Comportamiento responsive:
- * - Pantallas ≤ 1260px: ajusta la posición inicial para pantallas anchas.
- * - Pantallas ≤ 600px (móvil): acerca la cámara y centra el modelo.
- * - Estado `intro`: posiciona la cámara para la vista de introducción.
- *
- * El store de Valtio (snap.intro) controla el modo de visualización
- * inicial. Cuando intro es true, la cámara se aleja para mostrar la
- * camiseta completa; cuando es false (modo editor), se acerca para
- * personalización detallada.
- *
- * RF-025: Proporciona la interacción orbital para el editor 3D.
+ * Patrones de Three.js / R3F:
+ * - useFrame: hook de @react-three/fiber que ejecuta lógica en cada frame
+ * - easing.damp3 / easing.dampE: interpolación suave tipo muelle (spring)
+ *   de la librería maath, evita transiciones bruscas
+ * - group ref: envuelve el contenido para rotarlo como unidad
+ * - sceneState.pointer: posición normalizada del mouse (-1 a 1)
  */
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { easing } from "maath";
 import { useSnapshot } from "valtio";
@@ -39,10 +25,13 @@ const CameraRig = ({ children }) => {
   const group = useRef();
   const snap = useSnapshot(state);
 
-  useFrame((state, delta) => {
+  // ── Bucle de animación: se ejecuta en cada frame del render ──
+  useFrame((sceneState, delta) => {
     const isBreakpoint = window.innerWidth <= 1260;
     const isMobile = window.innerWidth <= 600;
 
+    // ── Posición de la cámara responsive ──
+    // Se ajusta según el breakpoint y si estamos en la pantalla de intro
     let targetPosition = [-0.4, 0, 2];
     if (snap.intro) {
       if (isBreakpoint) targetPosition = [0, 0, 2];
@@ -54,17 +43,38 @@ const CameraRig = ({ children }) => {
         targetPosition = [0, 0, 2];
       }
     }
+    // Interpola suavemente la posición de la cámara (factor 0.25 = velocidad)
+    easing.damp3(sceneState.camera.position, targetPosition, 0.25, delta);
 
-    easing.damp3(state.camera.position, targetPosition, 0.25, delta);
+    // ── Rotación del modelo: automática vs manual ──
+    if (snap.autoRotate && !snap.isCapturing) {
+      // Modo auto-rotate: incrementa el ángulo continuamente
+      state.targetRotationY += delta * 0.8;
+      state.shirtRotationY = state.targetRotationY;
+    } else if (!snap.isCapturing) {
+      // Modo manual: interpola suavemente hacia el ángulo objetivo
+      easing.damp(state, "shirtRotationY", snap.targetRotationY, 0.2, delta);
+    }
 
-    easing.dampE(
-      group.current.rotation,
-      [state.pointer.y / 7, -state.pointer.x / 2, 0],
-      0.2,
-      delta
-    );
+    // ── Rotación orbital con el mouse ──
+    // El cursor del mouse influye sutilmente en la rotación del modelo
+    const mouseInfluenceY = snap.isCapturing ? 0 : sceneState.pointer.y / 7;
+    const mouseInfluenceX = snap.isCapturing ? 0 : -sceneState.pointer.x / 2;
+
+    // Se desactiva durante la captura de imagen para obtener vista fija
+    if (snap.isCapturing) {
+      group.current.rotation.set(0, snap.shirtRotationY, 0);
+    } else {
+      easing.dampE(
+        group.current.rotation,
+        [mouseInfluenceY, mouseInfluenceX + snap.shirtRotationY, 0],
+        0.2,
+        delta
+      );
+    }
   });
 
+  // El group ref permite rotar todo el contenido como una unidad
   return <group ref={group}>{children}</group>;
 };
 

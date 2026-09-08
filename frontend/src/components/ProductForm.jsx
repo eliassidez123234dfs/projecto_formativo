@@ -1,3 +1,19 @@
+/**
+ * ProductForm.jsx — Formulario modal para crear o editar productos (admin).
+ *
+ * Secciones:
+ * 1. Constantes: tallas disponibles y opciones de color con hex.
+ * 2. Subcomponente VariantRow: fila editable de variante (talla/color/precio/stock).
+ * 3. Componente principal: formulario con campos de producto, imágenes y variantes.
+ * 4. Funciones de persistencia: CRUD de producto, imágenes y variantes.
+ * 5. Validación en cliente con reglas de precio COP (múltiplo de 50).
+ *
+ * Decisiones de diseño:
+ * - Se usa un solo modal tanto para crear como para editar (prop product determina el modo).
+ * - Las imágenes existentes se pueden reordenar, marcar como principal o eliminar.
+ * - Los precios deben ser múltiplos de 50 COP (regla de negocio).
+ * - Las variantes nuevas y existentes se gestionan por separado para simplificar el PATCH.
+ */
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
@@ -12,14 +28,9 @@ import {
   updateProductVariant,
   deleteProductVariant,
 } from '../services/api'
+import { formatError as errMsg } from '../utils/formatError'
 
-function errMsg(error, fallback) {
-  const data = error?.response?.data
-  if (!data) return fallback
-  if (typeof data === 'string') return data
-  return Object.values(data).flat().join(' | ') || fallback
-}
-
+// ─── CONSTANTES: TALLAS Y COLORES ───
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', 'Único']
 
 const COLOR_OPTIONS = [
@@ -56,6 +67,7 @@ const inputStyle = {
 }
 const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 2 }
 
+// ─── UTILIDADES ───
 function isValidCopPrice(value) {
   const n = Number(value)
   return Number.isFinite(n) && Number.isInteger(n) && n >= 50 && n % 50 === 0
@@ -65,6 +77,7 @@ function colorFor(value) {
   return COLOR_OPTIONS.find(c => c.value.toLowerCase() === String(value).toLowerCase())
 }
 
+// ─── SUBCOMPONENTE: FILA DE VARIANTE ───
 function VariantRow({ v, onChange, onRemove }) {
   const color = colorFor(v.color)
   const hex = color ? color.hex : (v.color_hex || '#6B7280')
@@ -87,6 +100,7 @@ function VariantRow({ v, onChange, onRemove }) {
           value={color ? color.value : (v.color || '')}
           onChange={e => {
             const selected = COLOR_OPTIONS.find(c => c.value === e.target.value)
+            if (!selected) return
             onChange({ ...v, color: selected.value, color_hex: selected.hex, color_nombre: selected.value })
           }}
           style={inputStyle}
@@ -126,6 +140,7 @@ function VariantRow({ v, onChange, onRemove }) {
   )
 }
 
+// ─── COMPONENTE PRINCIPAL ───
 export default function ProductForm({ product, onClose, onSaved }) {
   const isEditing = Boolean(product)
 
@@ -157,6 +172,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
     setVariants(vs => [...vs, { size: '', color: '', color_hex: '', color_nombre: '', stock: 0, price_variant: null }])
   }
 
+  // ─── FUNCIONES DE PERSISTENCIA (CRUD) ───
   async function patchProduct(payload) {
     return updateProduct(product.id, payload)
   }
@@ -234,6 +250,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
     setImageItems(items => items.filter(img => img.id !== imageId))
   }
 
+  // ─── VALIDACIÓN ───
   function validate() {
     if (!name.trim()) return 'Nombre requerido'
     if (!description.trim()) return 'Descripción requerida'
@@ -248,6 +265,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
     return null
   }
 
+  // ─── HANDLER DE ENVÍO ───
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -300,14 +318,16 @@ export default function ProductForm({ product, onClose, onSaved }) {
     marginBottom: 6,
   }
 
-  return (
+    return (
     <div className="form-modal-backdrop" onClick={onClose}>
       <div className="form-modal" onClick={e => e.stopPropagation()} style={{ width: 'min(860px, 95vw)' }}>
+        {/* ─── CABECERA DEL MODAL ─── */}
         <div className="form-modal-header">
           <h2>{isEditing ? 'Editar Producto' : 'Crear Producto'}</h2>
           <button className="form-modal-close" onClick={onClose}>✕</button>
         </div>
 
+        {/* ─── CUERPO DEL FORMULARIO ─── */}
         <form onSubmit={handleSubmit} className="form-modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className="form-group">
@@ -399,6 +419,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
             </div>
           )}
 
+          {/* ─── SECCIÓN DE VARIANTES ─── */}
           <div className="form-group">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
               <label style={labelStyle}>Variantes</label>
@@ -454,6 +475,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
             )}
           </div>
 
+          {/* ─── PIE DEL MODAL: BOTONES ─── */}
           <div className="form-modal-footer">
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>
               Cancelar

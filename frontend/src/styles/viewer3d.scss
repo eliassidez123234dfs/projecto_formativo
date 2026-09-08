@@ -1,56 +1,52 @@
-// ═══════════════════════════════════════════════════════════════
-// viewer3d.scss  —  Estilos para el visor 3D de productos
-// Usa SCSS: nesting, variables, mixins, extends
-// ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+   viewer3d.scss  —  Estilos para el visor 3D de productos
+   Este archivo se importa desde CSS y debe conservar sintaxis CSS estándar.
+   ═══════════════════════════════════════════════════════════════ */
 
-$viewer-radius: 12px;
-$loader-bg: rgba(255, 255, 255, 0.92);
-$progress-gradient: linear-gradient(90deg, #DC2626, #F59E0B);
-$progress-height: 6px;
+:root {
+  --viewer-radius: 12px;
+  --loader-bg: rgba(255, 255, 255, 0.92);
+  --progress-gradient: linear-gradient(90deg, #DC2626, #F59E0B);
+  --progress-height: 6px;
+}
 
-%loader-card {
-  background: $loader-bg;
+.viewer3d-container .loader-overlay {
+  background: var(--loader-bg);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
-@mixin progress-fill($width) {
-  width: $width;
-  transition: width 0.3s ease;
-}
-
 .viewer3d-container {
   width: 100%;
-  border-radius: $viewer-radius;
+  border-radius: var(--viewer-radius);
   overflow: hidden;
   background: #f5f5f5;
+}
 
-  .loader-overlay {
-    @extend %loader-card;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 24px 32px;
+.viewer3d-container .loader-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 32px;
+}
 
-    .progress-track {
-      width: 180px;
-      height: $progress-height;
-      background: #E5E7EB;
-      border-radius: 3px;
-      overflow: hidden;
+.viewer3d-container .loader-overlay .progress-track {
+  width: 180px;
+  height: var(--progress-height);
+  background: #E5E7EB;
+  border-radius: 3px;
+  overflow: hidden;
+}
 
-      .progress-fill {
-        height: 100%;
-        background: $progress-gradient;
-        border-radius: 3px;
-      }
-    }
+.viewer3d-container .loader-overlay .progress-track .progress-fill {
+  height: 100%;
+  background: var(--progress-gradient);
+  border-radius: 3px;
+}
 
-    .loader-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #374151;
-    }
-  }
+.viewer3d-container .loader-overlay .loader-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
 }

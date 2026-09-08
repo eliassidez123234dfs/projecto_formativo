@@ -1,6 +1,30 @@
-const API_BASE = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/").replace(/\/+$/, "");
-const API_URL = `${API_BASE}/orders/`;
-const MODELS3D_API_URL = `${API_BASE}/models3d/models/`;
+/**
+ * Funciones auxiliares para el microservicio Tshirt3D.
+ *
+ * Agrupa toda la lógica de:
+ * - Captura de imagen del canvas Three.js (canvas.toDataURL / canvas.toBlob)
+ * - Subida a Cloudinary (almacenamiento externo de imágenes)
+ * - Envío de pedidos al backend Django (API REST)
+ * - Creación de modelos 3D comunitarios (RF-027)
+ * - Agregado al carrito de compras
+ * - Utilidades de contraste de color y lectura de archivos
+ *
+ * Flujo de captura de imagen:
+ * 1. Se busca el elemento <canvas> del DOM (renderizado por Three.js)
+ * 2. Se activa captureTransparent para fondo transparente
+ * 3. Se esperan 2-4 frames con requestAnimationFrame para que el
+ *    renderizado se complete antes de capturar
+ * 4. Se usa toDataURL("image/png") o toBlob() para obtener la imagen
+ *
+ * Nota: preserveDrawingBuffer: true en el Canvas de Three.js es
+ * requerido para que toDataURL funcione correctamente.
+ */
+const API_URL = import.meta.env.VITE_API_URL ?? (
+  import.meta.env.DEV ? "http://127.0.0.1:8000/api/orders/" : "/api/orders/"
+);
+const MODELS3D_API_URL = import.meta.env.VITE_MODELS3D_API_URL ?? (
+  import.meta.env.DEV ? "http://127.0.0.1:8000/api/models3d/models/" : "/api/models3d/models/"
+);
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const CLOUDINARY_URL =
@@ -8,6 +32,8 @@ const CLOUDINARY_URL =
   `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 import state from "../store";
+
+// ── Utilidades de cookies y sincronización de frames ──
 
 /** Lee una cookie por nombre (usado para CSRF al agregar al carrito). */
 const getCookie = (name) => {
@@ -27,6 +53,9 @@ const waitForNextFrames = (frames = 2) =>
     requestAnimationFrame(step);
   });
 
+// ── Captura de imagen del canvas Three.js ──
+
+/** Descarga el diseño actual como archivo PNG al disco del usuario. */
 export const downloadCanvasToImage = async () => {
   const canvas = document.querySelector("canvas");
   if (!canvas) return;
@@ -46,6 +75,56 @@ export const downloadCanvasToImage = async () => {
   state.captureTransparent = false;
 };
 
+/** Captura una vista individual del modelo en el ángulo especificado. */
+const captureSingleView = async (canvas, rotationY = 0) => {
+  state.isCapturing = true;
+  state.captureTransparent = true;
+  state.shirtRotationY = rotationY;
+  state.targetRotationY = rotationY;
+  await waitForNextFrames(4);
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  return blob;
+};
+
+/**
+ * Captura vistas frontal (0°) y posterior (180°) del modelo 3D.
+ * Restaura la rotación y configuración original después de la captura.
+ */
+export const captureShirtDualViews = async () => {
+  const canvas = document.querySelector("canvas");
+  if (!canvas) {
+    throw new Error("No se encontró el canvas para capturar las vistas.");
+  }
+
+  const prevRotationY = state.shirtRotationY;
+  const prevTargetY = state.targetRotationY;
+  const prevAutoRotate = state.autoRotate;
+  state.autoRotate = false;
+
+  try {
+    // 1. Captura Frente (0 radianes)
+    const frontBlob = await captureSingleView(canvas, 0);
+
+    // 2. Captura Atrás (PI radianes / 180 grados)
+    const backBlob = await captureSingleView(canvas, Math.PI);
+
+    return { frontBlob, backBlob };
+  } finally {
+    state.isCapturing = false;
+    state.captureTransparent = false;
+    state.shirtRotationY = prevRotationY;
+    state.targetRotationY = prevTargetY;
+    state.autoRotate = prevAutoRotate;
+  }
+};
+
+// ── Subida a Cloudinary ──
+
+/**
+ * Sube las vistas frontal y posterior del diseño a Cloudinary.
+ * Retorna URLs seguras para usar en el pedido y en la previsualización.
+ */
 export const uploadCanvasToCloudinary = async (options = {}) => {
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
     throw new Error(
@@ -53,45 +132,58 @@ export const uploadCanvasToCloudinary = async (options = {}) => {
     );
   }
 
-  const canvas = document.querySelector("canvas");
-  if (!canvas) {
-    throw new Error("No se encontró el canvas para subir a Cloudinary.");
+  const { frontBlob, backBlob } = await captureShirtDualViews();
+
+  if (!frontBlob || !backBlob) {
+    throw new Error("No se pudo capturar el frente o reverso del diseño.");
   }
 
-  state.captureTransparent = true;
-  await waitForNextFrames(2);
+  const uploadBlob = async (blob, suffix = "front") => {
+    const formData = new FormData();
+    formData.append("file", blob);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    if (options.folder) {
+      formData.append("folder", options.folder);
+    }
+    if (options.public_id) {
+      formData.append("public_id", `${options.public_id}_${suffix}`);
+    }
 
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-  state.captureTransparent = false;
+    const response = await fetch(CLOUDINARY_URL, {
+      method: "POST",
+      body: formData,
+    });
 
-  if (!blob) {
-    throw new Error("No se pudo capturar el canvas como imagen.");
-  }
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error al subir a Cloudinary (${suffix}): ${response.status} ${errorText}`);
+    }
 
-  const formData = new FormData();
-  formData.append("file", blob);
-  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    return response.json();
+  };
 
-  if (options.folder) {
-    formData.append("folder", options.folder);
-  }
-  if (options.public_id) {
-    formData.append("public_id", options.public_id);
-  }
+  const [frontResult, backResult] = await Promise.all([
+    uploadBlob(frontBlob, "front"),
+    uploadBlob(backBlob, "back"),
+  ]);
 
-  const response = await fetch(CLOUDINARY_URL, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error al subir a Cloudinary: ${response.status} ${errorText}`);
-  }
-
-  return response.json();
+  return {
+    front: frontResult,
+    back: backResult,
+    secure_url: frontResult.secure_url || frontResult.url || "",
+    front_url: frontResult.secure_url || frontResult.url || "",
+    back_url: backResult.secure_url || backResult.url || "",
+    public_id: frontResult.public_id || "",
+    bytes: (frontResult.bytes || 0) + (backResult.bytes || 0),
+  };
 };
 
+// ── Comunicación con el backend Django (API REST) ──
+
+/**
+ * Envía el diseño capturado como pedido al backend Django.
+ * POST a /api/orders/ con image (base64), diseño, notas, etc.
+ */
 export const sendCanvasToApi = async (orderData = {}) => {
   let dataURL = orderData.image;
   if (!dataURL) {
@@ -134,6 +226,10 @@ export const sendCanvasToApi = async (orderData = {}) => {
   return response.json();
 };
 
+/**
+ * Crea un modelo 3D comunitario en el microservicio Models3D (RF-027).
+ * POST a /api/models3d/models/ con los datos del diseño.
+ */
 export const createModel3D = async (modelData = {}) => {
   const response = await fetch(MODELS3D_API_URL, {
     method: "POST",
@@ -152,16 +248,28 @@ export const createModel3D = async (modelData = {}) => {
   return response.json();
 };
 
-/** Agrega al carrito usando exclusivamente la selección validada en sesión. */
-export const addDesignToCart = async () => {
+// ── Gestión del carrito de compras ──
+
+/**
+ * Agrega el diseño al carrito usando la sesión validada del backend.
+ * POST a /api/editor-session/commit/ con CSRF token y cookies de sesión.
+ * El backend valida stock, producto activo y variante antes de agregar.
+ */
+export const addDesignToCart = async (design = {}) => {
   const headers = { "Content-Type": "application/json" };
   const csrfToken = getCookie("csrftoken");
   if (csrfToken) headers["X-CSRFToken"] = csrfToken;
 
+  const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://127.0.0.1:8000/api" : "/api")).replace(/\/+$/, "");
   const response = await fetch(`${API_BASE}/editor-session/commit/`, {
     method: "POST",
     headers,
     credentials: "include", // importante: la sesión del carrito vive en cookies
+    body: JSON.stringify({
+      sessionToken: state.sessionToken || null,
+      designPreviewUrl: design.designPreviewUrl || null,
+      designData: design.designData || {},
+    }),
   });
 
   if (!response.ok) {
@@ -184,6 +292,9 @@ export const addDesignToCart = async () => {
   return response.json();
 };
 
+// ── Utilidades de archivos y contraste de color ──
+
+/** Convierte un archivo File a Data URL (base64) usando FileReader API. */
 export const reader = (file) =>
   new Promise((resolve) => {
     const fileReader = new FileReader();
@@ -192,6 +303,11 @@ export const reader = (file) =>
     fileReader.readAsDataURL(file);
   });
 
+/**
+ * Calcula el color de texto contrastante (negro o blanco) según la
+ * luminancia relativa del color de fondo (fórmula W3C).
+ * Asegura legibilidad del texto sobre cualquier color de camiseta.
+ */
 export const getContrastingColor = (color) => {
   const hex = color.replace("#", "");
   const r = parseInt(hex.substring(0, 2), 16);

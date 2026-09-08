@@ -1,3 +1,15 @@
+/**
+ * ErrorBoundary.jsx — Componente de captura de errores de React.
+ *
+ * Implementa el patrón Error Boundary de React para capturar errores
+ * no controlados en el árbol de componentes y mostrar una UI de fallback.
+ *
+ * Decisiones de diseño:
+ * - Clase component (no funcional) porque React no soporta hooks en boundaries.
+ * - Usa ErrorState como UI de fallback (proporciona retry y navegación).
+ * - Registra errores en el logger del cliente para monitoreo.
+ * - Se coloca en App.jsx para cubrir todas las rutas.
+ */
 import React from 'react';
 import ErrorState from './ErrorState';
 import { logClientError } from '../utils/logger';

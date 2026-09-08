@@ -1,3 +1,19 @@
+"""
+Serializers del módulo de Productos (escritura y gestión).
+
+Define la serialización de datos para CRUD de productos, imágenes y variantes:
+  - ProductImageSerializer: imágenes de producto con URL derivada.
+  - VariantSerializer: variantes (talla/color) con precio efectivo.
+  - ProductWriteSerializer: creación/actualización de productos con categorías.
+  - ProductListSerializer: lista de productos con conteos y checklist.
+  - ProductDetailSerializer: detalle con imágenes, variantes y productos relacionados.
+  - ProductImageCreateSerializer/VariantCreateSerializer: validación de creación.
+  - VariantUpdateSerializer: edición de variantes existentes.
+  - ProductAuditSerializer: auditoría de cambios.
+  - CartItemSerializer: validación de ítems de carrito.
+
+Patrón de diseño: Write Serializer (create/update) + Read Serializer (list/detail).
+"""
 from __future__ import annotations
 
 from django.db import transaction
@@ -9,7 +25,12 @@ from apps.catalog.models import Category, ProductCategory
 from apps.products.models import Product, ProductAudit, ProductImage, Variant, is_cop_price_valid
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Serializers de imágenes y variantes (lectura)
+# ═══════════════════════════════════════════════════════════════════════
+
 class ProductImageSerializer(serializers.ModelSerializer):
+    """Imagen de producto con URL derivada del ImageField."""
     image_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -24,6 +45,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 
 class VariantSerializer(serializers.ModelSerializer):
+    """Variante de producto (talla/color) con precio efectivo calculado."""
     display_label = serializers.SerializerMethodField()
     effective_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
@@ -39,7 +61,16 @@ class VariantSerializer(serializers.ModelSerializer):
         return f'Talla {obj.size} — {obj.color}'
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ProductWriteSerializer — Creación/actualización de productos
+# ═══════════════════════════════════════════════════════════════════════
+
 class ProductWriteSerializer(serializers.ModelSerializer):
+    """Serializer para crear/actualizar productos.
+    
+    Acepta category_ids (escritura) y retorna categories (lectura).
+    Valida nombre (máx. 100), descripción (máx. 500) y precio COP (>= 50, múltiplo de 50).
+    """
     category_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Category.objects.all(),
@@ -75,6 +106,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         return value
 
     def _set_categories(self, product, category_ids):
+        """Elimina y recrea las categorías del producto (replace strategy)."""
         ProductCategory.objects.filter(product=product).delete()
         for category in category_ids:
             ProductCategory.objects.create(product=product, category=category)
@@ -100,7 +132,13 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         return product
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ProductListSerializer — Lista de productos (gestión)
+# ═══════════════════════════════════════════════════════════════════════
+
 class ProductListSerializer(serializers.ModelSerializer):
+    """Serializer de lista para gestión de productos.
+    Incluye conteos de imágenes, variantes, stock total, checklist y categorías."""
     main_image = serializers.SerializerMethodField()
     images_count = serializers.SerializerMethodField()
     variants_count = serializers.SerializerMethodField()
@@ -147,7 +185,12 @@ class ProductListSerializer(serializers.ModelSerializer):
         return obj.can_be_published
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ProductDetailSerializer — Detalle con imágenes, variantes y relacionados
+# ═══════════════════════════════════════════════════════════════════════
+
 class ProductDetailSerializer(ProductListSerializer):
+    """Detalle de producto con imágenes, variantes, productos relacionados y mensaje de publicación."""
     images = ProductImageSerializer(many=True, read_only=True)
     variants = VariantSerializer(many=True, read_only=True)
     related_products = serializers.SerializerMethodField()
@@ -160,6 +203,7 @@ class ProductDetailSerializer(ProductListSerializer):
         return 'Listo para publicar' if obj.can_be_published else 'Faltan imagen principal o variante con stock'
 
     def get_related_products(self, obj):
+        """Obtiene hasta 4 productos de las mismas categorías (excluye el actual)."""
         related_ids = (
             ProductCategory.objects
             .filter(product=obj)
@@ -174,7 +218,19 @@ class ProductDetailSerializer(ProductListSerializer):
         return serializer.data
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Serializers de creación — Imágenes y variantes
+# ═══════════════════════════════════════════════════════════════════════
+
 class ProductImageCreateSerializer(serializers.ModelSerializer):
+    """Serializer para crear imágenes de producto.
+    
+    Valida:
+      - Formato: solo JPG/PNG.
+      - Tamaño: máximo 2MB.
+      - Resolución: mínima 400x400px.
+      - Límite: máximo 5 imágenes por producto.
+    """
     class Meta:
         model = ProductImage
         fields = ['id', 'image', 'is_main', 'order']
@@ -218,6 +274,12 @@ class ProductImageCreateSerializer(serializers.ModelSerializer):
 
 
 class VariantCreateSerializer(serializers.ModelSerializer):
+    """Serializer para crear variantes de producto.
+    
+    Valida: talla obligatoria, color obligatorio, color_hex (#RRGGBB),
+    stock >= 0, precio COP válido, máx. 4 tallas y 10 colores por producto,
+    y unicidad de combinación talla/color.
+    """
     class Meta:
         model = Variant
         fields = ['id', 'size', 'color', 'color_hex', 'color_nombre', 'stock', 'price_variant']
@@ -253,6 +315,7 @@ class VariantCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        """Valida límites de tallas/colores y unicidad talla/color."""
         product = self.context['product']
         sizes = set(product.variants.values_list('size', flat=True))
         colors = set(product.variants.values_list('color', flat=True))
@@ -274,6 +337,10 @@ class VariantCreateSerializer(serializers.ModelSerializer):
         product = self.context['product']
         return Variant.objects.create(product=product, **validated_data)
 
+
+# ═══════════════════════════════════════════════════════════════════════
+# VariantUpdateSerializer — Edición de variantes existentes
+# ═══════════════════════════════════════════════════════════════════════
 
 class VariantUpdateSerializer(serializers.ModelSerializer):
     """Permite editar stock, precio y color de una variante existente (RF-040)."""
@@ -312,14 +379,24 @@ class VariantUpdateSerializer(serializers.ModelSerializer):
         return value
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ProductAuditSerializer — Auditoría de cambios
+# ═══════════════════════════════════════════════════════════════════════
+
 class ProductAuditSerializer(serializers.ModelSerializer):
+    """Serializer de auditoría — solo lectura de acciones sobre productos."""
     class Meta:
         model = ProductAudit
         fields = ['id', 'action', 'actor', 'before_data', 'after_data', 'motivo', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Paginación y validación de carrito
+# ═══════════════════════════════════════════════════════════════════════
+
 class ProductPagination(PageNumberPagination):
+    """Paginación para listas de productos — 20 por página."""
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
@@ -337,6 +414,13 @@ class ProductPagination(PageNumberPagination):
 
 
 class CartItemSerializer(serializers.Serializer):
+    """Validación de ítem de carrito — producto, variante y cantidad.
+    
+    Valida que:
+      - El producto exista, esté activo y aprobado.
+      - La variante pertenezca al producto.
+      - La cantidad no supere el stock.
+    """
     product_id = serializers.IntegerField()
     variant_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1)

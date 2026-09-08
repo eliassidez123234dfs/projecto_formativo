@@ -1,8 +1,23 @@
+/**
+ * AuthPage.jsx — Página de autenticación (login y registro).
+ *
+ * Sección izquierda: Panel de marca con beneficios de la plataforma.
+ * Sección derecha: Formulario con dos modos (login/register) intercambiables.
+ *
+ * Decisiones de diseño:
+ * - Validación en cliente antes de enviar al servidor.
+ * - Barra de fortaleza de contraseña en tiempo real (registro).
+ * - Redirección automática a /dashboard si ya existe sesión.
+ * - Manejo de errores por campo y errores generales separados.
+ */
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../services/api'
+import { setTokens } from '../services/authService'
 import '../styles/AuthPage.css'
 
+// ─── UTILIDAD: EVALUACIÓN DE FORTALEZA DE CONTRASEÑA ───
+// Retorna label, color y porcentaje basado en la complejidad del password.
 function passwordStrength(pw) {
   let score = 0
   if (pw.length >= 8) score++
@@ -16,6 +31,7 @@ function passwordStrength(pw) {
   return { label, color, pct }
 }
 
+// ─── COMPONENTE PRINCIPAL ───
 export default function AuthPage({ defaultMode = 'login' }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -41,8 +57,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
   }, [mode])
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    if (token) navigate('/dashboard')
+    const token = localStorage.getItem('refresh_token')
+    if (token) navigate('/dashboard', { replace: true })
   }, [navigate])
 
   useEffect(() => {
@@ -56,7 +72,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
     }
   }, [location.search])
 
-  function getError(errors, field) {
+// ─── UTILIDADES DE ERRORES ───
+function getError(errors, field) {
     const val = errors[field]
     if (!val) return null
     if (Array.isArray(val)) return val[0]
@@ -80,7 +97,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
     return fieldErrs
   }
 
-  function validateLogin() {
+// ─── VALIDACIONES EN CLIENTE ───
+function validateLogin() {
     const errs = {}
     if (!loginData.correo.trim()) errs.correo = 'El correo es obligatorio'
     else if (!/\S+@\S+\.\S+/.test(loginData.correo)) errs.correo = 'Correo inválido'
@@ -108,7 +126,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
     return Object.keys(errs).length === 0
   }
 
-  const handleLoginSubmit = async (e) => {
+// ─── HANDLERS DE ENVÍO ───
+const handleLoginSubmit = async (e) => {
     e.preventDefault()
     if (!validateLogin()) return
     setLoading(true)
@@ -116,9 +135,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
     try {
       const response = await api.post('login/', loginData)
       const data = response.data
-      localStorage.setItem('access_token', data.access)
-      localStorage.setItem('refresh_token', data.refresh)
-      localStorage.setItem('usuario', JSON.stringify(data.usuario))
+      setTokens(data.access, data.refresh, data.usuario)
       const usr = data.usuario || {}
       navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
     } catch (error) {
@@ -149,8 +166,10 @@ export default function AuthPage({ defaultMode = 'login' }) {
     }
   }
 
-  return (
+// ─── RENDER: ESTRUCTURA DE LA PÁGINA ───
+return (
     <div className="auth-page">
+      {/* ─── PANEL IZQUIERDO: MARCA Y BENEFICIOS ─── */}
       <div className="auth-brand">
         <div className="auth-brand-content">
           <div className="auth-logo">RED</div>
@@ -170,8 +189,14 @@ export default function AuthPage({ defaultMode = 'login' }) {
         <div className="auth-curve" />
       </div>
 
+      {/* ─── PANEL DERECHO: FORMULARIO ─── */}
       <div className="auth-form-panel">
         <div className="auth-form-container">
+          <button type="button" className="auth-back-home" onClick={() => navigate('/')}>
+            <span aria-hidden="true">←</span>
+            Volver al inicio
+          </button>
+
           <div className="auth-form-header">
             <h2>{mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
             <p>

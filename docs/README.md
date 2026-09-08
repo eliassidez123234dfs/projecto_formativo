@@ -8,6 +8,9 @@
 
 ## Indice General
 
+### 0. Orientacion rapida
+- [0. Mapa del aplicativo](00-mapa-aplicativo.md) - Ubicacion de responsabilidades, flujos, endpoints y estado real
+
 ### 1. Introduccion
 - [1.1 Introduccion](01-introduccion/introduccion.md) - Descripcion del proyecto, contexto, vision, alcance y tecnologias
 - [1.2 Planteamiento del Problema](01-introduccion/planteamiento-del-problema.md) - Situacion actual, problema central y pregunta problema
@@ -21,6 +24,7 @@
 ### 3. Requisitos
 - [3.1 Requisitos Funcionales](03-requisitos/requisitos-funcionales.md) - 58 requisitos funcionales (RF-001 a RF-058) organizados por modulo
 - [3.2 Requisitos No Funcionales](03-requisitos/requisitos-no-funcionales.md) - 26 requisitos no funcionales (RNF-01 a RNF-26)
+- [3.3 Trazabilidad y Validaciones](03-requisitos/trazabilidad-validaciones.md) - Relacion entre requisitos, pantallas, endpoints, reglas y pruebas
 
 ### 4. Diseno UML
 - [4.1 Diagrama de Casos de Uso](04-diseno-uml/diagrama-casos-de-uso.md) - Diagrama general con actores y matriz de RF
@@ -68,6 +72,7 @@
 ### 10. Pruebas
 - [10.1 Estrategia y Guia de Pruebas](10-pruebas/estrategia-y-guia-de-pruebas.md) - Pirámide de pruebas, TDD, frameworks, checkpoints por modulo y regresion
 - [10.2 Escenarios BDD](10-pruebas/escenarios-bdd.md) - Escenarios Gherkin de funcionalidades criticas
+- [10.3 Mapa de Flujos y Patrones](10-pruebas/mapa-flujos-y-patrones.md) - Flujos ejecutables, capas y patrones usados en el codigo
 
 ### 11. Gestion de Proyecto
 - [11.1 Contributing](11-gestion-proyecto/contributing.md) - Como contribuir, estilo de codigo y revisiones

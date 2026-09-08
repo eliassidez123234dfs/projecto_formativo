@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchAdminStats } from '../services/api'
+import { fetchAdminStats, fetchAuditLogs } from '../services/api'
 import { getCurrentUser } from '../services/authService'
 import AdminLayout from '../components/AdminLayout'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
+import { usePromiseState } from '../hooks/usePromiseState'
 
 const quickLinks = [
   { label: 'Productos', href: '/admin-products', desc: 'Gestiona el catálogo', color: 'primary' },
@@ -42,29 +43,32 @@ const Icons = {
   ),
 }
 
+/**
+ * Función asíncrona que usa Promise.all para cargar en paralelo estadísticas y auditorías
+ */
+async function fetchDashboardBundle() {
+  const [statsData, auditData] = await Promise.all([
+    fetchAdminStats(),
+    fetchAuditLogs(1, 5).catch(() => ({ results: [] }))
+  ])
+  return {
+    stats: statsData,
+    recentAudits: auditData.results || auditData || []
+  }
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const usuario = getCurrentUser()
 
-  const loadStats = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await fetchAdminStats()
-      setStats(data)
-    } catch (err) { setError(err) }
-    finally { setLoading(false) }
-  }, [])
+  const {
+    data,
+    isPending: loading,
+    error,
+    execute: loadDashboardData
+  } = usePromiseState(fetchDashboardBundle, { immediate: true })
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadStats();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [loadStats])
+  const stats = data?.stats
 
   const statCards = stats ? [
     { value: stats.productos?.total ?? '—', label: 'Productos', icon: Icons.Package, color: 'primary' },
@@ -78,7 +82,7 @@ export default function AdminDashboard() {
       {loading ? (
         <Spinner text="Cargando estadísticas..." />
       ) : error ? (
-        <ErrorState error={error} module="estadísticas del panel" onRetry={loadStats} />
+        <ErrorState error={error} module="estadísticas del panel" onRetry={loadDashboardData} />
       ) : (
         <>
           <div className="admin-stats">

@@ -77,8 +77,11 @@ class SavedDesignViewSet(viewsets.ViewSet):
 
     def list(self, request):
         """List paginated designs for the authenticated user."""
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 20))
+        try:
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 20))
+        except (ValueError, TypeError):
+            page, page_size = 1, 20
         designs, total = list_user_designs(request.user.id, page, page_size)
         return Response({
             'results': designs,
@@ -219,9 +222,15 @@ class AuditLogViewSet(viewsets.ViewSet):
         for field in ('action', 'actor_id', 'target_type', 'target_id', 'severity'):
             val = request.query_params.get(field)
             if val:
-                filters[field] = int(val) if field in ('actor_id',) else val
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 50))
+                try:
+                    filters[field] = int(val) if field in ('actor_id',) else val
+                except (ValueError, TypeError):
+                    pass
+        try:
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 50))
+        except (ValueError, TypeError):
+            page, page_size = 1, 50
         logs, total = query_logs(filters, page, page_size)
         return Response({
             'results': logs,
@@ -343,8 +352,11 @@ class CommunityTemplateViewSet(viewsets.ViewSet):
 
     def list(self, request):
         """List paginated community templates with optional tag/sort filters."""
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 20))
+        try:
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 20))
+        except (ValueError, TypeError):
+            page, page_size = 1, 20
         tag = request.query_params.get('tag')
         sort = request.query_params.get('sort', 'popular')
         templates, total = list_templates(page, page_size, tag, sort)

@@ -14,6 +14,7 @@ import { fetchCurrentUser, buildApiUrl } from '../services/api'
 import { Breadcrumbs } from './Breadcrumbs'
 import '../styles/main-layout.css'
 
+// ─── ICONOS SVG PARA LA NAVEGACIÓN ───
 /** Conjunto de iconos SVG reutilizables para la navegación y acciones del layout. */
 const Icons = {
   Dashboard: () => (
@@ -173,6 +174,7 @@ export default function MainLayout({ children, title, subtitle }) {
     }
   }, [usuario, isAdmin, isActive, isAdminRoute, navigate, loadingUser])
 
+  // ─── ITEMS DEL MENÚ: SECCIONES GESTIÓN Y ADMINISTRACIÓN ───
   const menuItems = [
     { section: 'Gestión', admin: false, items: [
       { label: 'Dashboard', href: '/dashboard', icon: Icons.Dashboard, admin: false },
@@ -194,11 +196,13 @@ export default function MainLayout({ children, title, subtitle }) {
     ]},
   ]
 
+  // ─── FILTRADO DE SECCIONES SEGÚN ROL ───
   const filteredSections = menuItems.map(section => ({
     ...section,
     items: section.items.filter(item => !item.admin || isAdmin),
   })).filter(section => section.items.length > 0)
 
+  // ─── CIERRE DE SESIÓN ───
   const handleLogout = async () => {
     try {
       await fetch(buildApiUrl('login/logout/'), { method: 'POST', credentials: 'include' })
@@ -218,6 +222,7 @@ export default function MainLayout({ children, title, subtitle }) {
 
   return (
     <div className={`main-layout ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      {/* ─── SIDEBAR ─── */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-brand">
           <Link to="/" style={{ textDecoration: 'none' }}>
@@ -276,6 +281,7 @@ export default function MainLayout({ children, title, subtitle }) {
         </div>
       </aside>
 
+      {/* ─── CONTENIDO PRINCIPAL ─── */}
       <div className="main-content">
         <div className="content-header">
           <button

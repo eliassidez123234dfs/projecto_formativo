@@ -1,11 +1,11 @@
+import AdminLayout from '../components/AdminLayout'
+import ErrorState from '../components/ErrorState'
+import Spinner from '../components/Spinner'
+import toast from 'react-hot-toast'
+import { fetchAdminOrderDetail, updateAdminOrderStatus, downloadAdminOrderInvoicePdf } from '../services/api'
+import { formatCOP } from '../utils/format'
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { fetchAdminOrderDetail, updateAdminOrderStatus } from '../services/api'
-import AdminLayout from '../components/AdminLayout'
-import Spinner from '../components/Spinner'
-import ErrorState from '../components/ErrorState'
-import { formatCOP } from '../utils/format'
-import toast from 'react-hot-toast'
 
 
 const STATUS_LABELS = {
@@ -86,15 +86,14 @@ export default function AdminOrderDetail() {
     <AdminLayout title={`Orden #${order.id}`} subtitle={order.customer_name || order.user_name}>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <Link to="/admin-orders" className="btn btn-sm btn-ghost">← Volver a órdenes</Link>
-        <a
-          href={`/api/checkout/orders/${order.id}/invoice-pdf/`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-sm btn-outline"
-          download
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={() => downloadAdminOrderInvoicePdf(order.id, order.order_number)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          Descargar Factura (PDF)
-        </a>
+          📄 Descargar Factura PDF
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
@@ -129,7 +128,6 @@ export default function AdminOrderDetail() {
           <InfoRow label="Creada" value={order.created_at ? new Date(order.created_at).toLocaleString() : '—'} />
           <InfoRow label="Actualizada" value={order.updated_at ? new Date(order.updated_at).toLocaleString() : '—'} />
         </DetailCard>
-
 
         <DetailCard title="Cliente">
           <InfoRow label="Nombre" value={order.customer_name || order.user_name || '—'} />

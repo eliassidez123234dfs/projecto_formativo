@@ -36,6 +36,7 @@ import sys
 # Los secretos y valores específicos del entorno se inyectan desde .env,
 # evitando datos sensibles en el repositorio.
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 env: Any = environ.Env()
 
@@ -215,46 +216,132 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = 100  # Reciclar worker después de 100 tarea
 
 
 # =============================================================================
-#  MIDDLEWARE — CADENA DE PROCESAMIENTO HTTP
-#  Cada middleware es un "filtro" por el que pasa toda petición/respuesta.
-#  El orden es CRUCIAL: las capas externas (seguridad, CORS, request ID)
-#  deben ejecutarse antes que las internas (sesión, auth, mensajes).
+#  ████████████████████████████████████████████████████████
+#  LAS 4 CAPAS DE SEGURIDAD — IMPLEMENTACIÓN EN DJANGO
+#  ████████████████████████████████████████████████████████
+#
+#  CAPA 1 — RED (Network Layer)
+#  ─────────────────────────────
+#  Protege el canal de comunicación entre cliente y servidor.
+#  Implementado en: middleware.py (RequestIDMiddleware,
+#                   ContentSecurityPolicyMiddleware) + CorsMiddleware
+#  Controles:
+#    * CORS: solo orígenes autorizados pueden hacer peticiones cross-origin
+#    * CSP (Content-Security-Policy): restringe recursos externos (anti-XSS)
+#    * X-Content-Type-Options: previene MIME sniffing
+#    * Referrer-Policy: controla info enviada en el header Referer
+#    * HTTPS/TLS: SecurityMiddleware redirige HTTP → HTTPS en producción
+#    * HSTS: SECURE_HSTS_SECONDS fuerza HTTPS durante N segundos
+#
+#  CAPA 2 — SERVIDOR (Server Layer)
+#  ───────────────────────────────────
+#  Protege la infraestructura del servidor web.
+#  Implementado en: SecurityMiddleware, XFrameOptionsMiddleware,
+#                   WhiteNoise, throttling en DRF
+#  Controles:
+#    * X-Frame-Options: DENY → anti-clickjacking
+#    * Throttling (AnonRateThrottle): limita peticiones anónimas (anti-DDoS)
+#    * WhiteNoise: sirve archivos estáticos de forma segura sin Nginx
+#    * ExceptionLoggingMiddleware: auditoría de errores del servidor
+#    * SessionMiddleware: sesiones firmadas criptográficamente
+#
+#  CAPA 3 — APLICACIÓN (Application Layer)
+#  ─────────────────────────────────────────
+#  Protege la lógica de negocio y los endpoints de la API.
+#  Implementado en: viewsets.py, admin_viewset.py, serializers.py,
+#                   validators.py, permissions.py
+#  Controles:
+#    * Autenticación JWT (SimpleJWT): tokens firmados con clave secreta
+#    * Autorización por roles (AdminPermission): acceso según rol de usuario
+#    * CSRF Protection (CsrfViewMiddleware): token anti-CSRF en formularios
+#    * Validaciones con Regex (validators.py): sanitización de entradas
+#    * Auditoría de acciones (Log_Auditoria): trazabilidad de operaciones
+#    * Mass Assignment bloqueado: campos protegidos en Serializers (read_only)
+#    * Bloqueo de cuenta: 5 intentos fallidos → estado 'Bloqueado' (RN-010)
+#
+#  CAPA 4 — BASE DE DATOS (Database Layer)
+#  ─────────────────────────────────────────
+#  Protege la integridad, confidencialidad y disponibilidad de los datos.
+#  Implementado en: models.py, ORM Django, validators.py
+#  Controles:
+#    * ORM Django: previene SQL Injection (consultas parametrizadas automáticas)
+#    * Hashing de contraseñas: bcrypt/PBKDF2 via make_password / check_password
+#    * Soft Delete: los registros nunca se eliminan físicamente (trazabilidad)
+#    * Tokens de un solo uso: Token_Verificacion.usado = True después de usarse
+#    * Índices únicos: usuario y correo únicos en BD (integridad referencial)
+#    * Log_Auditoria: tabla separada de solo-escritura con historial de cambios
 #
 #  PATRÓN DE DISEÑO: Chain of Responsibility / Pipeline
-#  Cada middleware decide si procesa la request, la modifica, o la pasa
-#  al siguiente. La respuesta viaja en sentido inverso por la misma cadena.
+#  Cada middleware decide si procesa, modifica o pasa la request/response.
+#  La respuesta viaja en sentido INVERSO por la misma cadena.
+#  Referencia: Gang of Four (GoF) - Behavioral Patterns
 #
-#  Flujo (orden de ejecución):
-#  1. RequestIDMiddleware — Asigna UUID único a cada request (trazabilidad)
-#  2. CorsMiddleware — Cabeceras CORS para peticiones cross-origin
-#  3. SecurityMiddleware — HTTPS, HSTS, cabeceras de seguridad básicas
-#  4. SessionMiddleware — Restaura/crea sesión vía cookie
-#  5. CommonMiddleware — URL rewriting y redirects
-#  6. CsrfViewMiddleware — Protección CSRF en formularios POST
-#  7. AuthenticationMiddleware — Asocia request.user (sesión Django)
-#  8. MessageMiddleware — Mensajes flash entre requests
-#  9. XFrameOptionsMiddleware — Protección contra clickjacking (X-Frame-Options)
-#  10. ContentSecurityPolicyMiddleware — CSP personalizada (previene XSS)
-#  11. ExceptionLoggingMiddleware — Captura y logea excepciones no manejadas
+#  Flujo de ejecución (orden de capas externas → internas):
+#  ┌─────────────────────────────────────────────────────────┐
+#  │  1. RequestIDMiddleware    [CAPA 1-RED]   Trazabilidad  │
+#  │  2. CorsMiddleware         [CAPA 1-RED]   CORS          │
+#  │  3. SecurityMiddleware     [CAPA 2-SVDR]  HTTPS/HSTS    │
+#  │  4. WhiteNoiseMiddleware   [CAPA 2-SVDR]  Archivos est. │
+#  │  5. SessionMiddleware      [CAPA 2-SVDR]  Sesiones      │
+#  │  6. CommonMiddleware       [CAPA 2-SVDR]  URL rewrites  │
+#  │  7. CsrfViewMiddleware     [CAPA 3-APP]   Anti-CSRF     │
+#  │  8. AuthenticationMiddleware[CAPA 3-APP]  Auth Django   │
+#  │  9. MessageMiddleware      [CAPA 3-APP]   Flash msgs    │
+#  │ 10. XFrameOptionsMiddleware[CAPA 1-RED]   Clickjacking  │
+#  │ 11. ContentSecurityPolicy  [CAPA 1-RED]   CSP+headers   │
+#  │ 12. ExceptionLogging       [CAPA 2-SVDR]  Auditoría err │
+#  └─────────────────────────────────────────────────────────┘
 #
 #  RN-017: Seguridad HTTP (HSTS, CSP, XSS, Content-Type)
 # =============================================================================
 MIDDLEWARE = [
+    # [CAPA 1 — RED] Trazabilidad: asigna UUID único a cada request
     'apps.users.middleware.RequestIDMiddleware',
+    # [CAPA 1 — RED] CORS: solo orígenes autorizados (CORS_ALLOWED_ORIGINS)
     'corsheaders.middleware.CorsMiddleware',
+    # [CAPA 2 — SERVIDOR] HTTPS redirect, HSTS, secure cookies en producción
     'django.middleware.security.SecurityMiddleware',
+    # [CAPA 2 — SERVIDOR] Sirve archivos estáticos de forma segura
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    # [CAPA 2 — SERVIDOR] Gestión de sesiones firmadas criptográficamente
     'django.contrib.sessions.middleware.SessionMiddleware',
+    # [CAPA 2 — SERVIDOR] URL normalization y redirects
     'django.middleware.common.CommonMiddleware',
+    # [CAPA 3 — APLICACIÓN] Protección CSRF en formularios POST
     'django.middleware.csrf.CsrfViewMiddleware',
+    # [CAPA 3 — APLICACIÓN] Asocia request.user al usuario autenticado
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # [CAPA 3 — APLICACIÓN] Mensajes flash entre requests
     'django.contrib.messages.middleware.MessageMiddleware',
+    # [CAPA 1 — RED] Anti-clickjacking: X-Frame-Options header
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # [CAPA 1 — RED] CSP + X-Content-Type-Options + Referrer-Policy
     'apps.users.middleware.ContentSecurityPolicyMiddleware',
+    # [CAPA 2 — SERVIDOR] Auditoría y logging de excepciones no manejadas
     'apps.users.middleware.ExceptionLoggingMiddleware',
 ]
 
+# =============================================================================
+#  CAPA 2 — SERVIDOR: Configuración de seguridad del servidor
+#  Estas variables son leídas por SecurityMiddleware de Django.
+#  Aplican en producción (cuando DEBUG=False).
+# =============================================================================
+# Anti-MIME sniffing: el navegador NO puede reinterpretar el tipo de archivo
+SECURE_CONTENT_TYPE_NOSNIFF = True
+# Anti-clickjacking: niega el embebido de la app en iframes externos
+X_FRAME_OPTIONS = 'DENY'
+# Cookies de sesión solo por HTTPS (activo en producción)
+SESSION_COOKIE_SECURE = not DEBUG
+# Cookies CSRF solo por HTTPS (activo en producción)
+CSRF_COOKIE_SECURE = not DEBUG
+# HSTS: fuerza HTTPS por 1 año en producción (0 en desarrollo para no bloquear)
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+# HSTS también para subdominios
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+# =============================================================================
+
 ROOT_URLCONF = 'config.urls'
+
 
 TEMPLATES = [
     {
@@ -490,13 +577,7 @@ SIMPLE_JWT = {
     'TOKEN_USER_CLASS': 'apps.users.Usuario',
 }
 
-# =============================================================================
-#  CORS (CROSS-ORIGIN RESOURCE SHARING) — RN-015
-#  Permite que el frontend React (Vite en localhost, Vercel/Render en prod)
-#  consuma la API desde un ORIGEN diferente (cross-origin).
-#  Sin CORS, el navegador bloquearía las peticiones por política del mismo origen.
-#  CORS_ALLOW_CREDENTIALS=True habilita cookies httpOnly para JWT.
-# =============================================================================
+# CORS configuration
 CORS_ALLOWED_ORIGINS = env.list(
     'CORS_ALLOWED_ORIGINS',
     default=[
@@ -506,10 +587,9 @@ CORS_ALLOWED_ORIGINS = env.list(
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
-        'http://192.168.1.93:5173',
-        'http://192.168.137.7:5173',
-    ]
+    ],
 )
+
 CORS_ALLOW_CREDENTIALS = True
 
 # =============================================================================
@@ -534,7 +614,10 @@ SECURE_REFERRER_POLICY = 'same-origin'
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# SameSite/ Secure cookies: HTTP (dev) -> Lax, HTTPS (prod) -> None + Secure
+# SameSite/ Secure cookies
+# En desarrollo todos los servicios usan 127.0.0.1, por lo que Lax permite
+# compartir la sesión entre puertos sin que el navegador rechace la cookie.
+# En producción, los dominios HTTPS requieren None + Secure.
 if DEBUG:
     SESSION_COOKIE_SAMESITE = 'Lax'
     CSRF_COOKIE_SAMESITE = 'Lax'
@@ -546,17 +629,20 @@ else:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-# =============================================================================
-#  URLs del Frontend y Backend
-#  Se usan para construir enlaces en correos electrónicos (verificación,
-#  restablecimiento de contraseña) y redirecciones post-pago.
-# =============================================================================
-FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
-BACKEND_URL = env('BACKEND_URL', default='http://localhost:8000')
+SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=31536000 if not DEBUG else 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=not DEBUG)
+SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', default=not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_HTTPONLY = True
+
+# URLs para enlaces en emails
+FRONTEND_URL = env('FRONTEND_URL', default='http://127.0.0.1:5173')
+BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8000')
 
 # =============================================================================
 #  CORREO ELECTRÓNICO — EmailService
-#  Soporta EMAIL_BACKEND=console|smtp o la clase Django completa en .env.
+#  Soporta Resend mediante RESEND_API_KEY y, como fallback local, EMAIL_BACKEND.
 #  Usado por EmailService (services/email_service.py) para:
 #  - Verificación de email al registrarse (RF-003)
 #  - Recuperación de contraseña (RF-009)
@@ -564,6 +650,7 @@ BACKEND_URL = env('BACKEND_URL', default='http://localhost:8000')
 #  - Notificaciones de contacto (RF-031)
 # =============================================================================
 _email_backend_env = env('EMAIL_BACKEND', default='').strip()
+RESEND_API_KEY = env('RESEND_API_KEY', default='')
 if _email_backend_env.lower() == 'console':
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 elif _email_backend_env.lower() == 'smtp':
@@ -583,7 +670,7 @@ EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
 EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=10)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='onboarding@resend.dev')
 
 # =============================================================================
 #  MONGODB — BASE DE DATOS NO RELACIONAL (POLYGLOT PERSISTENCE)

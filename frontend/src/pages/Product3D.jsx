@@ -17,6 +17,8 @@ export const Product3D = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [viewMode, setViewMode] = useState('3d')
+  const [selectedSize, setSelectedSize] = useState('')
+  const [selectedColor, setSelectedColor] = useState('')
 
   useEffect(() => {
     if (!id) { setLoading(false); return }
@@ -36,6 +38,22 @@ export const Product3D = () => {
       </div>
     )
   }
+
+  const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor);
+
+  const openEditor = () => {
+    const base = import.meta.env.VITE_TSHIRT3D_URL || (
+      import.meta.env.DEV ? 'http://127.0.0.1:5174/' : '/editor/'
+    );
+    const qs = new URLSearchParams({ mode });
+    if (id) qs.set('productId', id);
+    if (selectedVariant) {
+      qs.set('variantId', String(selectedVariant.id));
+      if (selectedVariant.color_hex) qs.set('color', selectedVariant.color_hex);
+      qs.set('colorName', selectedVariant.color);
+    }
+    window.open(`${base}?${qs.toString()}`, '_blank');
+  };
 
   return (
     <div className="container py-4">

@@ -22,6 +22,30 @@ import threading
 
 from django.utils.deprecation import MiddlewareMixin
 
+# =============================================================================
+#  ██████╗ █████╗ ██████╗  █████╗     ██████╗ ███████╗██████╗
+# ██╔════╝██╔══██╗██╔══██╗██╔══██╗    ██╔══██╗██╔════╝██╔══██╗
+# ██║     ███████║██████╔╝███████║    ██████╔╝█████╗  ██║  ██║
+# ██║     ██╔══██║██╔═══╝ ██╔══██║    ██╔══██╗██╔══╝  ██║  ██║
+# ╚██████╗██║  ██║██║     ██║  ██║    ██║  ██║███████╗██████╔╝
+#  ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝    ╚═╝  ╚═╝╚══════╝╚═════╝
+#
+#  CAPA 1 — RED (Network Security Layer)
+#  ============================================
+#  Esta capa defiende la aplicación a nivel de protocolo HTTP y transporte.
+#  Responsabilidades:
+#    - Asignar identificador único a cada request (trazabilidad / correlación
+#      de logs entre cliente y servidor).
+#    - Agregar headers HTTP de seguridad que el NAVEGADOR interpreta para
+#      proteger al usuario:
+#        * Content-Security-Policy (CSP)   → Previene XSS
+#        * X-Content-Type-Options          → Previene MIME sniffing
+#        * Referrer-Policy                 → Controla info de referrer
+#        * X-Frame-Options                 → Anti-clickjacking (también en
+#                                            settings.py vía Django)
+#  Referencias: OWASP Top 10 A05-Security Misconfiguration, MDN HTTP Headers
+# =============================================================================
+
 logger = logging.getLogger(__name__)
 
 # ── Almacén thread-local para el request_id ──
@@ -101,9 +125,27 @@ class ExceptionLoggingMiddleware(MiddlewareMixin):
 # Patrón: Chain of Responsibility (process_response).
 # ─────────────────────────────────────────────────────────────────────────────
 class ContentSecurityPolicyMiddleware(MiddlewareMixin):
-    """Agrega el header Content-Security-Policy a todas las respuestas para mitigar XSS y ataques de inyección de contenido."""
+    """
+    [CAPA 1 — RED] Agrega headers HTTP de seguridad a TODAS las respuestas.
+
+    Headers implementados:
+      - Content-Security-Policy (CSP): Restringe recursos que el navegador
+        puede cargar, mitigando XSS e inyección de contenido.
+        OWASP A03: Injection.
+      - X-Content-Type-Options: Impide que el navegador realice MIME sniffing
+        y ejecute archivos como un tipo diferente al declarado.
+        (Ejemplo: evita que un .txt se ejecute como JavaScript.)
+        OWASP A05: Security Misconfiguration.
+      - Referrer-Policy: Controla qué información de URL se envía en el header
+        Referer al navegar entre páginas o hacer peticiones externas.
+        'strict-origin-when-cross-origin' envía origen solo en HTTPS
+        y nada en HTTP. Protege tokens o datos en la URL.
+
+    Patrón: Chain of Responsibility (process_response).
+    """
 
     def process_response(self, request, response):
+        # ── Content-Security-Policy (CAPA RED — Anti-XSS) ──
         csp = (
             "default-src 'self'; "
             "script-src 'self'; "
@@ -117,4 +159,12 @@ class ContentSecurityPolicyMiddleware(MiddlewareMixin):
             "form-action 'self' https://sandbox.wompi.co; "
         )
         response['Content-Security-Policy'] = csp
+
+        # ── X-Content-Type-Options (CAPA RED — Anti-MIME Sniffing) ──
+        response['X-Content-Type-Options'] = 'nosniff'
+
+        # ── Referrer-Policy (CAPA RED — Control de fuga de info de URL) ──
+        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
         return response
+

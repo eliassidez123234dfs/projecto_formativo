@@ -22,6 +22,7 @@
 import { getAccessToken } from '../services/authService';
 import { buildApiUrl } from '../services/api';
 
+// ─── CONSTANTE: URL BASE DEL EDITOR ───
 export const EDITOR_BASE_URL = import.meta.env.VITE_EDITOR_3D_URL || 'http://127.0.0.1:5174/';
 
 /** Hex por defecto usado cuando la variante no trae color_hex. */
@@ -34,6 +35,8 @@ export const COLOR_FALLBACK = '#6B7280';
  * del editor por ser el mismo sitio).
  * @returns {Promise<object>} respuesta del backend si fue exitosa
  */
+// ─── FUNCIÓN: GUARDAR SESIÓN DEL EDITOR EN BACKEND ───
+// Almacena productId, variantId y quantity en la sesión del servidor.
 async function saveEditorSession({ productId, variant, quantity }) {
   const headers = { 'Content-Type': 'application/json' };
   const accessToken = getAccessToken();
@@ -67,8 +70,11 @@ async function saveEditorSession({ productId, variant, quantity }) {
  * Construye la URL del editor 3D SOLO con parámetros de UI (no sensibles).
  * Los datos sensibles se recuperan del backend vía sesión.
  */
-export function buildEditorUrl({ variant, mode = 'new' }) {
+// ─── FUNCIÓN: CONSTRUIR URL DEL EDITOR ───
+// Solo incluye parámetros de UI (color, talla, modo), nunca datos sensibles.
+export function buildEditorUrl({ variant, mode = 'new', sessionToken }) {
   const qs = new URLSearchParams({ mode });
+  if (sessionToken) qs.set('sessionToken', sessionToken);
   if (variant) {
     if (variant.color_hex) qs.set('color', variant.color_hex);
     if (variant.color) qs.set('colorName', variant.color);
@@ -85,8 +91,10 @@ export function buildEditorUrl({ variant, mode = 'new' }) {
  *
  * @throws {Error} si la sesión no se pudo guardar o validar.
  */
+// ─── FUNCIÓN PÚBLICA: ABRIR EDITOR 3D ───
+// Guarda sesión en backend → construye URL → abre pestaña nueva.
 export async function openEditor({ productId, variant, quantity = 1, mode = 'new' }) {
-  await saveEditorSession({ productId, variant, quantity });
-  const url = buildEditorUrl({ variant, mode });
+  const session = await saveEditorSession({ productId, variant, quantity });
+  const url = buildEditorUrl({ variant, mode, sessionToken: session.sessionToken });
   return window.open(url, '_blank', 'noopener,noreferrer');
 }

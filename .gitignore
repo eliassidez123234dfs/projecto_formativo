@@ -1,14 +1,8 @@
 # =============================================================================
-<<<<<<< HEAD
-# .gitignore unificado – Python, Django, Node, React, macOS, Linux, IDEs, IA
+# .gitignore unificado - Python, Django, Node, React, macOS, Linux e IDEs
 # =============================================================================
 
-# Solo subir uno de estos dos al repositorio, dependiendo del gestor de paquetes que se use:
-# package-lock.json
-# yarn.lock
-=======
-#  Seguridad y secretos
-# =============================================================================
+# Seguridad y secretos
 .env
 .env.*
 !.env.example
@@ -36,6 +30,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 db.sqlite3.backup
+db.sqlite3.backup-*
 *.sql
 *.sql.gz
 *.dump
@@ -46,7 +41,6 @@ static_root/
 *.log
 
 # =============================================================================
-<<<<<<< HEAD
 # Sistemas operativos
 # =============================================================================
 # Linux

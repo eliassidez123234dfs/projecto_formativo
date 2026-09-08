@@ -55,11 +55,12 @@ cp .env.example .env
 Para poblar la base de datos con productos, categorías y un usuario admin de ejemplo:
 
 ```
-cd backend  
-python manage.py loaddata  
-python manage.py load\_sample\_data  
-python manage.py seed\_all
+cd backend
+python manage.py seed_all
 ```
+
+`.
+`loaddata` necesita el nombre de un fixture y no se ejecuta sin argumentos. `load_sample_data.py` es un script independiente y opcional; si necesitas sus imágenes, ejecútalo desde `backend` con `python load_sample_data.py`. Para la carga normal del proyecto usa `python manage.py seed_all`.
 
 Esto crea:
 
@@ -81,9 +82,9 @@ cd backend
   
 # 2. Crear y activar entorno virtual  
 python -m venv venv
-# Dependiendo de la version de Python y la configuracion puede ser:
-# python -m venv venv 
-.\venv\Scripts\Activate.ps1  # Windows
+# Linux/macOS:
+source venv/bin/activate
+# Windows PowerShell: .\venv\Scripts\Activate.ps1
   
 # 3. Actualizar pip e instalar dependencias  
 python -m pip install --upgrade pip   
@@ -94,8 +95,10 @@ pip install -r requirements.txt
 # Copiar .env.example a .env en la RAÍZ del proyecto y completar los valores  
   
 # 5. Ejecutar migraciones  
-python manage.py makemigrations # solo la primera vez
-python manage.py showmigrations  
+# solo la primera vez:
+# python manage.py makemigrations 
+# Opcional para ver mirgraciones: 
+# python manage.py showmigrations  
 python manage.py migrate  
   
 # 6. Crear superusuario (opcional)  
@@ -105,12 +108,12 @@ python manage.py createsuperuser
 # DJANGO_SUPERUSER_PASSWORD="Red2026!" DJANGO_SUPERUSER_EMAIL="admin@red.com" 
 #   python manage.py createsuperuser --usuario admin --noinput  
   
-# 7. Poblar base de datos con datos de prueba (opcional)  
-python manage.py loaddata  
-python manage.py load_sample_data  
-python manage.py seed_all  
+# 7. Poblar base de datos con datos de prueba (opcional)
+python manage.py seed_all
+# Opcional: cargar el script histórico de imágenes desde backend
+# python load_sample_data.py
   
-# 8. Iniciar servidor de desarrollo  
+# 8. Iniciar servidor de desarrollo
 python manage.py runserver
 ```
 
@@ -228,9 +231,9 @@ python manage.py collectstatic
 python manage.py test  
   
 # Seed de datos de prueba  
-python manage.py seed\_products  
-python manage.py seed\_users  
-python manage.py seed\_all \# los dos comandos anteriores juntos hacen lo mismo que este  
+python manage.py seed_products  
+python manage.py seed_users  
+python manage.py seed_all # los dos comandos anteriores juntos hacen lo mismo que este  
   
 # Verificar el proyecto  
 python manage.py check
@@ -313,15 +316,14 @@ python manage.py migrate
 
 
 ```
-# Borra todas las tablas (datos, no estructura). Después corres seed\_all de nuevo.  
+# Borra todas las tablas (datos, no estructura). Después corres seed\_all de nuevo.
 python manage.py flush --noinput  
-  
-# Alternativa manual si quieres borrar todo + migrations:  
-Remove-Item -Path db.sqlite3 -Force  
+
+# Alternativa manual en Linux/macOS para borrar todo + migraciones:
+rm -f db.sqlite3
 python manage.py migrate  
-python manage.py loaddata  
-python manage.py load_sample_data  
 python manage.py seed_all
+python load_sample_data.py
 ```
 
 ## 24.9 Configuracion de Envio de Correos (Consola vs SMTP Real)

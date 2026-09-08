@@ -1,15 +1,32 @@
+/**
+ * CartContext.jsx — Contexto global del carrito de compras.
+ *
+ * Proporciona estado y operaciones del carrito a toda la aplicación:
+ * - cart: estado actual (items, total_items, total_amount).
+ * - addItem, updateQuantity, removeItem, clearCartItems: operaciones CRUD.
+ * - loadCart: recarga el carrito desde el backend.
+ *
+ * Decisiones de diseño:
+ * - Optimistic updates: cada operación actualiza el estado local inmediatamente
+ *   usando la respuesta del POST/PATCH/DELETE, sin recargar el carrito completo.
+ * - Si la operación falla con 404 (item stale), recarga el carrito completo.
+ * - El carrito se carga automáticamente al montar el provider.
+ * - Se usa cookie de sesión (no JWT) para las operaciones del carrito.
+ */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { fetchCart, addToCart, updateCartItemQuantity, removeCartItem, clearCart as clearCartApi } from '../services/api';
 
+// ─── CREACIÓN DEL CONTEXTO ───
 const CartContext = createContext();
 
 export const useCart = () => useContext(CartContext);
 
+// ─── PROVIDER DEL CARRITO ───
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState({ items: [], total_items: 0, total_amount: '0.00' });
   const [loading, setLoading] = useState(false);
 
-  // Cargar el carrito al iniciar (si hay sesión)
+  // ─── CARGA DEL CARRITO ───
   const loadCart = useCallback(async () => {
     try {
       setLoading(true);
@@ -26,7 +43,7 @@ export const CartProvider = ({ children }) => {
     loadCart();
   }, [loadCart]);
 
-  // Agregar producto al carrito usando solo la respuesta del POST
+  // ─── OPERACIÓN: AGREGAR ITEM ───
   const addItem = async (productId, variantId, quantity = 1) => {
     try {
       const response = await addToCart(productId, variantId, quantity);
@@ -60,6 +77,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  // ─── OPERACIÓN: ACTUALIZAR CANTIDAD ───
   const updateQuantity = async (itemId, quantity) => {
     try {
       const updatedItem = await updateCartItemQuantity(itemId, quantity);
@@ -80,6 +98,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  // ─── OPERACIÓN: ELIMINAR ITEM ───
   const removeItem = async (itemId) => {
     try {
       await removeCartItem(itemId);
@@ -98,6 +117,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  // ─── OPERACIÓN: VACIAR CARRITO ───
   const clearCartItems = async () => {
     try {
       await clearCartApi();
@@ -107,6 +127,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  // ─── PROVIDER: EXPONER ESTADO Y ACCIONES ───
   return (
     <CartContext.Provider value={{ cart, loading, addItem, updateQuantity, removeItem, clearCartItems, loadCart }}>
       {children}

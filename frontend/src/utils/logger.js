@@ -5,6 +5,9 @@ const MAX_MESSAGE = 300;
 let queue = [];
 let timer = null;
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api/').replace(/\/+$/, '');
+const CLIENT_LOG_URL = `${API_BASE_URL}/logging/client/`;
+
 function sanitize(err) {
   const entry = {
     type: 'Error',
@@ -36,10 +39,10 @@ function flush() {
   if (!queue.length) return;
   const batch = queue.splice(0);
   try {
-    fetch('/api/logging/client/', {
+    fetch(CLIENT_LOG_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
+      credentials: 'omit',
       body: JSON.stringify({ errors: batch }),
     }).catch(() => {});
   } catch (e) {

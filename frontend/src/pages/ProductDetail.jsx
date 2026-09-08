@@ -1,3 +1,19 @@
+/**
+ * ProductDetail.jsx — Página de detalle de un producto individual.
+ *
+ * Secciones:
+ * 1. Estado de carga (skeleton) y estado de error.
+ * 2. Galería de imágenes con thumbnails interactivos.
+ * 3. Información del producto: nombre, precio, categorías, stock.
+ * 4. Selector de variantes (talla/color) con chips interactivos.
+ * 5. Control de cantidad y botones de acción (agregar al carrito / editor 3D).
+ * 6. Descripción colapsable y productos relacionados.
+ *
+ * Decisiones de diseño:
+ * - Las variantes se filtran en cascada: talla → colores disponibles → variante seleccionada.
+ * - Al agregar al carrito se refresca el stock del producto ( actualizar disponibilidad).
+ * - El editor 3D se abre en pestaña nueva tras guardar sesión en backend.
+ */
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -13,6 +29,7 @@ import { useAddAttemptGuard, extractCartError } from '../utils/cartLimits';
 import { AddToCartModal } from '../components/catalog/AddToCartModal';
 import ErrorState from '../components/ErrorState';
 
+// ─── COMPONENTE PRINCIPAL ───
 export const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,7 +46,8 @@ export const ProductDetail = () => {
   const [show3DModal, setShow3DModal] = useState(false);
   const { maxReached, registerFailure, clearAlerts } = useAddAttemptGuard();
 
-  useEffect(() => {
+// ─── CARGA DEL PRODUCTO ───
+useEffect(() => {
     const loadProduct = async () => {
       try {
         setLoading(true);
@@ -69,14 +87,16 @@ export const ProductDetail = () => {
     loadProduct();
   }, [id]);
 
-  const sizes = [...new Set(product?.variants?.map(v => v.size) || [])];
+// ─── VARIANTES: CÁLCULOS DERIVADOS ───
+const sizes = [...new Set(product?.variants?.map(v => v.size) || [])];
 
   const colorsInSize = product?.variants?.filter(v => v.size === selectedSize) || [];
   const colors = [...new Set(colorsInSize.map(v => v.color))];
 
   const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor);
 
-  function selectSize(size) {
+// ─── HANDLERS DE SELECCIÓN ───
+function selectSize(size) {
     setSelectedSize(size);
     const firstColor = product?.variants?.find(v => v.size === size)?.color;
     setSelectedColor(firstColor || '');
@@ -102,7 +122,7 @@ export const ProductDetail = () => {
   };
 
   /**
-   * Maneja el proceso de agregar un producto al carrito:
+   * Handler: Agregar al carrito
    * 1. Verifica si la variante seleccionada cuenta con inventario disponible.
    * 2. Si no hay stock, muestra error y redirige a la página principal (evita spam).
    * 3. Si se agrega exitosamente, notifica al usuario y redirige al catálogo.
@@ -156,12 +176,14 @@ export const ProductDetail = () => {
     }
   };
 
-  const handleQuantityChange = (newQty) => {
+// ─── HANDLER: CAMBIO DE CANTIDAD ───
+const handleQuantityChange = (newQty) => {
     const stock = selectedVariant?.stock || 1;
     if (newQty >= 1 && newQty <= stock) setQuantity(newQty);
   };
 
-  const handleOpen3D = async (variant, qty) => {
+// ─── HANDLER: ABRIR EDITOR 3D ───
+const handleOpen3D = async (variant, qty) => {
     if (!requireAuth()) return;
     try {
       await openEditor({ productId: product.id, variant, quantity: qty, mode: 'new' });
@@ -170,7 +192,9 @@ export const ProductDetail = () => {
     }
   };
 
-  function colorToHex(color) {
+// ─── UTILIDADES DE COLOR ───
+function colorToHex(color) {
+    if (!color) return '#6B7280';
     const map = {
       rojo: '#DC2626', rojo_oscuro: '#991B1B', rojo_claro: '#FCA5A5',
       azul: '#2563EB', azul_oscuro: '#1E3A5F', azul_claro: '#93C5FD',
@@ -201,6 +225,7 @@ export const ProductDetail = () => {
 
   const r = 'var(--color-primary)';
 
+  // ─── ESTADO: CARGANDO ───
   if (loading) {
     return (
       <>
@@ -225,6 +250,7 @@ export const ProductDetail = () => {
     );
   }
 
+  // ─── ESTADO: ERROR O NO ENCONTRADO ───
   if (error || !product) {
     return (
       <>
@@ -250,7 +276,8 @@ export const ProductDetail = () => {
         </Link>
 
         <div className="pd-layout">
-          <div className="pd-gallery">
+          {/* ─── GALERÍA DE IMÁGENES ─── */}
+        <div className="pd-gallery">
             <div className="pd-main-image">
               {mainImage ? (
                 <img src={mainImage} alt={product.name} onError={(e) => { e.target.src = DEFAULT_IMAGE; e.target.style.objectFit = 'contain'; }} />
@@ -276,6 +303,7 @@ export const ProductDetail = () => {
             )}
           </div>
 
+          {/* ─── INFORMACIÓN DEL PRODUCTO ─── */}
           <div className="pd-info">
             {product.categories?.length > 0 && (
               <div className="pd-cats">

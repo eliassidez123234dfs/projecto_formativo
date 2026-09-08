@@ -1,3 +1,17 @@
+/**
+ * errorCatalog.js — Catálogo centralizado de errores HTTP para el frontend.
+ *
+ * Mapea códigos de estado HTTP a mensajes amigables en español e inglés,
+ * tanto para el usuario final como para el desarrollador (debug).
+ *
+ * Decisiones de diseño:
+ * - Separa mensajes de usuario (es/en) de mensajes de desarrollador (devEs/devEn).
+ * - Incluye fallback genérico para códigos no catalogados.
+ * - Se usa en componentes ErrorState y ErrorBoundary para mostrar errores consistentes.
+ * - Los mensajes de usuario son accionables (incluyen pasos a seguir).
+ */
+
+// ─── CATALOGO DE ERRORES HTTP CONOCIDOS ───
 const KNOWN_STATUSES = {
   400: {
     name: 'Solicitud no válida',
@@ -64,6 +78,7 @@ const KNOWN_STATUSES = {
   },
 };
 
+// ─── MENSAJE FALLBACK PARA ERRORES NO CATALOGADOS ───
 const FALLBACK = {
   name: 'Error inesperado',
   es: 'Ocurrió un error inesperado. Recarga la página e intenta de nuevo. Si el problema continúa, contacta a los administradores.',
@@ -72,6 +87,7 @@ const FALLBACK = {
   devEn: 'An error occurred without an associated HTTP status code. Check the browser console and the backend log files.',
 };
 
+// ─── FUNCIÓN PÚBLICA: OBTENER INFO DE ERROR ───
 export function getErrorInfo(status) {
   if (status && KNOWN_STATUSES[status]) return KNOWN_STATUSES[status];
   return FALLBACK;

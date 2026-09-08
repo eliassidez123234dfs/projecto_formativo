@@ -1,4 +1,17 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+/**
+ * App.jsx — Componente raíz de la aplicación React.
+ *
+ * Define la estructura completa de rutas y los proveedores globales.
+ * Árbol de componentes: ThemeProvider → CartProvider → BrowserRouter → ErrorBoundary → Routes
+ *
+ * Decisiones de diseño:
+ * - ThemeProvider y CartProvider envuelven toda la app para acceso global.
+ * - ErrorBoundary captura errores no controlados en cualquier ruta.
+ * - ProtectedRoute protege las rutas de administración.
+ * - EditorRedirect redirige /editor/* al microservicio Tshirt3D externo.
+ */
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CartProvider } from './context/CartContext';
@@ -32,8 +45,23 @@ import AdminOrderDetail from './pages/AdminOrderDetail';
 import AdminProductApproval from './pages/AdminProductApproval';
 import AdminCloudinary from './pages/AdminCloudinary';
 import UserProfile from './pages/UserProfile';
+import UserOrders from './pages/UserOrders';
 import CheckoutPage from './pages/CheckoutPage';
 
+// ─── REDIRECCIÓN AL EDITOR 3D ───
+// Redirige /editor/* al microservicio externo Tshirt3D (puerto 5174 en dev).
+function EditorRedirect() {
+  useEffect(() => {
+    const editorUrl = import.meta.env.VITE_TSHIRT3D_URL || (
+      import.meta.env.DEV ? 'http://127.0.0.1:5174/' : '/editor/'
+    );
+    window.location.replace(`${editorUrl}${window.location.search}`);
+  }, []);
+
+  return null;
+}
+
+// ─── COMPONENTE PRINCIPAL ───
 function App() {
   return (
     <ThemeProvider>
@@ -59,7 +87,7 @@ function App() {
           />
           <ScrollTopButton />
           <Routes>
-            {/* Rutas existentes de integracion-total */}
+            {/* ─── RUTAS PÚBLICAS ─── */}
             <Route path="/" element={<Landing />} />
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/category/:id" element={<Category />} />
@@ -69,13 +97,14 @@ function App() {
             <Route path="/register" element={<AuthPage defaultMode="register" />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/perfil" element={<UserProfile />} />
+            <Route path="/perfilpedidos" element={<UserOrders />} />
             <Route path="/email" element={<VerificarEmail />} />
             <Route path="/verificar-email" element={<VerificarEmail />} />
             <Route path="/verificar-email-pendiente" element={<VerificacionPendiente />} />
             <Route path="/password" element={<RecuperarPassword />} />
             <Route path="/nueva-password" element={<NuevaPassword />} />
 
-            {/* Rutas admin protegidas */}
+            {/* ─── RUTAS ADMIN PROTEGIDAS ─── */}
             <Route element={<ProtectedRoute />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin-products" element={<AdminProducts />} />
@@ -92,8 +121,11 @@ function App() {
             </Route>
             <Route path="/checkout" element={<CheckoutPage />} />
 
+            <Route path="/editor/*" element={<EditorRedirect />} />
+
             {/* Opcional: si quieres mantener también /catalogo como alias de /catalog */}
             <Route path="/catalogo" element={<Catalog />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </ErrorBoundary>
         </BrowserRouter>

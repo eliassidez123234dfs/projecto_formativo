@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { fetchAdminStats, fetchProductAdmin, toggleProductActive } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
 import ProductList from '../components/ProductList'
@@ -80,7 +81,18 @@ export default function AdminProducts() {
 
       <div className="admin-toolbar">
         <div className="admin-toolbar-left" />
-        <div className="admin-toolbar-right">
+        <div className="admin-toolbar-right" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Link
+            to="/admin-products/approval"
+            className="btn btn-secondary"
+            title="Revisar solicitudes de aprobación de productos"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            Aprobaciones {stats.pending > 0 && `(${stats.pending})`}
+          </Link>
           <button
             className="btn btn-primary"
             onClick={() => { setEditingProduct(null); setShowForm(true) }}

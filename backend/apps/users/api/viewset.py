@@ -1,3 +1,16 @@
+"""
+ViewSet de Usuarios — Módulo de autenticación y gestión de perfil.
+
+Proporciona endpoints para:
+  - Registro de nuevos usuarios con verificación de email.
+  - Autenticación JWT (login/logout).
+  - Recuperación de contraseña por token.
+  - Gestión del perfil propio (lectura, actualización, cambio de contraseña).
+
+Patrón de diseño: ViewSet (DRF) con acciones personalizadas (@action).
+Cada ViewSet encapsula un dominio de usuario específico y maneja su
+propia lógica de transacciones y comunicación por email.
+"""
 import logging
 
 from rest_framework import viewsets, status, permissions, mixins
@@ -29,16 +42,30 @@ from .serializers import (
     RecuperacionPasswordSerializer, NuevaPasswordSerializer,
     CambioPasswordSerializer, ActualizarPerfilSerializer, LogAuditoriaSerializer
 )
+from apps.users.services.email_service import EmailService
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# RegistroViewSet — Registro, verificación y recuperación de contraseña
+# ═══════════════════════════════════════════════════════════════════════
 class RegistroViewSet(viewsets.ViewSet):
-    """ViewSet para registro de nuevos usuarios (RF-001, RF-003, RF-009)"""
+    """ViewSet para registro de nuevos usuarios (RF-001, RF-003, RF-009).
+    
+    Acciones públicas (AllowAny, con throttling anti-spam):
+      - registro:              Crear cuenta + enviar email de verificación.
+      - verificar_email:       Activar cuenta con token del correo.
+      - reenviar_verificacion: Reenviar email de verificación (máx 3 en 24h).
+      - recuperar_password:    Solicitar enlace de recuperación (token 1h).
+      - nueva_password:        Establecer nueva contraseña con token.
+    """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AnonRateThrottle]
     
+    # ── Registro de usuario (RF-001) ──
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def registro(self, request):
-        """Endpoint de registro (RF-001)"""
+        """Crea un nuevo usuario en estado 'Inactivo' con email no verificado.
+        Envía email de verificación de forma asíncrona (no bloquea si falla)."""
         serializer = RegistroSerializer(data=request.data)
         if serializer.is_valid():
             with transaction.atomic():
@@ -57,10 +84,11 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Funcion la cual verifica el email
+    # ── Verificación de email (RF-009, RN-004) ──
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def verificar_email(self, request):
-        """Endpoint para verificar email (RF-009)"""
+        """Activa la cuenta marcando email_verificado=True y estado='Activo'.
+        El token de un solo uso se marca como usado después de la verificación."""
         serializer = VerificacionEmailSerializer(data=request.data)
         if serializer.is_valid():
             token = serializer.validated_data['token']
@@ -82,9 +110,11 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    # ── Reenvío de verificación (RF-003, RN-006) ──
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def reenviar_verificacion(self, request):
-        """Endpoint para reenviar email de verificación (RF-003, RN-006)"""
+        """Genera un nuevo token de verificación y reenvía el email.
+        Límite: máximo 3 reenvíos en 24 horas por usuario (RN-006)."""
         serializer = ReenvioVerificacionSerializer(data=request.data)
         if serializer.is_valid():
             usuario = Usuario.objects.get(correo=serializer.validated_data['correo'])
@@ -110,10 +140,11 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
+    # ── Solicitud de recuperación de contraseña (RF-002, RN-005) ──
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def recuperar_password(self, request):
-        """Endpoint para solicitar recuperación de contraseña (RF-002)"""
+        """Crea un token de recuperación (expira en 1 hora) y envía email
+        con enlace al frontend para establecer nueva contraseña."""
         serializer = RecuperacionPasswordSerializer(data=request.data)
         if serializer.is_valid():
             usuario = Usuario.objects.get(correo=serializer.validated_data['correo'])
@@ -139,10 +170,12 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
+    # ── Establecimiento de nueva contraseña (RF-002) ──
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def nueva_password(self, request):
-        """Endpoint para establecer nueva contraseña (RF-002)"""
+        """Establece la nueva contraseña usando el token de recuperación.
+        Resetea intentos fallidos y desbloquea la cuenta si estaba bloqueada.
+        El token se marca como usado (de un solo uso)."""
         serializer = NuevaPasswordSerializer(data=request.data)
         if serializer.is_valid():
             token = serializer.validated_data['token']
@@ -165,23 +198,14 @@ class RegistroViewSet(viewsets.ViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
+    # ── Métodos auxiliares de email ──
     def _send_email(self, asunto, mensaje, destinatarios):
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                destinatarios,
-                fail_silently=False
-            )
-            return True
-        except Exception as exc:
-            logger.exception('Error al enviar email a %s: %s', destinatarios, exc)
-            return False
+        """Envía email plano usando el servicio centralizado."""
+        return EmailService.send_plain_email(asunto, mensaje, destinatarios)
 
     def _enviar_email_verificacion(self, usuario, token=None):
-        """Enviar email de verificación"""
+        """Construye y envía el email de verificación de cuenta.
+        Si no se proporciona token, busca el más reciente no usado."""
         if not token:
             token_obj = usuario.tokens_verificacion.filter(
                 tipo='Verificacion_Email',
@@ -209,7 +233,7 @@ class RegistroViewSet(viewsets.ViewSet):
     
 
     def _enviar_email_recuperacion(self, usuario, token):
-        """Enviar email de recuperación de contraseña"""
+        """Construye y envía el email de recuperación de contraseña."""
         enlace = f"{settings.FRONTEND_URL}/nueva-password?token={token}"
         asunto = "Recupera tu contraseña"
         mensaje = f"""
@@ -224,14 +248,28 @@ class RegistroViewSet(viewsets.ViewSet):
         return self._send_email(asunto, mensaje, [usuario.correo])
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# LoginViewSet — Autenticación JWT y migración de carrito
+# ═══════════════════════════════════════════════════════════════════════
 class LoginViewSet(viewsets.ViewSet):
-    """ViewSet para autenticación (RF-008, RF-011, RF-012)"""
+    """ViewSet para autenticación (RF-008, RF-011, RF-012).
+    
+    Acciones:
+      - create (POST): Login con JWT. Migra carrito anónimo al usuario.
+      - logout (POST): Invalida la sesión actual.
+    """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AnonRateThrottle]
     
-    # CAMBIADO: Se eliminó el decorador @action y se renombró la función a 'create'
+    # ── Login con JWT (RF-008) ──
     def create(self, request):
-        """Endpoint de login con JWT (RF-008, RF-011)"""
+        """Autentica al usuario y retorna tokens JWT.
+        
+        Lógica de migración de carrito:
+        1. Si existe carrito de sesión (anónimo) y carrito del usuario → fusionar.
+        2. Si solo existe carrito de sesión → asignarlo al usuario.
+        3. Si no existe ningún carrito → crear uno nuevo.
+        """
         try:
             serializer = LoginSerializer(data=request.data)
             if serializer.is_valid():
@@ -281,34 +319,45 @@ class LoginViewSet(viewsets.ViewSet):
                 'error': 'Error interno del servidor. Intenta nuevamente.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    # ── Logout (RF-012) ──
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def logout(self, request):
-        """Endpoint de logout (RF-012, RN-013)"""
+        """Cierra la sesión actual rotando la clave de sesión Django."""
         request.session.cycle_key()
         return Response({
             'mensaje': 'Sesión cerrada exitosamente'
         }, status=status.HTTP_200_OK)
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# UsuarioViewSet — Gestión del perfil propio (RF-010)
+# ═══════════════════════════════════════════════════════════════════════
 class UsuarioViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """ViewSet para gestión de perfil de usuario (RF-010).
-    Solo permite acceder al perfil propio via @action, no expone CRUD."""
+    
+    Solo permite acceder al perfil propio via @action, no expone CRUD.
+    Acciones autenticadas (IsAuthenticated):
+      - perfil:           Obtiene los datos detallados del usuario.
+      - actualizar_perfil: Actualiza nombre y correo (requiere contraseña para cambio de email).
+      - cambiar_password:  Cambia la contraseña (requiere contraseña actual).
+    """
     queryset = Usuario.objects.filter(eliminado=False)
     serializer_class = UsuarioSerializer
     permission_classes = [permissions.IsAuthenticated]
     
-
+    # ── Lectura del perfil (RF-010) ──
     @action(detail=False, methods=['get'])
     def perfil(self, request):
-        """Obtener datos del perfil del usuario autenticado"""
+        """Retorna los datos detallados del usuario autenticado."""
         usuario = request.user
         serializer = UsuarioDetailSerializer(usuario)
         return Response(serializer.data)
     
-    
+    # ── Actualización del perfil (RF-010) ──
     @action(detail=False, methods=['put', 'patch'])
     def actualizar_perfil(self, request):
-        """Actualizar perfil del usuario (RF-010)"""
+        """Actualiza nombre de usuario y correo.
+        Cambio de correo requiere contraseña actual (seguridad)."""
         usuario = request.user
         serializer = ActualizarPerfilSerializer(usuario, data=request.data,partial=True, context={'usuario': usuario} )
         
@@ -321,9 +370,11 @@ class UsuarioViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    # ── Cambio de contraseña (RF-010) ──
     @action(detail=False, methods=['post'])
     def cambiar_password(self, request):
-        """Cambiar contraseña del usuario autenticado (RF-010)"""
+        """Cambia la contraseña del usuario autenticado.
+        Requiere la contraseña actual para confirmar la operación."""
         usuario = request.user
         serializer = CambioPasswordSerializer(data=request.data,context={'usuario': usuario})
         

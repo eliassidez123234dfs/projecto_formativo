@@ -13,6 +13,8 @@
 import CustomButton from "./CustomButton";
 import ColorPicker from "./ColorPicker";
 import FilePicker from "./FilePicker";
+import TextPicker from "./TextPicker";
 import Tab from "./Tab";
 
-export { CustomButton, ColorPicker, FilePicker, Tab };
+export { CustomButton, ColorPicker, FilePicker, TextPicker, Tab };
+

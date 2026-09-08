@@ -1,9 +1,27 @@
+/**
+ * api.js — Servicio central de comunicación HTTP con el backend.
+ *
+ * Define tres instancias de axios con propósitos distintos:
+ * - api:          Autenticada (JWT en header Authorization), con credenciales.
+ * - publicApi:    Sin autenticación, para endpoints públicos (catálogo, detalle).
+ * - sessionApi:   Basada en cookies de sesión, para operaciones del carrito.
+ *
+ * Incluye interceptor de refresh automático de tokens JWT: cuando una petición
+ * recibe 401, intenta renovar el access token usando el refresh token.
+ * Múltiples peticiones 401 concurrentes se encolan y se resuelven con el
+ * mismo refresh (deduplicación).
+ */
 import axios from 'axios';
 import { logClientError } from '../utils/logger';
+import { getAccessToken } from './authService';
 
+// ─── CONFIGURACIÓN BASE ───
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/';
 export const buildApiUrl = (endpoint) => `${API_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
 
+// ─── LOGGING DE ERRORES HTTP ───
+// Registra errores HTTP excepto 401 (gestionados por el interceptor de refresh)
+// y 404s en endpoints de items stale del carrito (race conditions esperadas).
 function logHttpError(error) {
   const status = error?.response?.status;
   const requestUrl = error?.config?.url || '';
@@ -19,6 +37,9 @@ function logHttpError(error) {
   }
 }
 
+// ─── MECANISMO DE REFRESH TOKEN ───
+// isRefreshing evita múltiples refreshes simultáneos.
+// failedQueue encola peticiones que fallaron con 401 mientras se refresca.
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -30,29 +51,42 @@ function processQueue(error, token = null) {
   failedQueue = [];
 }
 
+// ─── INSTANCIAS AXIOS ───
+// api: autenticada con JWT
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
+// publicApi: sin autenticación (para catálogo público)
 const publicApi = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: false,
 });
 
+// sessionApi: cookies de sesión (para carrito)
 const sessionApi = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
+sessionApi.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// ─── INTERCEPTOR DE REQUEST: INYECTAR JWT ───
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
+// ─── INTERCEPTOR DE RESPONSE: REFRESH AUTOMÁTICO ───
+// En caso de 401, intenta renovar el token y reenviar la petición original.
 api.interceptors.response.use(
   response => response,
   async error => {
@@ -104,6 +138,7 @@ api.interceptors.response.use(
   }
 );
 
+// Interceptors de error para publicApi y sessionApi
 publicApi.interceptors.response.use(
   response => response,
   error => {
@@ -173,10 +208,78 @@ export const confirmCheckout = async (data) => {
   return response.data;
 };
 
-export const downloadInvoicePdf = async (orderId) => {
-  const response = await publicApi.get(`checkout/orders/${orderId}/invoice-pdf/`, {
+export const tokenizeWompiCard = async ({ number, cvc, expMonth, expYear, cardHolder }) => {
+  const publicKey = import.meta.env.VITE_WOMPI_PUBLIC_KEY;
+  if (!publicKey) throw new Error('Falta VITE_WOMPI_PUBLIC_KEY.');
+  const baseUrl = import.meta.env.VITE_WOMPI_API_URL || 'https://sandbox.wompi.co/v1';
+  const response = await fetch(`${baseUrl.replace(/\/$/, '')}/tokens/cards`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${publicKey}`,
+    },
+    body: JSON.stringify({
+      number: number.replace(/\s/g, ''),
+      cvc,
+      exp_month: expMonth,
+      exp_year: expYear,
+      card_holder: cardHolder,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data?.data?.id) {
+    throw new Error(data?.error?.reason || data?.error?.type || 'No se pudo validar la tarjeta en Wompi.');
+  }
+  return data.data.id;
+};
+
+export const createWompiPayment = async (orderId, cardToken) => {
+  const response = await sessionApi.post(`checkout/orders/${orderId}/pay/`, {
+    card_token: cardToken,
+    redirect_url: `${window.location.origin}/checkout/confirmacion`,
+  });
+  return response.data;
+};
+
+/**
+ * Descarga la factura en PDF de una orden desde el panel de administración.
+ */
+export const downloadAdminOrderInvoicePdf = async (orderId, orderNumber = null) => {
+  const response = await api.get(`admin/orders/${orderId}/factura_pdf/`, {
     responseType: 'blob',
   });
+  const blob = new Blob([response.data], { type: 'application/pdf' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `Factura_${orderNumber || `ORD-${orderId}`}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const downloadInvoicePdf = async (orderId, accessToken = '') => {
+  const params = accessToken ? { access: accessToken } : undefined
+  const response = await publicApi.get(`checkout/orders/${orderId}/invoice-pdf/`, {
+    params,
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const fetchMyOrders = async () => {
+  const response = await api.get('orders/mis/');
+  return response.data;
+};
+
+export const fetchWompiCheckoutData = async (orderId) => {
+  const response = await api.get(`orders/${orderId}/wompi_checkout_data/`);
+  return response.data;
+};
+
+export const payOrderWompiSandbox = async (orderId) => {
+  const response = await api.post(`orders/${orderId}/pay_wompi_sandbox/`);
   return response.data;
 };
 
@@ -368,6 +471,11 @@ export const fetchAdminOrderDetail = async (id) => {
 
 export const updateAdminOrderStatus = async (id, status) => {
   const response = await api.patch(`admin/orders/${id}/`, { status });
+  return response.data;
+};
+
+export const approveAdminOrder = async (id) => {
+  const response = await api.post(`admin/orders/${id}/approve/`);
   return response.data;
 };
 

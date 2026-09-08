@@ -1,3 +1,17 @@
+"""
+ViewSet de Productos — Gestión CRUD del catálogo de productos.
+
+Proporciona endpoints para:
+  - CRUD completo de productos con auditoría de cambios.
+  - Gestión de imágenes (upload, reorder, eliminar).
+  - Gestión de variantes (talla/color/stock/precio).
+  - Publicación y desaprobación de productos.
+  - Búsqueda avanzada con filtros combinables.
+  - Agregar productos al carrito desde el catálogo.
+
+Patrón de diseño: ModelViewSet (DRF) con permisos por acción.
+Lectura pública, escritura solo para administradores autenticados.
+"""
 from __future__ import annotations
 
 from django.db.models import Q
@@ -28,8 +42,12 @@ from .serializers import (
 from .review_serializers import ReviewSerializer
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Funciones auxiliares — Resolución de usuario y nombre de actor
+# ═══════════════════════════════════════════════════════════════════════
+
 def _actor_name(request) -> str:
-    """Nombre legible del usuario autenticado (Usuario custom o auth.User)."""
+    """Retorna el nombre legible del usuario autenticado para auditoría."""
     user = getattr(request, 'user', None)
     if user is None or not getattr(user, 'is_authenticated', False):
         return 'anonymous'
@@ -39,6 +57,7 @@ def _actor_name(request) -> str:
 
 
 def _resolve_creator(request):
+    """Retorna el usuario autenticado como creador del producto (o None)."""
     user = getattr(request, 'user', None)
     if user is None or not getattr(user, 'is_authenticated', False):
         return None
@@ -47,7 +66,16 @@ def _resolve_creator(request):
     return None
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ProductViewSet — CRUD de productos con auditoría
+# ═══════════════════════════════════════════════════════════════════════
 class ProductViewSet(viewsets.ModelViewSet):
+    """ViewSet principal de productos.
+    
+    Permisos: lectura pública (AllowAny), escritura solo AdminPermission.
+    Incluye filtros por búsqueda, precio, estado (active/approved) y ordenamiento.
+    Todas las mutaciones generan registros de auditoría (ProductAudit).
+    """
     queryset = Product.objects.all().prefetch_related('images', 'variants', 'audit_entries')
     pagination_class = ProductPagination
 
@@ -57,7 +85,9 @@ class ProductViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         return [AdminPermission()]
 
+    # ── Filtros y queryset dinámico ──
     def get_queryset(self):
+        """Aplica filtros de búsqueda, precio, estado y ordenamiento al queryset."""
         queryset = super().get_queryset()
         params = self.request.query_params
 
@@ -96,6 +126,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return queryset.order_by(ordering)
 
     def get_serializer_class(self):
+        """Selecciona serializer según la acción: list/write/detail."""
         if self.action == 'list':
             return ProductListSerializer
         if self.action in {'create', 'update', 'partial_update'}:
@@ -108,7 +139,9 @@ class ProductViewSet(viewsets.ModelViewSet):
             context['product'] = self.get_object()
         return context
 
+    # ── CRUD con auditoría ──
     def create(self, request, *args, **kwargs):
+        """Crea un producto y registra entrada de auditoría (ACTION_CREATED)."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(creator=_resolve_creator(request))
@@ -124,6 +157,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
+        """Actualiza un producto con auditoría (before/after).
+        Bloquea cambio de nombre si existen pedidos activos."""
         product = self.get_object()
         before_data = ProductDetailSerializer(product, context=self.get_serializer_context()).data
 
@@ -146,21 +181,22 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
+    # ── Gestión de imágenes ──
     @action(detail=True, methods=['patch', 'delete'], url_path=r'images/(?P<image_id>[0-9]+)')
     def update_image(self, request, pk=None, image_id=None):
+        """Edita (orden, is_main) o elimina una imagen específica del producto."""
         product = self.get_object()
         image = get_object_or_404(ProductImage, pk=image_id, product=product)
 
         if request.method == 'DELETE':
             was_main = image.is_main
             image.delete()
-
+            # Si se eliminó la imagen principal, asignar la primera disponible
             if was_main:
                 first_image = product.images.order_by('order', 'id').first()
                 if first_image:
                     first_image.is_main = True
                     first_image.save(update_fields=['is_main'])
-
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         order = request.data.get('order')
@@ -176,6 +212,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'], url_path='images/reorder')
     def reorder_images(self, request, pk=None):
+        """Reordena todas las imágenes de un producto de forma atómica."""
         product = self.get_object()
         items = request.data.get('items', [])
         if not isinstance(items, list) or not items:
@@ -187,6 +224,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response({'items': 'La lista debe incluir todas las imágenes del producto.'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
+            # Desplazar órdenes temporalmente para evitar conflictos
             for image in images.values():
                 image.order = image.order + 1000
                 image.save(update_fields=['order'])
@@ -201,8 +239,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         ordered_images = product.images.order_by('order', 'id')
         return Response(ProductImageSerializer(ordered_images, many=True, context={'request': request}).data)
 
+    # ── Gestión de estado del producto ──
     @action(detail=True, methods=['patch'], url_path='toggle-active')
     def toggle_active(self, request, pk=None):
+        """Alterna el estado active/inactive del producto."""
         product = self.get_object()
         product.is_active = not product.is_active
         product.save(update_fields=['is_active', 'updated_at'])
@@ -210,11 +250,14 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='checklist')
     def checklist(self, request, pk=None):
+        """Retorna el checklist de publicación del producto."""
         product = self.get_object()
         return Response(product.checklist)
 
     @action(detail=True, methods=['post'], url_path='publish')
     def publish(self, request, pk=None):
+        """Publica un producto (is_active=True, is_approved=True).
+        Valida que cumpla checklist mínimo antes de publicar."""
         product = self.get_object()
         if not product.can_be_published:
             return Response(
@@ -240,7 +283,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='disapprove')
     def disapprove(self, request, pk=None):
-        """Desaprueba un producto con motivo, lo quita de la tienda (RF-044/045)."""
+        """Desaprueba un producto con motivo obligatorio (RF-044/045).
+        Quita el producto de la tienda y registra el motivo en auditoría."""
         product = self.get_object()
         motivo = (request.data.get('motivo') or request.data.get('reason') or '').strip()
         if not motivo:
@@ -264,8 +308,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         return Response(ProductDetailSerializer(product, context=self.get_serializer_context()).data)
 
+    # ── Agregar imágenes y variantes ──
     @action(detail=True, methods=['post'], url_path='images')
     def add_image(self, request, pk=None):
+        """Agrega una nueva imagen al producto (máximo 5)."""
         product = self.get_object()
         serializer = ProductImageCreateSerializer(data=request.data, context={'product': product, 'request': request})
         serializer.is_valid(raise_exception=True)
@@ -274,6 +320,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='variants')
     def add_variant(self, request, pk=None):
+        """Agrega una variante (talla/color/stock) al producto."""
         product = self.get_object()
         serializer = VariantCreateSerializer(data=request.data, context={'product': product})
         serializer.is_valid(raise_exception=True)
@@ -282,7 +329,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch', 'delete'], url_path=r'variants/(?P<variant_id>[0-9]+)')
     def update_variant(self, request, pk=None, variant_id=None):
-        """Edita (stock/precio/color) o elimina una variante (RF-040)."""
+        """Edita (stock/precio/color) o elimina una variante (RF-040).
+        Bloquea eliminación si la variante tiene pedidos activos."""
         product = self.get_object()
         variant = get_object_or_404(Variant, pk=variant_id, product=product)
 
@@ -300,15 +348,19 @@ class ProductViewSet(viewsets.ModelViewSet):
         variant = serializer.save()
         return Response(VariantSerializer(variant, context={'product': product}).data)
 
+    # ── Auditoría del producto ──
     @action(detail=True, methods=['get'], url_path='audits')
     def audits(self, request, pk=None):
+        """Retorna el historial de auditoría del producto."""
         product = self.get_object()
         serializer = ProductAuditSerializer(product.audit_entries.all(), many=True)
         return Response(serializer.data)
 
+    # ── Agregar al carrito desde catálogo ──
     @action(detail=False, methods=['post'], url_path='add-to-cart')
     def add_to_cart(self, request):
-        """Agregar producto al carrito desde catálogo o editor 3D"""
+        """Agrega un producto al carrito desde el catálogo o editor 3D.
+        Valida stock disponible y consolida cantidades si ya existe el item."""
         serializer = CartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -316,7 +368,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         variant = serializer.validated_data['variant']
         quantity = serializer.validated_data['quantity']
         
-        # Obtener o crear carrito (sesión o usuario)
         from apps.carts.models import Cart, CartItem
         
         session_key = request.session.session_key
@@ -326,7 +377,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         
         cart, created = Cart.objects.get_or_create(session_key=session_key)
         
-        # Verificar si ya existe el item en el carrito
         cart_item, created = CartItem.objects.get_or_create(
             cart=cart,
             product=product,
@@ -335,7 +385,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         
         if not created:
-            # Actualizar cantidad si ya existe
             new_quantity = cart_item.quantity + quantity
             if new_quantity > variant.stock:
                 return Response(
@@ -352,12 +401,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             'item_quantity': cart_item.quantity
         })
 
+    # ── Búsqueda avanzada ──
     @action(detail=False, methods=['get'], url_path='search')
     def search(self, request):
-        """Búsqueda avanzada con filtros combinables"""
+        """Búsqueda avanzada con filtros combinables: texto, precio, estado, imágenes, stock."""
         queryset = self.get_queryset()
         
-        # Búsqueda parcial insensible a mayúsculas
         search = request.query_params.get('search', '').strip()
         if search:
             queryset = queryset.filter(
@@ -367,7 +416,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Q(variants__color__icontains=search)
             ).distinct()
         
-        # Filtros combinables
         filters = {
             'is_active': request.query_params.get('is_active'),
             'is_approved': request.query_params.get('is_approved'),
@@ -401,7 +449,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         if filters['has_stock'] == 'true':
             queryset = queryset.filter(variants__stock__gt=0).distinct()
         
-        # Paginación
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = ProductListSerializer(page, many=True, context={'request': request})
@@ -411,7 +458,11 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ReviewViewSet — Reseñas de productos
+# ═══════════════════════════════════════════════════════════════════════
 class ReviewViewSet(viewsets.ModelViewSet):
+    """CRUD de reseñas. Lectura pública, escritura solo autenticados."""
     queryset = Review.objects.select_related('user', 'product').all()
     serializer_class = ReviewSerializer
 
@@ -421,6 +472,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
+        """Filtra reseñas por producto si se proporciona query param 'product'."""
         queryset = super().get_queryset()
         product_id = self.request.query_params.get('product')
         if product_id:
@@ -428,10 +480,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
+        """Asigna automáticamente el usuario autenticado como autor."""
         serializer.save(user=self.request.user)
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# ProductImageViewSet — Gestión global de imágenes
+# ═══════════════════════════════════════════════════════════════════════
 class ProductImageViewSet(viewsets.ModelViewSet):
+    """CRUD global de imágenes de productos. Lectura pública, escritura Admin."""
     queryset = ProductImage.objects.select_related('product').order_by('product', 'order')
     serializer_class = ProductImageSerializer
 

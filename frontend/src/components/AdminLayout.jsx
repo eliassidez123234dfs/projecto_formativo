@@ -1,7 +1,24 @@
+/**
+ * AdminLayout.jsx — Layout exclusivo para el panel de administración.
+ *
+ * Estructura:
+ * 1. Sidebar colapsable con navegación de secciones admin.
+ * 2. Área de contenido principal con header y footer.
+ * 3. Iconos SVG reutilizados para cada sección del menú.
+ *
+ * Decisiones de diseño:
+ * - Estado del sidebar persistido en localStorage.
+ * - El editor 3D se abre como link externo (mismo layout, diferente app).
+ * - En móvil se muestra backdrop oscuro al abrir el sidebar.
+ * -读取 usuario desde localStorage (no context global) para simplificar.
+ */
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useTheme } from '../context/ThemeContext'
+import { openEditor } from '../utils/editor3d'
 import '../styles/admin.css'
 
+// ─── ICONOS SVG PARA EL MENÚ ───
 const Icons = {
   Dashboard: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -68,12 +85,6 @@ const Icons = {
       <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
     </svg>
   ),
-  CheckCircle: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
-  ),
   ChevronLeft: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
@@ -84,18 +95,29 @@ const Icons = {
       <polyline points="9 18 15 12 9 6" />
     </svg>
   ),
+  Sun: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  ),
+  Moon: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  ),
   Menu: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="3" y1="6" x2="21" y2="6" />
       <line x1="3" y1="12" x2="21" y2="12" />
       <line x1="3" y1="18" x2="21" y2="18" />
-    </svg>
-  ),
-  LogOut: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
   Box: () => (
@@ -112,37 +134,58 @@ const Icons = {
   ),
 }
 
+// ─── COMPONENTE PRINCIPAL ───
 export default function AdminLayout({ children, title, subtitle }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { theme, toggleTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return false
     try { return localStorage.getItem('sidebarOpen') !== 'false' } catch { return true }
   })
   const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
 
   useEffect(() => {
-    try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch {}
+    if (typeof window !== 'undefined' && window.innerWidth > 768) {
+      try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch {}
+    }
   }, [sidebarOpen])
 
+  // ─── ITEMS DEL MENÚ DE NAVEGACIÓN ───
   const menuItems = [
     { label: 'Dashboard', href: '/admin', icon: Icons.Dashboard },
-    { label: 'Landing', href: '/', icon: Icons.Home },
+    { label: 'Inicio', href: '/', icon: Icons.Home },
     { label: 'Catálogo', href: '/catalog', icon: Icons.Store },
     { label: 'Productos', href: '/admin-products', icon: Icons.Products },
-    { label: 'Aprobaciones', href: '/admin-products/approval', icon: Icons.CheckCircle },
     { label: 'Usuarios', href: '/admin-users', icon: Icons.Users },
     { label: 'Órdenes', href: '/admin-orders', icon: Icons.Orders },
     { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },
     { label: 'Contacto', href: '/admin-contact', icon: Icons.Mail },
     { label: 'Auditoría', href: '/admin-audit', icon: Icons.Clipboard },
-    { label: 'Editor 3D', href: 'http://127.0.0.1:5174/', icon: Icons.Box, external: true },
+    { label: 'Editor 3D', isEditor: true, icon: Icons.Box },
     { label: 'Cloudinary', href: '/admin-cloudinary', icon: Icons.Cloud },
   ]
 
   const isActive = (href) => {
-    if (href.startsWith('http')) return false
+    if (!href || href.startsWith('http')) return false
     if (href === '/admin') return location.pathname === '/admin'
     return location.pathname.startsWith(href)
+  }
+
+  const handleNavClick = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setSidebarOpen(false)
+    }
+  }
+
+  const handleOpenTestEditor = async (e) => {
+    e.preventDefault()
+    handleNavClick()
+    try {
+      await openEditor({ productId: 1, quantity: 1 })
+    } catch {
+      window.open('http://127.0.0.1:5174/?productId=1&mode=new', '_blank', 'noopener,noreferrer')
+    }
   }
 
   const handleLogout = () => {
@@ -152,14 +195,33 @@ export default function AdminLayout({ children, title, subtitle }) {
     navigate('/login')
   }
 
-  return (
-    <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '220px 1fr' : '54px 1fr' }}>
+    return (
+    <div
+      className={`main-layout ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}
+      style={{ '--sidebar-width': sidebarOpen ? '220px' : '58px' }}
+    >
+      {/* ─── BACKDROP MÓVIL ─── */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-backdrop-mobile"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ─── SIDEBAR ─── */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-text">
             <span className="sidebar-brand-name">RED</span>
             <span className="sidebar-brand-role">Admin</span>
           </div>
+          <button
+            className="sidebar-close-mobile"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar menú"
+          >
+            ✕
+          </button>
         </div>
 
         {sidebarOpen && <div className="nav-section-label">Navegación</div>}
@@ -169,17 +231,19 @@ export default function AdminLayout({ children, title, subtitle }) {
             const className = `nav-item ${isActive(item.href) ? 'active' : ''}`
             const title = !sidebarOpen ? item.label : ''
 
-            if (item.external) {
+            if (item.isEditor) {
               return (
-                <a
-                  key={item.href}
-                  href={item.href}
+                <button
+                  key="editor-3d"
+                  type="button"
+                  onClick={handleOpenTestEditor}
                   className={className}
-                  title={title}
+                  title={title || 'Editor 3D (Objeto de prueba #1)'}
+                  style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', font: 'inherit' }}
                 >
                   <span className="nav-item-icon"><item.icon /></span>
                   {sidebarOpen && <span className="nav-label">{item.label}</span>}
-                </a>
+                </button>
               )
             }
 
@@ -189,6 +253,7 @@ export default function AdminLayout({ children, title, subtitle }) {
                 to={item.href}
                 className={className}
                 title={title}
+                onClick={handleNavClick}
               >
                 <span className="nav-item-icon"><item.icon /></span>
                 {sidebarOpen && <span className="nav-label">{item.label}</span>}
@@ -198,13 +263,19 @@ export default function AdminLayout({ children, title, subtitle }) {
         </nav>
 
         <div className="sidebar-footer">
-          <button
-            className="sidebar-toggle-btn"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            title={sidebarOpen ? 'Contraer menú' : 'Expandir menú'}
-          >
-            {sidebarOpen ? <Icons.ChevronLeft /> : <Icons.ChevronRight />}
-          </button>
+          <div className="sidebar-footer-row">
+            <div className="sidebar-theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+              {theme === 'dark' ? <Icons.Sun /> : <Icons.Moon />}
+            </div>
+
+            <button
+              className="sidebar-toggle-btn"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title={sidebarOpen ? 'Contraer menú' : 'Expandir menú'}
+            >
+              {sidebarOpen ? <Icons.ChevronLeft /> : <Icons.ChevronRight />}
+            </button>
+          </div>
 
           <div className="sidebar-user" onClick={handleLogout} title="Cerrar sesión">
             <div className="sidebar-user-avatar">
@@ -220,12 +291,13 @@ export default function AdminLayout({ children, title, subtitle }) {
         </div>
       </aside>
 
+      {/* ─── CONTENIDO PRINCIPAL ─── */}
       <div className="main-content">
         <div className="content-header">
           <button
             className="mobile-sidebar-toggle"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Toggle menu"
+            aria-label="Abrir menú de administración"
           >
             <Icons.Menu />
           </button>

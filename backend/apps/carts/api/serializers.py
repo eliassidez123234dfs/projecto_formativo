@@ -1,3 +1,14 @@
+"""
+Serializers del módulo de Carrito.
+
+Define la serialización de datos para el carrito de compras, incluyendo:
+  - CartItemSerializer: ítems del carrito con datos de producto y variante.
+  - CartSerializer: carrito completo con ítems y totales.
+  - AdminCart*Serializer: vistas para administradores.
+  - CartAddSerializer: validación al agregar productos al carrito.
+
+Patrón de diseño: Serializer jerárquico (carrito → ítems → producto/variante).
+"""
 from __future__ import annotations
 
 from rest_framework import serializers
@@ -6,8 +17,17 @@ from apps.carts.models import Cart, CartItem
 from apps.products.models import Product, Variant
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# CartItemSerializer — Ítems del carrito
+# ═══════════════════════════════════════════════════════════════════════
 class CartItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.name', read_only=True)
+    """Serializer de ítem del carrito.
+    
+    Incluye datos derivados: nombre del producto (con lógica de diseño personalizado),
+    imagen principal, etiqueta de variante, y subtotal calculado.
+    Los campos de variante (talla, color, stock, hex) se leen del modelo Variant.
+    """
+    product_name = serializers.SerializerMethodField()
     product_image = serializers.SerializerMethodField()
     variant_label = serializers.SerializerMethodField()
     variant_size = serializers.CharField(source='variant.size', read_only=True)
@@ -21,15 +41,24 @@ class CartItemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'product', 'product_name', 'product_image', 'variant', 'variant_label',
             'variant_size', 'variant_color', 'variant_stock', 'variant_hex',
-            'quantity', 'unit_price', 'subtotal', 'created_at', 'updated_at',
+            'quantity', 'unit_price', 'subtotal', 'design_preview_url', 'design_data', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'product_name', 'product_image', 'variant_label', 'variant_size', 'variant_color', 'variant_stock', 'variant_hex', 'subtotal', 'created_at', 'updated_at']
 
+    def get_product_name(self, obj):
+        """Retorna nombre del producto o etiqueta de diseño personalizado."""
+        if obj.design_preview_url or (obj.design_data and bool(obj.design_data)):
+            return "Camiseta Estampado Personalizado"
+        return obj.product.name
+
     def get_product_image(self, obj):
+        """Retorna imagen del diseño personalizado o imagen principal del producto."""
+        if obj.design_preview_url:
+            return obj.design_preview_url
         image = obj.product.main_image
         if not image:
             return None
-        return image.image_url
+        return image.image.url
 
     def get_variant_label(self, obj):
         return f'Talla {obj.variant.size} — {obj.variant.color}'
@@ -38,7 +67,11 @@ class CartItemSerializer(serializers.ModelSerializer):
         return str(obj.subtotal)
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# CartSerializer — Carrito completo
+# ═══════════════════════════════════════════════════════════════════════
 class CartSerializer(serializers.ModelSerializer):
+    """Serializer del carrito completo con ítems anidados y totales."""
     items = CartItemSerializer(many=True, read_only=True)
     total_items = serializers.IntegerField(read_only=True)
     total_amount = serializers.SerializerMethodField()
@@ -51,7 +84,12 @@ class CartSerializer(serializers.ModelSerializer):
         return str(obj.total_amount)
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# AdminCart*Serializer — Vistas de administración
+# ═══════════════════════════════════════════════════════════════════════
+
 class AdminCartListSerializer(serializers.ModelSerializer):
+    """Lista de carritos para administradores — resumen con datos de usuario y orden."""
     items_count = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField()
     user_name = serializers.SerializerMethodField()
@@ -75,20 +113,17 @@ class AdminCartListSerializer(serializers.ModelSerializer):
         return "Anónimo"
 
     def get_order_id(self, obj):
-        return obj.order_id if obj.order_id else None
+        return getattr(obj, 'order_id', None)
 
     def get_order_status(self, obj):
-        if obj.order_id:
-            return obj.order.status
-        return 'pendiente'
+        return getattr(obj, 'order_status', 'pendiente')
 
     def get_order_status_display(self, obj):
-        if obj.order_id:
-            return obj.order.get_status_display()
-        return 'Pendiente'
+        return getattr(obj, 'order_status_display', 'Pendiente')
 
 
 class AdminCartDetailSerializer(serializers.ModelSerializer):
+    """Detalle de carrito para administradores — incluye ítems completos."""
     items = CartItemSerializer(many=True, read_only=True)
     total_items = serializers.IntegerField(read_only=True)
     total_amount = serializers.SerializerMethodField()
@@ -110,25 +145,36 @@ class AdminCartDetailSerializer(serializers.ModelSerializer):
         return "Anónimo"
 
     def get_order_id(self, obj):
-        return obj.order_id if obj.order_id else None
+        return getattr(obj, 'order_id', None)
 
     def get_order_status(self, obj):
-        if obj.order_id:
-            return obj.order.status
+        order = getattr(obj, 'order', None)
+        if order:
+            return order.status
         return 'pendiente'
 
     def get_order_status_display(self, obj):
-        if obj.order_id:
-            return obj.order.get_status_display()
+        order = getattr(obj, 'order', None)
+        if order:
+            return order.get_status_display()
         return 'Pendiente'
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# CartAddSerializer — Validación al agregar productos
+# ═══════════════════════════════════════════════════════════════════════
 class CartAddSerializer(serializers.Serializer):
+    """Serializer para agregar productos al carrito.
+    
+    Valida que el producto exista, esté activo/aprobado, la variante
+    pertenezca al producto, y la cantidad no supere el stock.
+    """
     product_id = serializers.IntegerField()
     variant_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1)
 
     def validate(self, attrs):
+        """Validación cruzada: producto, variante, estado y stock."""
         try:
             product = Product.objects.get(pk=attrs['product_id'])
         except Product.DoesNotExist as exc:

@@ -1,55 +1,55 @@
 /**
- * Constantes de configuración del editor 3D.
+ * Constantes de configuración para el editor 3D de camisetas.
  *
- * Define las pestañas de la interfaz (EditorTabs), los filtros de
- * visualización (FilterTabs) y los tipos de calcomanías (DecalTypes)
- * que se pueden aplicar sobre la camiseta 3D.
- *
- * EditorTabs: ['colorpicker', 'filepicker'] — paneles de herramientas
- *   que se abren desde la barra lateral izquierda.
- * FilterTabs: ['logoShirt', 'stylishShirt'] — alternan entre la
- *   visualización del logo (calcomanía parcial) y la textura completa
- *   (cuerpo entero de la camiseta).
- * DecalTypes: Mapea cada tipo de calcomanía a su propiedad en el store
- *   de Valtio y al filtro correspondiente.
- *
- * RF-025: Las pestañas permiten alternar entre herramientas del editor.
- * RF-026: Los tipos de decal (logo/full) controlan qué textura se
- *         proyecta sobre la malla 3D.
- *
- * @react-three/fiber y Three.js: Estos valores constantes se usan
- *   desde los componentes de la UI (Customizer, Tab, FilePicker) para
- *   mutar el store de Valtio, lo que a su vez actualiza las texturas
- *   que @react-three/drei aplica a la malla 3D mediante el componente
- *   <Decal>.
+ * Define las pestañas del editor, filtros de visualización y
+ * el mapeo de tipos de calcomanía (decal) a propiedades del store.
+ * Estas constantes se usan en Customizer.jsx para renderizar
+ * los controles de la interfaz de personalización.
  */
-import { swatch, fileIcon, logoShirt, stylishShirt } from "../assets";
+import { swatch, fileIcon, logoShirt, stylishShirt, textIcon } from "../assets";
 
-/** Pestañas del panel de edición (colores y subida de archivos) */
+// ── Pestañas del panel de edición izquierdo ──
+// Cada pestaña activa un componente diferente (ColorPicker, FilePicker, TextPicker)
 export const EditorTabs = [
   {
     name: "colorpicker",
     icon: swatch,
+    label: "Color de prenda",
   },
   {
     name: "filepicker",
     icon: fileIcon,
+    label: "Subir imagen/logo",
+  },
+  {
+    name: "textpicker",
+    icon: textIcon,
+    label: "Añadir texto",
   },
 ];
 
-/** Pestañas de filtro que activan/desactivan logo y textura completa */
+// ── Pestañas de filtro inferiores ──
+// Activan/desactivan las capas de logo, texto y textura completa
 export const FilterTabs = [
   {
     name: "logoShirt",
     icon: logoShirt,
+    label: "Logo",
+  },
+  {
+    name: "textShirt",
+    icon: textIcon,
+    label: "Texto",
   },
   {
     name: "stylishShirt",
     icon: stylishShirt,
+    label: "Textura completa",
   },
 ];
 
-/** Mapeo de tipos de calcomanía a propiedades del store y filtros */
+// ── Mapeo de tipos de calcomanía (decal) ┅
+// Conecta el tipo de imagen subida con la propiedad del store y el filtro
 export const DecalTypes = {
   logo: {
     stateProperty: "logoDecal",

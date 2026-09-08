@@ -1,26 +1,38 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { fetchAdminOrders, updateAdminOrderStatus } from '../services/api'
 import AdminLayout from '../components/AdminLayout'
+import ErrorState from '../components/ErrorState'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
-import ErrorState from '../components/ErrorState'
-import { formatCOP } from '../utils/format'
+import formatError from '../utils/formatError'
 import toast from 'react-hot-toast'
+import { Link, useSearchParams } from 'react-router-dom'
+import { fetchAdminOrders, updateAdminOrderStatus, approveAdminOrder, downloadAdminOrderInvoicePdf } from '../services/api'
+import { formatCOP } from '../utils/format'
+import { useCallback, useEffect, useState } from 'react'
 
 const STATUS_LABELS = {
+  pendiente: 'Pendiente',
+  pagado: 'Pagado',
+  produccion: 'Producción (Aceptado)',
+  enviado: 'Enviado',
+  entregado: 'Entregado',
+  cancelado: 'Cancelado',
+  // Alias de compatibilidad
   pending: 'Pendiente',
-  paid: 'Pagado',
-  processing: 'En proceso',
-  completed: 'Completado',
-  cancelled: 'Cancelado',
+  processing: 'Producción',
+  completed: 'Entregado',
 }
 
 const STATUS_BADGE = {
+  pendiente: 'badge-pending',
   pending: 'badge-pending',
+  pagado: 'badge-approved',
   paid: 'badge-approved',
+  produccion: 'badge-active',
   processing: 'badge-active',
+  enviado: 'badge-active',
+  entregado: 'badge-active',
   completed: 'badge-active',
+  cancelado: 'badge-inactive',
   cancelled: 'badge-inactive',
 }
 
@@ -68,8 +80,23 @@ export default function AdminOrders() {
         results: prev.results.map(o => o.id === orderId ? { ...o, status: newStatus } : o),
       }))
     } catch (err) {
-      const msg = err?.response?.data?.status || 'No se pudo actualizar el estado de la orden'
-      toast.error(msg)
+      toast.error(formatError(err, 'No se pudo actualizar el estado de la orden'))
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const handleApproveOrder = async (orderId) => {
+    setUpdatingId(orderId)
+    try {
+      const res = await approveAdminOrder(orderId)
+      toast.success(res.message || `Estampación de orden #${orderId} aceptada y notificación enviada por correo.`)
+      setOrders(prev => ({
+        ...prev,
+        results: prev.results.map(o => o.id === orderId ? { ...o, status: 'produccion' } : o),
+      }))
+    } catch (err) {
+      toast.error(formatError(err, 'Error al aceptar la estampación del diseño.'))
     } finally {
       setUpdatingId(null)
     }
@@ -79,8 +106,17 @@ export default function AdminOrders() {
     { value: orders.count ?? '—', label: 'Total Órdenes Registradas', color: 'primary' },
   ]
 
+  const SELECTABLE_STATUSES = [
+    { val: 'pendiente', label: 'Pendiente' },
+    { val: 'pagado', label: 'Pagado' },
+    { val: 'produccion', label: 'Producción' },
+    { val: 'enviado', label: 'Enviado' },
+    { val: 'entregado', label: 'Entregado' },
+    { val: 'cancelado', label: 'Cancelado' },
+  ]
+
   return (
-    <AdminLayout title="Órdenes" subtitle="Administra y actualiza todas las órdenes de compra">
+    <AdminLayout title="Órdenes" subtitle="Administra, valida estampaciones y actualiza todas las órdenes de compra">
       <div className="admin-stats">
         {statCards.map((s, i) => (
           <div key={i} className="stat-card">
@@ -95,13 +131,13 @@ export default function AdminOrders() {
       <div className="admin-toolbar">
         <div className="admin-toolbar-left">
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {['', 'pending', 'paid', 'processing', 'completed', 'cancelled'].map(s => (
+            {['', 'pendiente', 'pagado', 'produccion', 'enviado', 'entregado', 'cancelado'].map(s => (
               <button
                 key={s}
                 className={`btn btn-sm ${statusFilter === s ? 'btn-primary' : 'btn-ghost'}`}
                 onClick={() => handleStatusFilter(s)}
               >
-                {s ? STATUS_LABELS[s] : 'Todas'}
+                {s ? STATUS_LABELS[s] || s : 'Todas'}
               </button>
             ))}
           </div>
@@ -117,65 +153,91 @@ export default function AdminOrders() {
           <div className="empty-state"><p>No hay órdenes registradas.</p></div>
         ) : (
           <>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Cliente</th>
-                  <th>Email</th>
-                  <th>Estado Actual</th>
-                  <th>Modificar Estado</th>
-                  <th>Total</th>
-                  <th>Items</th>
-                  <th>Fecha</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.results.map(order => (
-                  <tr key={order.id}>
-                    <td><code>#{order.id}</code></td>
-                    <td><strong>{order.customer_name || order.user_name || '—'}</strong></td>
-                    <td>{order.customer_email || '—'}</td>
-                    <td>
-                      <span className={`badge ${STATUS_BADGE[order.status] || 'badge-pending'}`}>
-                        {STATUS_LABELS[order.status] || order.status}
-                      </span>
-                    </td>
-                    <td>
-                      <select
-                        className="admin-select-status"
-                        value={order.status}
-                        disabled={updatingId === order.id}
-                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                        style={{
-                          padding: '4px 8px',
-                          borderRadius: 6,
-                          fontSize: 13,
-                          border: '1px solid var(--color-border)',
-                          background: 'var(--color-bg)',
-                          cursor: updatingId === order.id ? 'wait' : 'pointer',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {Object.entries(STATUS_LABELS).map(([val, label]) => (
-                          <option key={val} value={val}>{label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td><strong>{formatCOP(order.total)}</strong></td>
-                    <td>{order.items?.length || 0}</td>
-                    <td>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</td>
-                    <td>
-                      <Link to={`/admin-orders/${order.id}`} className="btn btn-sm btn-secondary">
-                        Ver detalle
-                      </Link>
-                    </td>
-
+            <div className="card-table-wrapper">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Email</th>
+                    <th>Estado Actual</th>
+                    <th>Modificar Estado</th>
+                    <th>Total</th>
+                    <th>Items</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {orders.results.map(order => {
+                    const isPending = order.status === 'pendiente' || order.status === 'pending'
+                    return (
+                      <tr key={order.id}>
+                        <td><code>#{order.id}</code></td>
+                        <td><strong>{order.customer_name || order.user_name || '—'}</strong></td>
+                        <td>{order.customer_email || '—'}</td>
+                        <td>
+                          <span className={`badge ${STATUS_BADGE[order.status] || 'badge-pending'}`}>
+                            {STATUS_LABELS[order.status] || order.status}
+                          </span>
+                        </td>
+                        <td>
+                          <select
+                            className="admin-select-status"
+                            value={order.status}
+                            disabled={updatingId === order.id}
+                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: 6,
+                              fontSize: 13,
+                              border: '1px solid var(--color-border)',
+                              background: 'var(--color-bg)',
+                              cursor: updatingId === order.id ? 'wait' : 'pointer',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {SELECTABLE_STATUSES.map(opt => (
+                              <option key={opt.val} value={opt.val}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td><strong>{formatCOP(order.total)}</strong></td>
+                        <td>{order.items?.length || 0}</td>
+                        <td>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {isPending && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                disabled={updatingId === order.id}
+                                onClick={() => handleApproveOrder(order.id)}
+                                title="Aceptar estampación y enviar email de notificación al cliente"
+                                style={{ whiteSpace: 'nowrap' }}
+                              >
+                                ✓ Aceptar Diseño
+                              </button>
+                            )}
+                            <Link to={`/admin-orders/${order.id}`} className="btn btn-sm btn-secondary">
+                              Ver detalle
+                            </Link>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              title="Descargar Factura PDF"
+                              onClick={() => downloadAdminOrderInvoicePdf(order.id, order.order_number)}
+                            >
+                              📄 Factura
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
             <Pagination page={page} totalPages={totalPages} count={orders.count} label="órdenes" onPageChange={setPage} />
           </>
         )}
@@ -183,4 +245,3 @@ export default function AdminOrders() {
     </AdminLayout>
   )
 }
-

@@ -1,13 +1,34 @@
+/**
+ * Landing.jsx — Página principal (landing page) de la plataforma RED.
+ *
+ * Secciones:
+ * 1. Hero con carrusel de productos y CTA de login/registro.
+ * 2. Features: propuesta de valor (editor 3D, calidad, envío rápido).
+ * 3. Cómo funciona: 3 pasos del proceso de personalización.
+ * 4. Mini-catálogo de productos destacados con filtro por categoría.
+ * 5. Formulario de contacto con validación y rate limiting.
+ * 6. CTA final para registro.
+ * 7. Footer con enlaces y redes sociales.
+ *
+ * Decisiones de diseño:
+ * - El carrusel del hero usa rotación automática con fade animation.
+ * - Los productos destacados se cargan desde el catálogo real del backend.
+ * - El formulario de contacto tiene rate limiting server-side (3 mensajes/hora).
+ * - Se usa `Promise.allSettled` para que la Landing no falle si una API cae.
+ */
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
+import { ProductCard } from '../components/ProductCard'
 import { useCart } from '../context/CartContext'
-import { buildApiUrl, fetchCatalog } from '../services/api'
+import { buildApiUrl, fetchCatalog, fetchCategories } from '../services/api'
 import '../styles/Landing.css'
 
 const FALLBACK_IMG = '/white-tshirt.png'
 const ROTATE_MS = 3500
 
+// ─── COMPONENTE CARRUSEL DEL HERO ───
+// Rotación automática de imágenes de productos con fade transition.
 const ProductCarousel = ({ products }) => {
   const [idx, setIdx] = useState(0)
   const [fade, setFade] = useState(true)
@@ -59,6 +80,7 @@ const ProductCarousel = ({ products }) => {
   )
 }
 
+// ─── DATOS: FEATURES Y PASOS ───
 const features = [
   {
     icon: (
@@ -101,19 +123,57 @@ const steps = [
   { num: '03', title: 'Recibe en casa', desc: 'Procesamos y enviamos tu pedido en 24-48 horas con seguimiento completo.' },
 ]
 
+// ─── COMPONENTE PRINCIPAL: LANDING ───
 export const Landing = () => {
   const navigate = useNavigate()
   const { cart } = useCart()
   const loggedIn = typeof window !== 'undefined' ? Boolean(localStorage.getItem('access_token')) : false
   const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [productsLoading, setProductsLoading] = useState(true)
 
-  useEffect(() => {
-    fetchCatalog({ page_size: 20, has_stock: true })
-      .then(res => setProducts(res.results || []))
-      .catch(() => {})
+// ─── CARGA INICIAL: PRODUCTOS Y CATEGORÍAS ───
+useEffect(() => {
+  const mountedRef = { current: true }
+
+    Promise.allSettled([
+      fetchCatalog({ page_size: 8, has_stock: true, ordering: 'popularity' }),
+      fetchCategories(),
+    ]).then(([catRes, catListRes]) => {
+      if (!mountedRef.current) return
+      if (catRes.status === 'fulfilled') {
+        setProducts(catRes.value.results || [])
+      }
+      if (catListRes.status === 'fulfilled') {
+        const raw = catListRes.value
+        const list = Array.isArray(raw) ? raw : (raw.results || [])
+        setCategories(list.map((c) => ({ id: String(c.id ?? c.slug ?? c.value), label: c.name ?? c.label })))
+      }
+      setProductsLoading(false)
+    }).catch(() => {
+      if (mountedRef.current) setProductsLoading(false)
+    })
+
+    return () => {
+      mountedRef.current = false
+    }
   }, [])
 
-  const [formData, setFormData] = useState({ nombre: '', correo: '', asunto: '', mensaje: '' })
+// ─── FILTRO POR CATEGORÍA ───
+const handleCategoryChange = useCallback((catId) => {
+    setSelectedCategory(catId)
+    setProductsLoading(true)
+    const params = { page_size: 8, has_stock: true, ordering: 'popularity' }
+    if (catId !== 'all') params.category = catId
+    fetchCatalog(params)
+      .then((res) => setProducts(res.results || []))
+      .catch(() => {})
+      .finally(() => setProductsLoading(false))
+  }, [])
+
+// ─── FORMULARIO DE CONTACTO ───
+const [formData, setFormData] = useState({ nombre: '', correo: '', asunto: '', mensaje: '' })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState({})
@@ -169,26 +229,21 @@ export const Landing = () => {
   }
 
   return (
-    <div style={{
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #fff1f2 48%, #f1f5f9 100%)',
-      backgroundAttachment: 'fixed', color: 'var(--color-text)',
-    }} id="landing-page">
+    <div className="landing-container" id="landing-page">
       {/* Barra de navegación con el contador sincronizado del carrito */}
       <Header cartCount={cart?.total_items || 0} />
 
-      {/* ─── HERO ─── */}
-      <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full bg-red-200/40 blur-3xl" />
-        <div className="pointer-events-none absolute top-40 -left-32 w-[360px] h-[360px] rounded-full bg-rose-100/60 blur-3xl" />
+      {/* ─── HERO SECTION ─── */}
+      <section className="relative overflow-hidden landing-hero-section">
+        <div className="pointer-events-none absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full bg-red-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute top-40 -left-32 w-[360px] h-[360px] rounded-full bg-rose-500/10 blur-3xl" />
 
         <div className="relative max-w-7xl !mx-auto !px-4 sm:!px-6 lg:!px-8 !py-16 md:!py-24 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
             <h1 className="leading-[1.05] tracking-tight !mb-5">
               Bienvenido a <span className="!text-red-600">RED</span>
             </h1>
-            <p className="!text-gray-500 leading-relaxed !mb-9 max-w-md">
+            <p className="landing-text-muted leading-relaxed !mb-9 max-w-md">
               Tu plataforma de personalización de camisetas con edición 3D en tiempo real. Diseña, visualiza y recibe en la puerta de tu casa.
             </p>
             <div className="flex flex-wrap gap-3">
@@ -201,7 +256,7 @@ export const Landing = () => {
                   <Link to="/login" className="!px-7 !py-3 rounded-lg bg-red-600 !text-white font-semibold !text-sm shadow-[0_10px_24px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:shadow-[0_14px_28px_rgba(220,38,38,0.4)] hover:-translate-y-0.5 transition-all duration-200 no-underline inline-flex items-center justify-center">
                     Iniciar sesión
                   </Link>
-                  <Link to="/register" className="!px-7 !py-3 rounded-lg border border-red-200 bg-white/70 !text-red-600 font-semibold !text-sm hover:bg-red-50 hover:border-red-300 transition-colors duration-200 no-underline inline-flex items-center justify-center">
+                  <Link to="/register" className="!px-7 !py-3 rounded-lg border border-red-200/50 bg-white/70 dark:bg-slate-800/80 !text-red-600 font-semibold !text-sm hover:bg-red-50 dark:hover:bg-slate-700 hover:border-red-300 transition-colors duration-200 no-underline inline-flex items-center justify-center">
                     Crear cuenta
                   </Link>
                 </>
@@ -209,7 +264,7 @@ export const Landing = () => {
             </div>
           </div>
 
-          <div className="w-full aspect-[4/3] bg-gradient-to-br from-red-50 to-white rounded-3xl flex items-center justify-center border border-white/80 overflow-hidden">
+          <div className="w-full aspect-[4/3] landing-carousel-box rounded-3xl flex items-center justify-center overflow-hidden">
             <ProductCarousel products={products} />
           </div>
         </div>
@@ -267,59 +322,87 @@ export const Landing = () => {
         </div>
       </section>
 
-      {/* ─── EXPLORA EL CATÁLOGO ─── */}
+      {/* ─── MINI-CATÁLOGO DE PRODUCTOS DESTACADOS ─── */}
       <section className="border-t border-gray-200/70 !py-16 md:!py-24 !px-4 sm:!px-6 lg:!px-8">
         <div className="max-w-7xl !mx-auto">
-          <div className="text-center !mb-14">
+          <div className="text-center !mb-10">
             <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] !text-red-600 !mb-3">
-              Catálogo destacado
+              Productos Destacados
             </span>
             <h2 className="tracking-tight !mb-3">
-              Explora nuestra colección
+              Los más vendidos
             </h2>
-            <p className="!text-gray-500">Descubre las opciones más populares de nuestros clientes.</p>
+            <p className="landing-text-muted max-w-lg mx-auto">
+              Los favoritos de nuestra comunidad. Personalízalos en 3D o agrégalos directamente al carrito.
+            </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 !mb-10">
-            {products.slice(0, 3).map((item) => (
-              <Link
-                key={item.id}
-                to={`/product/${item.id}`}
-                className="group rounded-2xl border border-white/80 bg-white/55 overflow-hidden shadow-[0_14px_32px_rgba(30,30,30,0.06)] backdrop-blur-lg transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(90,20,30,0.14)] no-underline"
+
+          {/* Filtro rápido por categoría */}
+          {categories.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 !mb-10">
+              <button
+                type="button"
+                className={`landing-filter-tab ${selectedCategory === 'all' ? 'active' : ''}`}
+                onClick={() => handleCategoryChange('all')}
               >
-                <div className="h-56 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden">
-                  {item.main_image ? (
-                    <img
-                      src={item.main_image}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <img
-                      src={FALLBACK_IMG}
-                      alt={item.name}
-                      className="w-[60%] h-auto object-contain opacity-40"
-                    />
-                  )}
+                Todas las prendas
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={`landing-filter-tab ${selectedCategory === String(cat.id) ? 'active' : ''}`}
+                  onClick={() => handleCategoryChange(String(cat.id))}
+                >
+                  {cat.label || cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Grid de productos reales */}
+          {productsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 !mb-12">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <div key={n} className="rounded-2xl border border-white/80 bg-white/55 overflow-hidden shadow-[0_14px_32px_rgba(30,30,30,0.06)] backdrop-blur-lg animate-pulse">
+                  <div className="h-56 bg-gray-200/70 dark:bg-slate-700/60" />
+                  <div className="!p-5 space-y-3">
+                    <div className="h-4 bg-gray-200/80 dark:bg-slate-700/70 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200/80 dark:bg-slate-700/70 rounded w-1/3" />
+                  </div>
                 </div>
-                <div className="!p-5">
-                  <h3 className="!mb-1 !text-gray-900">{item.name}</h3>
-                  <p className="!text-red-600 font-bold">${Number(item.base_price).toLocaleString('es-CO')}</p>
-                </div>
-              </Link>
-            ))}
-            {products.length === 0 && [1, 2, 3].map(n => (
-              <div key={n} className="rounded-2xl border border-white/80 bg-white/55 overflow-hidden shadow-[0_14px_32px_rgba(30,30,30,0.06)] backdrop-blur-lg animate-pulse">
-                <div className="h-56 bg-gray-200" />
-                <div className="!p-5 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-4 bg-gray-200 rounded w-1/4" />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center !py-12 bg-white/40 dark:bg-slate-800/40 rounded-2xl border border-white/60 dark:border-slate-700/60 !mb-10">
+              <p className="landing-text-muted">No se encontraron productos en esta categoría.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 !mb-12">
+              {products.map((product, idx) => (
+                <ProductCard
+                  key={product.id}
+                  product={{
+                    id: product.id,
+                    name: product.name,
+                    base_price: Number(product.base_price ?? 0),
+                    price: Number(product.min_price ?? product.base_price ?? 0),
+                    min_price: product.min_price,
+                    max_price: product.max_price,
+                    total_stock: product.total_stock,
+                    color_hexes: product.color_hexes || {},
+                    badge: idx < 3 ? '🔥 Más Vendido' : (product.is_new ? 'Nuevo' : null),
+                    image: product.main_image || null,
+                  }}
+                  onView={(id) => navigate(`/product/${id}`)}
+                />
+              ))}
+            </div>
+          )}
+
           <div className="text-center">
-            <Link to="/catalog" className="inline-flex items-center gap-2 !px-8 !py-3 rounded-lg border border-red-200 bg-white/70 !text-red-600 font-semibold !text-sm hover:bg-red-50 hover:border-red-300 transition-colors duration-200 no-underline">
-              Ver todo el catálogo
+            <Link to="/catalog" className="inline-flex items-center gap-2 !px-8 !py-3.5 rounded-xl bg-red-600 !text-white font-semibold !text-sm shadow-[0_10px_24px_rgba(220,38,38,0.3)] hover:bg-red-700 hover:shadow-[0_14px_28px_rgba(220,38,38,0.4)] hover:-translate-y-0.5 transition-all duration-200 no-underline">
+              Ver catálogo completo
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
@@ -328,7 +411,7 @@ export const Landing = () => {
         </div>
       </section>
 
-      {/* ─── CONTACTO ─── */}
+      {/* ─── SECCIÓN DE CONTACTO ─── */}
       <section id="contact" className="border-t border-gray-200/70 !py-16 md:!py-24 !px-4 sm:!px-6 lg:!px-8 bg-white/40">
         <div className="max-w-7xl !mx-auto">
           <div className="text-center !mb-12">

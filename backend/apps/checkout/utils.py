@@ -1,3 +1,18 @@
+"""
+Utilidades de Checkout — Generación de facturas PDF.
+
+Proporciona la función generate_order_invoice_pdf() que genera un
+comprobante de compra en formato PDF utilizando ReportLab.
+
+El PDF incluye:
+  - Encabezado con datos de la empresa y número de orden.
+  - Datos del cliente y dirección de entrega.
+  - Tabla de productos con variantes, cantidades y subtotales.
+  - Resumen de totales con IVA incluido.
+  - Aviso de modo demostración (prueba).
+
+Patrón de diseño: Builder (construcción paso a paso del PDF con ReportLab).
+"""
 import io
 from decimal import Decimal
 from django.utils import timezone
@@ -9,10 +24,15 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+
 def generate_order_invoice_pdf(order) -> bytes:
-    """
-    Genera una factura / comprobante de compra en formato PDF usando ReportLab.
-    Personalizado de acuerdo con los datos ingresados del cliente y los items del pedido.
+    """Genera una factura / comprobante de compra en formato PDF.
+    
+    Args:
+        order: Instancia del modelo Order con ítems relacionados.
+    
+    Returns:
+        bytes: Contenido del PDF en memoria.
     """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -26,7 +46,9 @@ def generate_order_invoice_pdf(order) -> bytes:
 
     styles = getSampleStyleSheet()
 
+    # ═══════════════════════════════════════════════════════════════════
     # Estilos tipográficos personalizados
+    # ═══════════════════════════════════════════════════════════════════
     title_style = ParagraphStyle(
         'InvoiceTitle',
         parent=styles['Heading1'],
@@ -94,7 +116,9 @@ def generate_order_invoice_pdf(order) -> bytes:
 
     story = []
 
-    # Encabezado Principal (Logo / Empresa e Información de Factura)
+    # ═══════════════════════════════════════════════════════════════════
+    # Sección 1: Encabezado de la factura
+    # ═══════════════════════════════════════════════════════════════════
     header_data = [
         [
             Paragraph("<b>PROYECTO FORMATIVO</b><br/><font size=8 color='#64748B'>Personalización y Estampados</font>", title_style),
@@ -171,7 +195,9 @@ def generate_order_invoice_pdf(order) -> bytes:
     story.append(info_table)
     story.append(Spacer(1, 12))
 
-    # Tabla de Productos / Items
+    # ═══════════════════════════════════════════════════════════════════
+    # Sección 3: Tabla de productos / ítems del pedido
+    # ═══════════════════════════════════════════════════════════════════
     items_header = [
         Paragraph("<b>Producto</b>", table_header_style),
         Paragraph("<b>Variante (Talla/Color)</b>", table_header_style),
@@ -219,7 +245,9 @@ def generate_order_invoice_pdf(order) -> bytes:
 
     story.append(Spacer(1, 20))
 
-    # Nota de aviso de prueba
+    # ═══════════════════════════════════════════════════════════════════
+    # Sección 4: Aviso de modo demostración (prueba)
+    # ═══════════════════════════════════════════════════════════════════
     test_notice_data = [
         [
             Paragraph(

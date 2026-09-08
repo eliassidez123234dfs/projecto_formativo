@@ -3,6 +3,28 @@
 from django.db import migrations, models
 
 
+def remove_field_if_present(apps, schema_editor):
+    ProductImage = apps.get_model('products', 'ProductImage')
+    Variant = apps.get_model('products', 'Variant')
+    table_columns = {
+        column.name
+        for column in schema_editor.connection.introspection.get_table_description(
+            schema_editor.connection.cursor(), ProductImage._meta.db_table
+        )
+    }
+    if 'cloudinary_url' in table_columns:
+        schema_editor.remove_field(ProductImage, ProductImage._meta.get_field('cloudinary_url'))
+
+    variant_columns = {
+        column.name
+        for column in schema_editor.connection.introspection.get_table_description(
+            schema_editor.connection.cursor(), Variant._meta.db_table
+        )
+    }
+    if 'precio_variante' in variant_columns:
+        schema_editor.remove_field(Variant, Variant._meta.get_field('precio_variante'))
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,13 +32,18 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='productimage',
-            name='cloudinary_url',
-        ),
-        migrations.RemoveField(
-            model_name='variant',
-            name='precio_variante',
+        migrations.SeparateDatabaseAndState(
+            database_operations=[migrations.RunPython(remove_field_if_present, migrations.RunPython.noop)],
+            state_operations=[
+                migrations.RemoveField(
+                    model_name='productimage',
+                    name='cloudinary_url',
+                ),
+                migrations.RemoveField(
+                    model_name='variant',
+                    name='precio_variante',
+                ),
+            ],
         ),
         migrations.AlterField(
             model_name='productimage',

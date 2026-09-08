@@ -1,3 +1,19 @@
+/**
+ * Header.jsx — Barra de navegación principal de la aplicación.
+ *
+ * Secciones:
+ * 1. Logo y navegación principal (desktop).
+ * 2. Selector de tema claro/oscuro (ThemeToggle).
+ * 3. Botones de autenticación (login/registro) o perfil de usuario.
+ * 4. Menú desplegable del usuario (perfil, carrito, admin, cerrar sesión).
+ * 5. Menú hamburguesa responsive para móvil.
+ *
+ * Decisiones de diseño:
+ * - El contador del carrito se sincroniza entre prop y context (fallback).
+ * - Se usa patrón observer (subscribe) para reaccionar a cambios de sesión.
+ * - El menú se cierra automáticamente al hacer clic fuera (useRef + mousedown).
+ * - Layout sticky para permanecer visible al hacer scroll.
+ */
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ThemeToggle } from './ThemeToggle'
@@ -11,6 +27,7 @@ import { useCart } from '../context/CartContext'
  *   o directamente desde el contexto `useCart` para mantenerlo sincronizado
  *   en todas las vistas (incluida la Landing).
  */
+// ─── COMPONENTE PRINCIPAL ───
 export const Header = ({ cartCount: propCartCount }) => {
   const navigate = useNavigate()
   const cartContext = useCart()
@@ -52,7 +69,6 @@ export const Header = ({ cartCount: propCartCount }) => {
 
   return (
     <header style={{
-      position: 'sticky', top: 0, zIndex: 100, background: 'var(--color-bg)',
       borderBottom: '1px solid var(--color-border)',
     }}>
       <div style={{
@@ -67,6 +83,15 @@ export const Header = ({ cartCount: propCartCount }) => {
         </Link>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: 24 }} className="nav-desktop">
+          <Link to="/" style={{
+            color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 500, textDecoration: 'none',
+            transition: 'color 0.15s',
+          }}
+            onMouseEnter={e => e.target.style.color = 'var(--color-text)'}
+            onMouseLeave={e => e.target.style.color = 'var(--color-text-secondary)'}
+          >
+            Inicio
+          </Link>
           <Link to="/catalog" style={{
             color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 500, textDecoration: 'none',
             transition: 'color 0.15s',
@@ -162,6 +187,16 @@ export const Header = ({ cartCount: propCartCount }) => {
                       <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{user?.correo || ''}</p>
                     </div>
 
+                    <Link to="/" onClick={() => setMenuOpen(false)} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                      borderRadius: 8, textDecoration: 'none', color: 'var(--color-text)',
+                      fontSize: 14, transition: 'background 0.1s',
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-tertiary)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Inicio
+                    </Link>
                     <Link to="/perfil" onClick={() => setMenuOpen(false)} style={{
                       display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
                       borderRadius: 8, textDecoration: 'none', color: 'var(--color-text)',
@@ -228,15 +263,19 @@ export const Header = ({ cartCount: propCartCount }) => {
       {mobileOpen && (
         <div style={{ padding: '12px 24px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <Link to="/catalog" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none' }}>Catálogo</Link>
+            <Link to="/" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none', fontWeight: 500 }}>Inicio</Link>
+            <Link to="/catalog" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none', fontWeight: 500 }}>Catálogo</Link>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
               <span style={{ color: 'var(--color-text)', fontSize: 14 }}>Modo claro/oscuro</span>
               <ThemeToggle />
             </div>
-            <Link to="/cart" state={{ planned: true }} onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none' }}>Carrito{cartCount > 0 ? ` (${cartCount})` : ''}</Link>
+            <Link to="/cart" state={{ planned: true }} onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none', fontWeight: 500 }}>Carrito{cartCount > 0 ? ` (${cartCount})` : ''}</Link>
             {loggedIn ? (
               <>
-                <Link to="/perfil" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none' }}>Mi Perfil</Link>
+                <Link to="/perfil" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none', fontWeight: 500 }}>Mi Perfil</Link>
+                {user?.rol === 'Administrador' && (
+                  <Link to="/dashboard" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none', fontWeight: 500 }}>Panel Admin</Link>
+                )}
                 <button onClick={() => { handleLogout(); setMobileOpen(false) }} style={{ padding: '10px 0', background: 'none', border: 'none', color: '#dc2626', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>Cerrar Sesión</button>
               </>
             ) : (

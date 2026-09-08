@@ -32,6 +32,9 @@ llamar a send_mail directamente.
 """
 
 import logging
+import json
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 from datetime import timedelta
 
 from django.conf import settings
@@ -52,11 +55,10 @@ class EmailService:
     """
 
     # ── Método base privado ──
-    # Envía un correo usando Django send_mail. Maneja excepciones internamente
-    # y retorna True/False en lugar de propagar errores, permitiendo a las
-    # vistas decidir cómo manejar fallos de envío.
+    # Envía un correo usando Resend (si use_resend=True) o directamente Django SMTP.
+    # Maneja excepciones internamente y retorna True/False.
     @staticmethod
-    def _send(subject, message, recipient_list, fail_silently=False):
+    def _send(subject, message, recipient_list, fail_silently=False, use_resend=False):
         """
         Envía un correo electrónico.
         
@@ -65,10 +67,37 @@ class EmailService:
             message: Cuerpo del mensaje en texto plano.
             recipient_list: Lista de direcciones de correo destino.
             fail_silently: Si True, no lanza excepción ante errores de envío.
+            use_resend: Si True, intenta enviar vía API de Resend primero (con fallback a SMTP).
+                        Si False, usa directamente el backend SMTP configurado en Django.
         
         Returns:
             True si el envío fue exitoso, False en caso contrario.
         """
+        if use_resend and settings.RESEND_API_KEY:
+            try:
+                payload = json.dumps({
+                    'from': settings.DEFAULT_FROM_EMAIL,
+                    'to': recipient_list,
+                    'subject': subject,
+                    'text': message,
+                }).encode('utf-8')
+                request = Request(
+                    'https://api.resend.com/emails',
+                    data=payload,
+                    headers={
+                        'Authorization': f'Bearer {settings.RESEND_API_KEY}',
+                        'Content-Type': 'application/json',
+                    },
+                    method='POST',
+                )
+                with urlopen(request, timeout=15) as response:
+                    if response.status not in (200, 201):
+                        raise RuntimeError(f'Resend respondió HTTP {response.status}')
+                return True
+            except Exception as exc:
+                logger.warning('Resend falló (%s), intentando SMTP como fallback...', exc)
+
+        # Envío mediante SMTP (o backend Django configurado)
         try:
             send_mail(
                 subject,
@@ -81,6 +110,11 @@ class EmailService:
         except Exception as exc:
             logger.exception('Error al enviar email a %s: %s', recipient_list, exc)
             return False
+
+    @staticmethod
+    def send_plain_email(subject, message, recipient_list):
+        """Envía un mensaje simple usando el canal SMTP general."""
+        return EmailService._send(subject, message, recipient_list, use_resend=False)
 
     # ── Correo de verificación de cuenta (RF-003) ──
     # Se envía después del registro. Incluye un enlace con el token
@@ -104,7 +138,7 @@ class EmailService:
             f'Si no solicitaste este registro, ignora este mensaje.\n\n'
             f'— Equipo Red Estampación'
         )
-        return EmailService._send(subject, message, [usuario.correo])
+        return EmailService._send(subject, message, [usuario.correo], use_resend=True)
 
     # ── Correo de recuperación de contraseña (RF-009) ──
     # Se envía cuando el usuario solicita restablecer su contraseña.
@@ -129,7 +163,7 @@ class EmailService:
             f'Si no solicitaste este cambio, ignora este mensaje.\n\n'
             f'— Equipo Red Estampación'
         )
-        return EmailService._send(subject, message, [usuario.correo])
+        return EmailService._send(subject, message, [usuario.correo], use_resend=True)
 
     # ── Correo de bienvenida (RF-018) ──
     # Se envía cuando un administrador crea manualmente un usuario.
@@ -153,7 +187,7 @@ class EmailService:
             f'{settings.FRONTEND_URL}/login\n\n'
             f'— Equipo Red Estampación'
         )
-        return EmailService._send(subject, message, [usuario.correo])
+        return EmailService._send(subject, message, [usuario.correo], use_resend=False)
 
     # ── Correo de restablecimiento por admin (RF-023) ──
     # Se envía cuando un administrador resetea la contraseña de un usuario.
@@ -177,7 +211,7 @@ class EmailService:
             f'{settings.FRONTEND_URL}/login\n\n'
             f'— Equipo Red Estampación'
         )
-        return EmailService._send(subject, message, [usuario.correo])
+        return EmailService._send(subject, message, [usuario.correo], use_resend=False)
 
     # ── Notificación de contacto ──
     # Notifica al administrador del sistema sobre un nuevo mensaje desde
@@ -199,4 +233,38 @@ class EmailService:
             f'Mensaje:\n{contacto.mensaje}\n\n'
             f'Fecha: {contacto.fecha_envio.strftime("%d/%m/%Y %H:%M")}'
         )
-        return EmailService._send(subject, message, [settings.DEFAULT_FROM_EMAIL])
+        return EmailService._send(subject, message, [settings.DEFAULT_FROM_EMAIL], use_resend=False)
+
+    # ── Notificación de aprobación y noticias de órdenes / estampación ──
+    @staticmethod
+    def send_design_approval_email(order):
+        """
+        Notifica al cliente que la estampación de su diseño ha sido aceptada
+        y que puede proceder con el pago desde su perfil (vía SMTP).
+        
+        Args:
+            order: Instancia del modelo Order.
+        """
+        recipient = order.customer_email or (order.user.correo if order.user else None) or (order.user.email if order.user and hasattr(order.user, 'email') else None)
+        if not recipient:
+            logger.warning('No se pudo enviar email de aprobación para orden #%s: sin destinatario', order.id)
+            return False
+
+        enlace_perfil = f"{settings.FRONTEND_URL}/perfil"
+        num_orden = order.order_number or f"#{order.pk}"
+        nombre_cliente = order.customer_name or (order.user.usuario if order.user else "Cliente")
+
+        subject = f'Red Estampación — ¡Tu diseño para la orden {num_orden} ha sido aceptado!'
+        message = (
+            f'Hola {nombre_cliente},\n\n'
+            f'Nos complace informarte que la estampación de tu diseño personalizado para la orden {num_orden} '
+            f'ha sido validada y ACEPTADA por nuestro equipo.\n\n'
+            f'Ya puedes proceder con el pago del pedido dirigiéndote a tu perfil en el siguiente enlace:\n'
+            f'{enlace_perfil}\n\n'
+            f'Detalles del pedido:\n'
+            f'- Orden: {num_orden}\n'
+            f'- Total: ${order.total:,.2f} COP\n\n'
+            f'¡Gracias por confiar en Red Estampación!\n'
+            f'— Equipo Red Estampación'
+        )
+        return EmailService._send(subject, message, [recipient], use_resend=False)

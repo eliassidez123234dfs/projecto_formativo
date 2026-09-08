@@ -15,10 +15,12 @@ from __future__ import annotations
 from django.db.models import Q, Count, Min, Max
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.catalog.models import CatalogSession, Category, PopularSearch, SearchHistory
 from apps.products.models import Product
+from apps.users.api.admin_viewset import AdminPermission
 from config.cache_utils import cache_view_action
 
 from .serializers import (
@@ -316,6 +318,13 @@ class CategoryViewSet(viewsets.ModelViewSet):
     para listar productos activos de una categoría con filtros."""
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'products']:
+            permission_classes = []
+        else:
+            permission_classes = [IsAuthenticated, AdminPermission]
+        return [p() for p in permission_classes]
 
     @action(detail=True, methods=['get'], url_path='products')
     @cache_view_action(timeout=300, prefix='catalog:cat_products')

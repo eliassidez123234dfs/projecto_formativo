@@ -1,3 +1,15 @@
+"""
+Serializers del módulo de Catálogo (público).
+
+Define la serialización de datos para el catálogo público de productos:
+  - CategorySerializer: categorías de productos con conteo.
+  - CatalogProductSerializer: productos para el catálogo público con filtros dinámicos.
+  - CatalogSearchSerializer: validación de parámetros de búsqueda avanzada.
+  - CatalogPagination: paginación personalizada para catálogo.
+
+Patrón de diseño: Read-Only Serializer con campos derivados (mín/máx stock, precios).
+Todos los campos de escritura están excluidos del catálogo público.
+"""
 from __future__ import annotations
 
 from rest_framework import serializers
@@ -7,7 +19,11 @@ from apps.catalog.models import Category, PopularSearch, SearchHistory
 from apps.products.models import Product
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# CategorySerializer — Categorías de productos
+# ═══════════════════════════════════════════════════════════════════════
 class CategorySerializer(serializers.ModelSerializer):
+    """Serializer de categorías con conteo de productos asociados."""
     product_count = serializers.ReadOnlyField()
 
     class Meta:
@@ -16,7 +32,20 @@ class CategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'product_count', 'created_at', 'updated_at']
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# CatalogProductSerializer — Productos del catálogo público
+# ═══════════════════════════════════════════════════════════════════════
 class CatalogProductSerializer(serializers.ModelSerializer):
+    """Serializer de productos para el catálogo público.
+    
+    Incluye campos derivados:
+      - main_image: URL de la imagen principal.
+      - available_sizes/colors: opciones disponibles (con stock).
+      - color_hexes: mapeo color → hex.
+      - min/max_price: rango de precios de variantes.
+      - total_stock: stock total del producto.
+      - categories: nombres de categorías asociadas.
+    """
     main_image = serializers.SerializerMethodField()
     available_sizes = serializers.SerializerMethodField()
     available_colors = serializers.SerializerMethodField()
@@ -42,15 +71,19 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         return image.image.url
 
     def get_available_sizes(self, obj):
+        """Tallas disponibles (con stock > 0)."""
         return list(obj.variants.filter(stock__gt=0).values_list('size', flat=True).distinct())
 
     def get_available_colors(self, obj):
+        """Colores disponibles (con stock > 0)."""
         return list(obj.variants.filter(stock__gt=0).values_list('color', flat=True).distinct())
 
     def get_color_hexes(self, obj):
+        """Mapeo color → código hexadecimal."""
         return dict(obj.variants.filter(stock__gt=0).values_list('color', 'color_hex').distinct())
 
     def get_variants(self, obj):
+        """Lista de variantes ordenadas por talla y color."""
         return [
             {
                 'id': variant.id,
@@ -63,12 +96,14 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         ]
 
     def get_min_price(self, obj):
+        """Precio mínimo entre variantes con stock."""
         variants = list(obj.variants.filter(stock__gt=0))
         if not variants:
             return obj.base_price
         return min(variant.effective_price for variant in variants)
 
     def get_max_price(self, obj):
+        """Precio máximo entre variantes con stock."""
         variants = list(obj.variants.filter(stock__gt=0))
         if not variants:
             return obj.base_price
@@ -81,7 +116,12 @@ class CatalogProductSerializer(serializers.ModelSerializer):
         return [pc.category.name for pc in obj.categories.all()]
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Serializers de historial y búsquedas populares
+# ═══════════════════════════════════════════════════════════════════════
+
 class SearchHistorySerializer(serializers.ModelSerializer):
+    """Historial de búsquedas del usuario (solo lectura)."""
     class Meta:
         model = SearchHistory
         fields = ['id', 'query', 'filters', 'results_count', 'created_at']
@@ -89,13 +129,19 @@ class SearchHistorySerializer(serializers.ModelSerializer):
 
 
 class PopularSearchSerializer(serializers.ModelSerializer):
+    """Búsquedas más populares (solo lectura)."""
     class Meta:
         model = PopularSearch
         fields = ['id', 'query', 'search_count', 'last_searched', 'is_active']
         read_only_fields = ['id', 'search_count', 'last_searched']
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Paginación del catálogo
+# ═══════════════════════════════════════════════════════════════════════
+
 class CatalogPagination(PageNumberPagination):
+    """Paginación para el catálogo público — 20 elementos por página."""
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
@@ -122,7 +168,16 @@ class CatalogPagination(PageNumberPagination):
         }
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# CatalogSearchSerializer — Búsqueda avanzada con filtros
+# ═══════════════════════════════════════════════════════════════════════
 class CatalogSearchSerializer(serializers.Serializer):
+    """Valida y parsea parámetros de búsqueda del catálogo.
+    
+    Soporta multi-selección: category, size y color llegan como
+    valores separados por comas (ej. ?category=4,2 o ?size=M,S)
+    y se convierten a listas para aplicar OR dentro de cada faceta.
+    """
     q = serializers.CharField(required=False, allow_blank=True)
     category = serializers.CharField(required=False, allow_blank=True)
     min_price = serializers.DecimalField(required=False, max_digits=10, decimal_places=2)
@@ -143,15 +198,13 @@ class CatalogSearchSerializer(serializers.Serializer):
     page_size = serializers.IntegerField(required=False, min_value=1, max_value=100)
 
     def _parse_csv(self, value):
-        """Parse comma-separated values into a list of stripped strings."""
+        """Convierte valores separados por comas en lista de strings."""
         if not value:
             return []
         return [v.strip() for v in str(value).split(',') if v.strip()]
 
     def validate(self, attrs):
-        """Soporta multi-selección: category, size y color llegan como
-        valores separados por comas (ej. ?category=4,2 o ?size=M,S)
-        y se convierten a listas para aplicar OR dentro de cada faceta."""
+        """Parsea category, size y color como listas para filtros multi-selección."""
         attrs['category'] = self._parse_csv(attrs.get('category'))
         attrs['size'] = self._parse_csv(attrs.get('size'))
         attrs['color'] = self._parse_csv(attrs.get('color'))

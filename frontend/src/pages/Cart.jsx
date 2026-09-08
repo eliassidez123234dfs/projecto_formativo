@@ -1,4 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+/**
+ * Cart.jsx — Página del carrito de compras.
+ *
+ * Secciones:
+ * 1. Estado de carga con skeleton animado.
+ * 2. Estado vacío con vista invitado o vista planificada.
+ * 3. Lista de items del carrito con controles de cantidad.
+ * 4. Resumen total y botones de acción (vaciar, seguir comprando, hacer pedido).
+ * 5. Overlay de confirmación al vaciar el carrito con spinner y redirect.
+ *
+ * Decisiones de diseño:
+ * - Requiere autenticación; redirige a /login si no hay sesión.
+ * - Al vaciar el carrito o eliminar el último ítem, muestra overlay de 1s y redirige a /catalog.
+ * - El flag `plannedEntry` (via location.state) controla si se muestra la vista vacía completa.
+ * - Se usa ref `sawItemsRef` para evitar mostrar toast de "carrito vacío" si nunca tuvo items.
+ */
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useCart } from '../context/CartContext';
@@ -9,21 +25,26 @@ import { isAuthenticated } from '../services/authService';
 
 let _cartAuthRedirected = false;
 
+// ─── COMPONENTE PRINCIPAL ───
 export const Cart = () => {
   const navigate = useNavigate();
+  const redirectTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(redirectTimer.current), []);
   const { cart, loading, updateQuantity, removeItem, clearCartItems } = useCart();
   const location = useLocation();
   const plannedEntry = location.state?.planned === true;
   const items = cart?.items || [];
   const totalItems = cart?.total_items || 0;
+  const [isClearing, setIsClearing] = useState(false);
 
   const empty = items.length === 0;
   const showEmptyView = empty && plannedEntry;
 
   const sawItemsRef = useRef(false);
 
+  // ─── EFFECTS: AUTENTICACIÓN Y DETECCIÓN DE CARRITO VACÍO ───
   useEffect(() => {
-    if (_cartAuthRedirected) return;
     if (!isAuthenticated()) {
       _cartAuthRedirected = true;
       toast.error('Debes iniciar sesión para ver el carrito');
@@ -43,8 +64,7 @@ export const Cart = () => {
     }
   }, [empty, plannedEntry, loading, items.length]);
 
-  // Estado para controlar la visualización de la notificación de carga en el centro de la pantalla
-  const [isClearing, setIsClearing] = useState(false);
+  // ─── HANDLERS: VACIAR CARRITO Y ELIMINAR ITEMS ───
 
   /**
    * Muestra la notificación centrada en pantalla con spinner de carga durante 1 segundo
@@ -52,7 +72,7 @@ export const Cart = () => {
    */
   const handleEmptyCartNotificationAndRedirect = () => {
     setIsClearing(true);
-    setTimeout(() => {
+    redirectTimer.current = setTimeout(() => {
       navigate('/catalog');
     }, 1000);
   };
@@ -87,6 +107,7 @@ export const Cart = () => {
     }
   };
 
+  // ─── ESTADO: CARGANDO ───
   if (loading) {
     return (
       <>
@@ -114,6 +135,7 @@ export const Cart = () => {
     );
   }
 
+  // ─── ESTADO: CARRITO VACÍO (sin entrada planificada) ───
   if (items.length === 0 && !isClearing) {
     if (!showEmptyView) {
       return (
@@ -141,6 +163,7 @@ export const Cart = () => {
     );
   }
 
+  // ─── RENDER PRINCIPAL: LISTA DE ITEMS ───
   return (
     <>
       <Header cartCount={totalItems} />
@@ -221,12 +244,8 @@ export const Cart = () => {
           ))}
         </div>
 
-        <div style={{
-          marginTop: 24, padding: 24,
-          border: '1px solid var(--color-border)', borderRadius: 12,
-          background: 'var(--color-bg-tertiary)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
-        }}>
+        {/* ─── RESUMEN TOTAL ─── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, padding: '16px 20px', background: 'var(--color-surface-2)', borderRadius: 12 }}>
           <div>
             <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: 14 }}>
               Total de artículos: <strong>{totalItems}</strong>
@@ -239,6 +258,7 @@ export const Cart = () => {
           </div>
         </div>
 
+        {/* ─── BOTONES DE ACCIÓN ─── */}
         <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           {/* Botón para vaciar todo el carrito */}
           <button
@@ -252,12 +272,12 @@ export const Cart = () => {
             Seguir comprando
           </Link>
           <Link to="/checkout" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-            Proceder al Pago
+            Hacer Pedido
           </Link>
         </div>
       </div>
 
-      {/* Notificación centrada en pantalla tipo indicador de carga durante el vaciado */}
+      {/* ─── OVERLAY: VACIANDO CARRITO ─── */}
       {isClearing && (
         <div style={{
           position: 'fixed',

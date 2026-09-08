@@ -49,9 +49,10 @@ class Model3DViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Asigna permisos según la acción:
         - Acciones de lectura (list, retrieve, active, approved, preview_images): acceso público
-        - Acciones de mutación (create, update, partial_update, add_preview_image): solo autenticados
+        - Creación de modelos comunitarios (create): acceso público (RF-027)
+        - Otras mutaciones (update, partial_update, add_preview_image): solo autenticados
         """
-        if self.action in ['list', 'retrieve', 'active', 'approved', 'preview_images']:
+        if self.action in ['list', 'retrieve', 'active', 'approved', 'preview_images', 'create']:
             permission_classes = []
         else:
             permission_classes = [IsAuthenticated]

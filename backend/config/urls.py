@@ -1,3 +1,16 @@
+"""
+Configuración de URLs raíz del proyecto Red Estampación.
+
+Define la estructura de rutas URL del sistema, incluyendo:
+  - Router DRF para ViewSets (usuarios, autenticación, admin, contacto).
+  - Endpoints manuales (health check, sesión del editor 3D, verificación de email).
+  - Inclusión de URLs de módulos: products, catalog, models3d, carts, checkout, orders, monitoring.
+  - JWT (obtención y refresh de tokens).
+  - Archivos media en desarrollo.
+
+Patrón de diseño: URLDispatcher (Django).
+Todas las rutas están bajo el prefijo /api/ excepto /admin/.
+"""
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -5,6 +18,8 @@ from django.conf.urls.static import static
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils import timezone
+from datetime import datetime
+from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -22,24 +37,36 @@ from apps.users.api.admin_viewset import AdminUsuarioViewSet
 from apps.users.api.stats_viewset import AdminStatsViewSet
 from apps.landing.api.viewset import ContactoViewSet
 from apps.users.models import Token_Verificacion
-from apps.users.api.serializers import UsuarioSerializer
+from config.health import health_check
 
-# Crear router
+# ═══════════════════════════════════════════════════════════════════════
+# Router DRF — Registro de ViewSets principales
+# ═══════════════════════════════════════════════════════════════════════
+# Cada registro genera automáticamente endpoints REST (list, create, retrieve, etc.)
 router = DefaultRouter()
 
-# Rutas usuarios
+# ── Autenticación y gestión de usuarios ──
 router.register(r'auth', RegistroViewSet, basename='auth')
 router.register(r'login', LoginViewSet, basename='login')
 router.register(r'usuarios', UsuarioViewSet, basename='usuario')
+
+# ── Panel de administración (usuarios y estadísticas) ──
 router.register(r'admin/usuarios', AdminUsuarioViewSet, basename='admin-usuario')
 router.register(r'admin/stats', AdminStatsViewSet, basename='admin-stats')
 
-# Landing
+# ── Formulario de contacto (landing) ──
 router.register(r'contacto', ContactoViewSet, basename='contacto')
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Endpoints manuales — Health Check y Autenticación
+# ═══════════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════
+# Endpoint de salud — Health Check para Render
+# ═══════════════════════════════════════════════════════════════════════
 def health_check(request):
-    """Endpoint de salud para Render. Verifica PostgreSQL y MongoDB."""
+    """Verifica la conectividad de PostgreSQL y MongoDB. Retorna estado 200 o 503."""
     from django.db import connection
     db_ok = True
     try:
@@ -69,20 +96,43 @@ from django.http import JsonResponse
 import json
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Endpoint /api/me/ — Datos del usuario autenticado
+# ═══════════════════════════════════════════════════════════════════════
 def _editor_origin_allowed(request):
     origin = request.headers.get('Origin')
     return not origin or origin in settings.CORS_ALLOWED_ORIGINS
 
 
+editor_session_signer = TimestampSigner(salt='editor-session-handoff')
+
+
+def _editor_data_from_token(token):
+    if not token:
+        return None
+    try:
+        return editor_session_signer.unsign_object(token, max_age=60 * 60)
+    except (BadSignature, SignatureExpired, TypeError, ValueError):
+        return None
+
+
 @api_view(['GET'])
 @perm_decorator([IsAuthenticated])
 def me_view(request):
-    """Endpoint /api/me/ — retorna los datos del usuario autenticado.
+    """Retorna los datos del usuario autenticado.
     Usado por restoreSession() en el frontend para obtener el perfil
     después de renovar el access token."""
     serializer = UsuarioSerializer(request.user)
     return JsonResponse(serializer.data)
 
+
+# ═══════════════════════════════════════════════════════════════════════
+# Endpoints del Editor 3D — Sesión segura entre pestañas
+# ═══════════════════════════════════════════════════════════════════════
+# Patrón: Cookie-based session sharing.
+# El editor 3D (React) guarda selección del usuario en la cookie de sesión
+# del backend, permitiendo compartir datos entre pestañas del mismo sitio.
+# SEGURIDAD: Datos autoritativos (precio, stock) SIEMPRE se validan contra BD.
 
 @csrf_exempt
 @api_view(['POST'])
@@ -120,15 +170,20 @@ def editor_session_save(request):
     product_id = data.get('productId')
     variant_id = data.get('variantId')
 
-    if not product_id or not variant_id:
-        return JsonResponse({'error': 'productId y variantId son requeridos.'}, status=400)
+    if not product_id:
+        return JsonResponse({'error': 'productId es requerido.'}, status=400)
 
     try:
         from apps.products.models import Product, Variant
         product = Product.objects.get(pk=int(product_id))
         if not product.is_active or not product.is_approved:
             return JsonResponse({'error': 'El producto no está disponible.'}, status=400)
-        variant = Variant.objects.get(pk=int(variant_id), product=product)
+        if variant_id:
+            variant = Variant.objects.get(pk=int(variant_id), product=product)
+        else:
+            variant = product.variants.first()
+            if not variant:
+                return JsonResponse({'error': 'El producto no tiene variantes disponibles.'}, status=400)
     except (Product.DoesNotExist, Variant.DoesNotExist, TypeError, ValueError):
         return JsonResponse({'error': 'Producto o variante no válidos.'}, status=400)
 
@@ -162,7 +217,10 @@ def editor_session_save(request):
     request.session['editor_3d'] = editor_data
     request.session.save()
 
-    return JsonResponse({'ok': True})
+    return JsonResponse({
+        'ok': True,
+        'sessionToken': editor_session_signer.sign_object(editor_data),
+    })
 
 
 @csrf_exempt
@@ -176,14 +234,18 @@ def editor_session_get(request):
     para evitar reutilizar datos obsoletos.
     """
     EDITOR_SESSION_MAX_AGE_MINUTES = 60
-    editor_data = request.session.get('editor_3d')
+    editor_data = _editor_data_from_token(request.GET.get('sessionToken'))
+    if not editor_data:
+        editor_data = request.session.get('editor_3d')
     if not editor_data:
         return JsonResponse({'error': 'No hay datos de editor en la sesión'}, status=404)
 
     created_at = editor_data.get('createdAt')
     if created_at:
         try:
-            created_dt = timezone.datetime.fromisoformat(created_at)
+            created_dt = datetime.fromisoformat(created_at)
+            if timezone.is_naive(created_dt):
+                created_dt = timezone.make_aware(created_dt, timezone.get_current_timezone())
             if timezone.now() - created_dt > timezone.timedelta(minutes=EDITOR_SESSION_MAX_AGE_MINUTES):
                 request.session.pop('editor_3d', None)
                 request.session.save()
@@ -222,7 +284,17 @@ def editor_session_commit(request):
     if not _editor_origin_allowed(request):
         return JsonResponse({'error': 'Origen no permitido.'}, status=403)
 
-    editor_data = request.session.get('editor_3d')
+    try:
+        design_payload = json.loads(request.body or '{}')
+    except (TypeError, json.JSONDecodeError):
+        design_payload = {}
+    design_preview_url = design_payload.get('designPreviewUrl') or ''
+    design_data = design_payload.get('designData') if isinstance(design_payload.get('designData'), dict) else {}
+
+    editor_payload = design_payload.get('sessionToken') or request.GET.get('sessionToken')
+    editor_data = _editor_data_from_token(editor_payload)
+    if not editor_data:
+        editor_data = request.session.get('editor_3d')
     if not editor_data:
         return JsonResponse({'error': 'La sesión del editor no existe o ya fue utilizada.'}, status=404)
 
@@ -260,7 +332,12 @@ def editor_session_commit(request):
             cart=cart,
             product=product,
             variant=variant,
-            defaults={'quantity': quantity, 'unit_price': variant.effective_price},
+            defaults={
+                'quantity': quantity,
+                'unit_price': variant.effective_price,
+                'design_preview_url': design_preview_url or None,
+                'design_data': design_data,
+            },
         )
         if not created:
             new_quantity = item.quantity + quantity
@@ -268,14 +345,23 @@ def editor_session_commit(request):
                 return JsonResponse({'error': 'La cantidad total supera el stock disponible.'}, status=400)
             item.quantity = new_quantity
             item.unit_price = variant.effective_price
-            item.save(update_fields=['quantity', 'unit_price', 'updated_at'])
+            if design_preview_url:
+                item.design_preview_url = design_preview_url
+            if design_data:
+                item.design_data = design_data
+            item.save(update_fields=['quantity', 'unit_price', 'design_preview_url', 'design_data', 'updated_at'])
 
     request.session.pop('editor_3d', None)
     request.session.save()
     return JsonResponse(CartItemSerializer(item, context={'request': request}).data, status=201)
 
-# Vista directa para verificar email desde el link del correo
+
+# ═══════════════════════════════════════════════════════════════════════
+# Verificación de email desde enlace del correo
+# ═══════════════════════════════════════════════════════════════════════
+
 def verificar_email_directo(request):
+    """Redirige al frontend tras verificar el email con el token del enlace."""
     token = request.GET.get('token', '')
     if not token:
         return redirect(f"{settings.FRONTEND_URL}/login?error=token-no-encontrado")
@@ -297,56 +383,51 @@ def verificar_email_directo(request):
     except Token_Verificacion.DoesNotExist:
         return redirect(f"{settings.FRONTEND_URL}/login?error=token-invalido")
 
+from apps.users.api.serializers import UsuarioSerializer
+
+# ═══════════════════════════════════════════════════════════════════════
+# Patrón de URLs — urlpatterns
+# ═══════════════════════════════════════════════════════════════════════
 urlpatterns = [
-    # Health check (Render, monitoreo)
+    # ── Health check (monitoring) ──
     path('api/health/', health_check, name='health-check'),
+    path('api/me/', me_view, name='me-view'),
 
-    # Datos del usuario autenticado (restoreSession en frontend)
-    path('api/me/', me_view, name='me'),
-
-    # Sesión del editor 3D (datos sensibles fuera de la URL)
+    # ── Endpoints del Editor 3D (sesión segura entre pestañas) ──
     path('api/editor-session/save/', editor_session_save, name='editor-session-save'),
     path('api/editor-session/', editor_session_get, name='editor-session-get'),
     path('api/editor-session/commit/', editor_session_commit, name='editor-session-commit'),
 
-    # Admin
+    # ── Panel de administración Django ──
     path('admin/', admin.site.urls),
 
-    # Verificación directa de email desde el link del correo
+    # ── Verificación de email (enlace directo desde el correo) ──
     path('api/auth/verificar-email/', verificar_email_directo, name='verificar-email-directo'),
 
-    # API Router
+    # ── Router DRF (usuarios, auth, admin, contacto) ──
     path('api/', include(router.urls)),
 
-    # JWT
+    # ── JWT: obtención y refresh de tokens ──
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', UsuarioTokenRefreshView.as_view(), name='token_refresh'),
 
-    # Productos
+    # ── Módulos de negocio (cada app incluye sus propias URLs) ──
     path('api/products/', include('apps.products.api.urls')),
-
-    # Catálogo
     path('api/catalog/', include('apps.catalog.api.urls')),
-
-    # Modelos 3D
     path('api/models3d/', include('apps.models3d.api.urls')),
-
-    # Carrito
     path('api/cart/', include('apps.carts.api.urls')),
 
-    # Admin carritos
+    # ── URLs de administración (carritos, órdenes) ──
     path('api/admin/carts/', include('apps.carts.api.admin_urls')),
-
-    # Admin órdenes
     path('api/admin/orders/', include('apps.orders.api.admin_urls')),
 
-    # Órdenes
+    # ── Checkout y órdenes ──
     path('api/checkout/', include('apps.checkout.urls')),
     path('api/orders/', include('apps.orders.api.urls')),
 
-    # Monitoreo / logs de errores del frontend
+    # ── Monitoreo / logs de errores del frontend ──
     path('api/logging/', include('apps.monitoring.urls')),
 ]
 
-# Media files
+# ── Archivos media en desarrollo (imágenes, uploads) ──
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

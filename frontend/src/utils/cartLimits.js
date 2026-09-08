@@ -1,5 +1,16 @@
+/**
+ * cartLimits.js — Utilidades para limitar alertas y extraer errores del carrito.
+ *
+ * useAddAttemptGuard: Hook que cuenta intentos fallidos de agregar al carrito.
+ * No deshabilita el botón, solo suprime alertas tras 5 intentos fallidos.
+ * Previene spam de notificaciones si el usuario hace clic repetidamente.
+ *
+ * extractCartError: Extrae un mensaje legible de una excepción de Axios,
+ * intentando múltiples campos del response.data (error, quantity, detail, etc.).
+ */
 import { useRef, useState, useCallback } from 'react';
 
+// ─── CONSTANTE: LÍMITE MÁXIMO DE ALERTAS ───
 export const LIMIT_MAX_ALERTS = 5;
 
 /**
@@ -17,6 +28,7 @@ export const LIMIT_MAX_ALERTS = 5;
  *   clearAlerts,      // () => void  → resetea el contador manualmente
  * }}
  */
+// ─── HOOK: GUARD DE INTENTOS DE AGREGAR AL CARRITO ───
 export function useAddAttemptGuard() {
   const attemptsRef = useRef([]);
   const [alertCount, setAlertCount] = useState(0);
@@ -41,7 +53,7 @@ export function useAddAttemptGuard() {
   return { alertCount, maxReached, registerFailure, clearAlerts };
 }
 
-/** Extrae un mensaje de error legible a partir de una excepción de Axios. */
+// ─── UTILIDAD: EXTRAER MENSAJE DE ERROR DE AXIOS ───
 export function extractCartError(error, fallback = 'Error al agregar al carrito') {
   const data = error?.response?.data;
   if (data && typeof data !== 'string') {

@@ -1,66 +1,99 @@
 /**
- * Componente de la malla 3D de la camiseta.
+ * Componente 3D de la camiseta personalizable.
  *
- * Carga el modelo GLTF de la camiseta (`/shirt_baked.glb`) mediante
- * `useGLTF` de @react-three/drei y renderiza la malla con Three.js.
+ * Renderiza el modelo GLTF de la camiseta y gestiona tres capas de
+ * calcomanía (Decal) que se superponen en la superficie 3D:
+ * 1. Textura completa (fullTexture): cubre toda la camiseta
+ * 2. Logo personalizado (logoDecal): calcomanía parcial posicionable
+ * 3. Texto 3D (customText): generado dinámicamente como CanvasTexture
  *
- * Three.js maneja la geometría (T_Shirt_male), el material (lambert1)
- * y las texturas como objetos del mundo 3D. @react-three/fiber sincroniza
- * el ciclo de vida de React con el bucle de renderizado de Three.js
- * mediante hooks como useFrame.
- *
- * Aplicación de colores y texturas:
- * - El color de la camiseta se interpola suavemente en cada frame
- *   usando `easing.dampC` de la biblioteca maath, transicionando
- *   desde el color actual al color seleccionado en el store de Valtio.
- *   maath es una biblioteca de matemáticas para animaciones 3D que
- *   proporciona funciones de interpolación (damping exponencial).
- * - Las texturas (logo y textura completa) se aplican como decals
- *   (calcomanías) sobre la superficie de la malla usando el componente
- *   `<Decal>` de drei, que proyecta una textura 2D sobre la geometría 3D.
- * - `logoTexture` se renderiza si `isLogoTexture` es true, en la
- *   posición y escala definidas en el store (arrastrable por el usuario).
- * - `fullTexture` se renderiza si `isFullTexture` es true, cubriendo
- *   toda la superficie de la camiseta.
- *
- * Interacción drag & drop del logo:
- * - onPointerDown: activa el modo de arrastre.
- * - onPointerMove: actualiza logoPosition [x, y, z] según el punto
- *   de intersección del rayo (raycaster) con la malla.
- * - onPointerUp / onPointerOut: desactiva el modo de arrastre.
- *
- * RF-025: Renderizado 3D interactivo de la camiseta.
- * RF-026: Personalización con colores, logos y texturas.
+ * Patrones de Three.js / R3F:
+ * - useGLTF: carga modelos .glb/.gltf de forma declarativa
+ * - useTexture: carga imágenes como texturas de Three.js
+ * - Decal: proyecta una textura sobre la superficie de un mesh
+ * - useFrame: ejecuta lógica en cada frame (interpolación de color)
+ * - CanvasTexture: genera texturas proceduralmente usando Canvas 2D API
+ * - easing.dampC: interpolación suave del color para evitar cambios bruscos
  */
-import React, { useState } from "react";
+import { useState, useMemo } from "react";
 import { easing } from "maath";
 import { useSnapshot } from "valtio";
 import { useFrame } from "@react-three/fiber";
 import { Decal, useGLTF, useTexture } from "@react-three/drei";
+import * as THREE from "three";
 
 import state from "../store";
 
+// ── Generación procedural de textura de texto ──
+// Crea un CanvasTexture de Three.js a partir del texto personalizado
+function createTextTexture(text, font, color) {
+  if (!text || !text.trim()) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Tipografía y alineación
+  ctx.font = `bold 64px ${font || "Arial"}, sans-serif`;
+  ctx.fillStyle = color || "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Efecto de sombra suave para dar nitidez en la tela
+  ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
+
+  // Renderizar texto centrado
+  ctx.fillText(text.trim(), canvas.width / 2, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  texture.anisotropy = 16;
+  return texture;
+}
+
 const Shirt = () => {
   const snap = useSnapshot(state);
+  // Carga el modelo GLTF bakeado (materiales ya optimizados)
   const { nodes, materials } = useGLTF("/shirt_baked.glb");
 
-  // Estado local para controlar cuándo se está arrastrando el logo
+  // ── Estado de interacción: arrastre del logo/texto ──
   const [isDragging, setIsDragging] = useState(false);
 
+  // ── Carga de texturas desde el store ──
+  // useTexture convierte las rutas/URLs en texturas de Three.js
   const logoTexture = useTexture(snap.logoDecal);
   const fullTexture = useTexture(snap.fullDecal);
 
-  // Función para mover el logo siguiendo el cursor
+  // ── Generación reactiva de la textura de texto ──
+  // Se regenera solo cuando cambian customText, textFont o textColor
+  const textTexture = useMemo(() => {
+    if (!snap.customText || !snap.customText.trim()) return null;
+    return createTextTexture(snap.customText, snap.textFont, snap.textColor);
+  }, [snap.customText, snap.textFont, snap.textColor]);
+
+  // ── Interacción de arrastre: posiciona logo/texto en 3D ──
   const handlePointerMove = (e) => {
     e.stopPropagation();
-    
-    // Solo actualizamos la posición si el usuario tiene el clic presionado sobre la prenda
     if (isDragging) {
       const { x, y, z } = e.point;
-      state.logoPosition = [x, y, z];
+      // Si el texto está activo y el logo no, movemos el texto.
+      // Si ambos están activos o solo el logo, movemos el logo.
+      if (snap.isTextTexture && !snap.isLogoTexture) {
+        state.textPosition = [x, y, z];
+      } else {
+        state.logoPosition = [x, y, z];
+      }
     }
   };
 
+  // ── Animación del color: interpolación suave en cada frame ──
+  // easing.dampC evita cambios bruscos de color, creando una transición suave
   useFrame((state, delta) =>
     easing.dampC(materials.lambert1.color, snap.color, 0.25, delta)
   );
@@ -68,26 +101,25 @@ const Shirt = () => {
   return (
     <group>
       <mesh
-        castShadow
         geometry={nodes.T_Shirt_male.geometry}
         material={materials.lambert1}
         material-roughness={1}
         dispose={null}
-        // --- EVENTOS DE INTERACCIÓN ---
+        // ── Eventos de interacción para arrastre ──
         onPointerDown={(e) => {
           e.stopPropagation();
           setIsDragging(true); // Activa el movimiento al presionar
         }}
         onPointerUp={(e) => {
           e.stopPropagation();
-          setIsDragging(false); // Fija el logo al soltar
+          setIsDragging(false); // Fija la posición al soltar
         }}
         onPointerOut={() => {
-          setIsDragging(false); // Fija el logo si el cursor sale de la camiseta
+          setIsDragging(false); // Fija la posición si el cursor sale
         }}
         onPointerMove={handlePointerMove}
       >
-        {/* Textura completa (Fondo) */}
+        {/* ── Capa 1: Textura completa (fondo de la camiseta) ── */}
         {snap.isFullTexture && (
           <Decal
             position={[0, 0, 0]}
@@ -97,13 +129,26 @@ const Shirt = () => {
           />
         )}
 
-        {/* Logo Personalizado (RED) */}
+        {/* ── Capa 2: Logo personalizado (calcomanía posicionable) ── */}
         {snap.isLogoTexture && (
           <Decal
             position={snap.logoPosition}
             rotation={[0, 0, 0]}
             scale={snap.logoScale}
             map={logoTexture}
+            mapAnisotropy={16}
+            depthTest={false}
+            depthWrite={true}
+          />
+        )}
+
+        {/* ── Capa 3: Texto personalizado (generado proceduralmente) ── */}
+        {snap.isTextTexture && textTexture && (
+          <Decal
+            position={snap.textPosition}
+            rotation={[0, 0, 0]}
+            scale={snap.textScale}
+            map={textTexture}
             mapAnisotropy={16}
             depthTest={false}
             depthWrite={true}

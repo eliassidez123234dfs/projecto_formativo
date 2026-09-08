@@ -33,7 +33,7 @@ def load_sample_products():
         {
             'name': 'Buzo con Capucha Hombre AE',
             'description': 'Buzo con capucha manga larga con gráfico moderno. Perfecto para estilo urbano.',
-            'base_price': Decimal('89.99'),
+            'base_price': Decimal('90000'),
             'images': [],  # .webp no soportado
             'variants': [
                 {'size': 'S', 'color': 'Negro', 'stock': 15},
@@ -46,7 +46,7 @@ def load_sample_products():
         {
             'name': 'Camisa Oxford Talla Grande',
             'description': 'Camisa estilo Oxford clásica, disponible en tallas grandes. Elegante y cómoda.',
-            'base_price': Decimal('59.99'),
+            'base_price': Decimal('60000'),
             'images': ['CAMISAS-OXFORD-TALLAS-GRANDES_3-300x300.jpg'],
             'variants': [
                 {'size': 'L', 'color': 'Blanco', 'stock': 12},
@@ -58,7 +58,7 @@ def load_sample_products():
         {
             'name': 'Goku Drip Puffer Jacket',
             'description': 'Chaqueta puffer estilo Goku Drip, diseño urbano moderno con temática anime.',
-            'base_price': Decimal('129.99'),
+            'base_price': Decimal('130000'),
             'images': [],  # .webp no soportado
             'variants': [
                 {'size': 'M', 'color': 'Negro', 'stock': 8},
@@ -70,7 +70,7 @@ def load_sample_products():
         {
             'name': 'Camisa Columbia Manga Larga',
             'description': 'Camisa estilo Columbia manga larga, perfecta para exteriores y aventuras.',
-            'base_price': Decimal('69.99'),
+            'base_price': Decimal('70000'),
             'images': ['camisas-estilo-columbia-manga-larga.jpg'],
             'variants': [
                 {'size': 'S', 'color': 'Azul', 'stock': 10},
@@ -82,7 +82,7 @@ def load_sample_products():
         {
             'name': 'Buzo Caramelo Confort Mujer',
             'description': 'Buzo tipo hoodie tacto suave color caramelo, máximo confort para mujer.',
-            'base_price': Decimal('79.99'),
+            'base_price': Decimal('80000'),
             'images': [],  # .webp no soportado
             'variants': [
                 {'size': 'S', 'color': 'Caramelo', 'stock': 18},
@@ -94,7 +94,7 @@ def load_sample_products():
         {
             'name': 'Camisa Diseño Serpientes',
             'description': 'Camisa con diseño original de serpientes, estilo único y llamativo.',
-            'base_price': Decimal('54.99'),
+            'base_price': Decimal('55000'),
             'images': ['imagen_camisa_diseño_Serpientes.webp'],
             'variants': [
                 {'size': 'M', 'color': 'Blanco', 'stock': 14},
@@ -106,7 +106,7 @@ def load_sample_products():
         {
             'name': 'Camisa Mockup Design',
             'description': 'Camisa básica mockup template, perfecta para personalizar con diseños.',
-            'base_price': Decimal('34.99'),
+            'base_price': Decimal('35000'),
             'images': ['men-s-shirts-mockup-design-template-mockup-free-photo.jfif'],
             'variants': [
                 {'size': 'S', 'color': 'Blanco', 'stock': 25},
@@ -138,37 +138,40 @@ def load_sample_products():
             else:
                 print(f'  📝 Producto actualizado: {product.name}')
             
-            # Buscar y copiar imágenes
-            image_found = False
-            for source_dir in image_sources:
-                for image_name in product_data['images']:
-                    source_path = os.path.join(source_dir, image_name)
-                    if os.path.exists(source_path):
-                        # Copiar imagen al media directory
-                        media_dir = Path('media/products/2026/05')
-                        media_dir.mkdir(parents=True, exist_ok=True)
-                        
-                        # Generar nombre único
-                        file_extension = Path(image_name).suffix
-                        safe_name = product.name.replace(' ', '_').replace('/', '_').replace('ñ', 'n').lower()
-                        dest_filename = f"{safe_name}{file_extension}"
-                        dest_path = media_dir / dest_filename
-                        
-                        # Copiar archivo
-                        shutil.copy2(source_path, dest_path)
-                        
-                        # Crear ProductImage sin validación de resolución
-                        try:
-                            with open(dest_path, 'rb') as f:
-                                product_image = ProductImage.objects.create(
-                                    product=product,
-                                    image=File(f, name=dest_filename),
-                                    is_main=not image_found  # Primera imagen como principal
-                                )
-                                print(f'    📷 Imagen agregada: {dest_filename}')
-                                image_found = True
-                        except Exception as e:
-                            print(f'    ⚠️  Error al crear imagen: {e}')
+            # El script puede ejecutarse varias veces sin duplicar imágenes.
+            image_found = product.images.exists()
+            if image_found:
+                print('  ℹ️  El producto ya tiene imágenes; se omite la carga')
+            else:
+                for source_dir in image_sources:
+                    for image_name in product_data['images']:
+                        file_extension = Path(image_name).suffix.lower()
+                        if file_extension not in {'.jpg', '.jpeg', '.png'}:
+                            continue
+
+                        source_path = os.path.join(source_dir, image_name)
+                        if os.path.exists(source_path):
+                            media_dir = Path('media/products/2026/05')
+                            media_dir.mkdir(parents=True, exist_ok=True)
+
+                            safe_name = product.name.replace(' ', '_').replace('/', '_').replace('ñ', 'n').lower()
+                            dest_filename = f"{safe_name}{file_extension}"
+                            dest_path = media_dir / dest_filename
+                            shutil.copy2(source_path, dest_path)
+
+                            try:
+                                with open(dest_path, 'rb') as f:
+                                    ProductImage.objects.create(
+                                        product=product,
+                                        image=File(f, name=dest_filename),
+                                        is_main=True,
+                                    )
+                                    print(f'    📷 Imagen agregada: {dest_filename}')
+                                    image_found = True
+                            except Exception as e:
+                                print(f'    ⚠️  Error al crear imagen: {e}')
+                            break
+                    if image_found:
                         break
             
             if not image_found:

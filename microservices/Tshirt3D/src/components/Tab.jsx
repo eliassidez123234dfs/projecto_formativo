@@ -40,14 +40,21 @@ const Tab = ({ tab, isFilterTab, isActiveTab, handleClick }) => {
       }`}
       onClick={handleClick}
       style={activeStyles}
+      title={tab.name}
     >
-      <img
-        src={tab.icon}
-        alt={tab.name}
-        className={`${
-          isFilterTab ? "w-2/3 h-2/3" : "w-11/12 h-11/12 object-contain"
-        }`}
-      />
+      {typeof tab.icon === "string" ? (
+        <img
+          src={tab.icon}
+          alt={tab.name}
+          className={`${
+            isFilterTab ? "w-2/3 h-2/3" : "w-11/12 h-11/12 object-contain"
+          }`}
+        />
+      ) : React.isValidElement(tab.icon) ? (
+        <div className="w-4/5 h-4/5 flex items-center justify-center">
+          {tab.icon}
+        </div>
+      ) : null}
     </div>
   );
 };

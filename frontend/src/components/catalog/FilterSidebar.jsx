@@ -160,15 +160,57 @@ export default function FilterSidebar({
         </FilterSection>
       )}
 
-      {/* Colores */}
+      {/* Colores en Grid Compacto */}
       {colors.length > 0 && (
-        <FilterSection title="Color">
-          <CheckList
-            swatch
-            items={colors}
-            selected={selectedColors}
-            onToggle={(v) => set({ color: toCsv(toggleValue(selectedColors, v)) })}
-          />
+        <FilterSection title={`Color ${selectedColors.length > 0 ? `(${selectedColors.length})` : ''}`}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(28px, 1fr))',
+            gap: '8px',
+            padding: '6px 2px',
+            maxHeight: '160px',
+            overflowY: 'auto'
+          }}>
+            {colors.map((it) => {
+              const isSelected = selectedColors.includes(it.value);
+              const isLight = it.hex && (it.hex.toLowerCase() === '#ffffff' || it.hex.toLowerCase() === '#f5f5dc' || it.hex.toLowerCase() === '#fef3c7' || it.hex.toLowerCase() === '#fff');
+              return (
+                <button
+                  key={it.value}
+                  type="button"
+                  title={`${it.label}${it.count != null ? ` (${it.count})` : ''}`}
+                  aria-label={it.label}
+                  aria-pressed={isSelected}
+                  onClick={() => set({ color: toCsv(toggleValue(selectedColors, it.value)) })}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    backgroundColor: it.hex || '#cccccc',
+                    border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    boxShadow: isSelected ? '0 0 0 2px rgba(220, 38, 38, 0.3)' : 'none',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'transform 0.15s, border-color 0.15s',
+                    transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+                    padding: 0,
+                  }}
+                >
+                  {isSelected && (
+                    <span style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      backgroundColor: isLight ? '#000000' : '#ffffff'
+                    }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </FilterSection>
       )}
 

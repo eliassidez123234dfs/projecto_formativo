@@ -28,13 +28,16 @@ import { persist } from 'zustand/middleware'
 const useAppStore = create(
   persist(
     (set) => ({
+      // ─── ESTADO INICIAL ───
       sidebarOpen: true,
       theme: 'light',
       toast: null,
 
+      // ─── ACCIONES DEL SIDEBAR ───
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 
+      // ─── ACCIONES DEL TEMA ───
       setTheme: (theme) => {
         document.documentElement.setAttribute('data-theme', theme)
         set({ theme })
@@ -46,6 +49,7 @@ const useAppStore = create(
           return { theme: next }
         }),
 
+      // ─── ACCIONES DE TOAST ───
       showToast: (toast) => set({ toast }),
       dismissToast: () => set({ toast: null }),
     }),

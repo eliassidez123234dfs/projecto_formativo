@@ -36,6 +36,8 @@ class CartItem(models.Model):
 	variant = models.ForeignKey(Variant, on_delete=models.CASCADE)
 	quantity = models.PositiveIntegerField(default=1)
 	unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+	design_preview_url = models.URLField(blank=True, null=True)
+	design_data = models.JSONField(default=dict, blank=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 

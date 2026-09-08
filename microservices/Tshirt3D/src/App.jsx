@@ -1,3 +1,17 @@
+/**
+ * Componente raíz de la aplicación Tshirt3D.
+ *
+ * Orquesta el flujo principal del editor 3D de camisetas:
+ * 1. Carga la sesión del editor desde el backend Django
+ * 2. Muestra estados de carga/error si la sesión falla
+ * 3. Alterna entre el editor (Canvas + Customizer) y la vista previa (Preview)
+ *
+ * Flujo de datos:
+ * - loadEditorSession() obtiene productId, variantId, quantity, color del backend
+ * - Canvas renderiza la escena 3D con Three.js via @react-three/fiber
+ * - Customizer maneja la UI de personalización y crea el pedido
+ * - Preview muestra el resultado y permite confirmar/enviar al backend
+ */
 import { useEffect, useState } from "react";
 import Canvas from "./canvas/index.jsx";
 import Customizer from "./pages/Customizer.jsx";
@@ -8,11 +22,15 @@ import state, { loadEditorSession } from "./store/index.js";
 const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
 
 function App() {
+  // ── Estado local para el flujo de pedidos ──
   const [previewOrder, setPreviewOrder] = useState(null);
   const [ready, setReady] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [renderError, setRenderError] = useState(null);
 
+  // ── Carga de sesión al montar la aplicación ──
+  // loadEditorSession() consulta el backend Django para obtener datos validados
+  // del producto/variante. El editor NUNCA confía en parámetros de la URL.
   useEffect(() => {
     let cancelled = false;
     loadEditorSession().finally(() => {
@@ -26,9 +44,7 @@ function App() {
     };
   }, []);
 
-  // El editor necesita los datos de producto/variante validados por el backend.
-  // Si la sesión no se pudo cargar, mostrar un estado claro en lugar de un
-  // editor roto que no podría guardar el diseño.
+  // ── Estado de carga inicial ──
   if (!ready) {
     return (
       <div className="flex items-center justify-center w-full h-screen bg-slate-900">
@@ -37,6 +53,7 @@ function App() {
     );
   }
 
+  // ── Error de sesión: datos del producto no disponibles ──
   if (sessionError) {
     return (
       <div className="flex flex-col items-center justify-center w-full h-screen bg-slate-900 px-6 text-center">
@@ -58,8 +75,10 @@ function App() {
     );
   }
 
+  // ── Renderizado principal: ErrorBoundary envuelve toda la escena 3D ──
   return (
     <ErrorBoundary onError={setRenderError}>
+      {/* Error de renderizado de Three.js / WebGL */}
       {renderError && (
         <div className="flex items-center justify-center w-full h-screen bg-slate-900 px-6 text-center">
           <div className="glassmorphism rounded-2xl p-8 max-w-md border border-red-400/40">
@@ -71,6 +90,7 @@ function App() {
           </div>
         </div>
       )}
+      {/* Editor 3D: Canvas (escena Three.js) + Customizer (UI) o Preview (resultado) */}
       {!renderError && (
       <main className="app transition-all ease-in">
         {!previewOrder ? (

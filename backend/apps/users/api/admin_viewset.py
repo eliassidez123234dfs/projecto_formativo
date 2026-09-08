@@ -25,15 +25,30 @@ from ..models import (
 from .serializers import (
     UsuarioSerializer, UsuarioDetailSerializer, LogAuditoriaSerializer
 )
+from apps.users.services.email_service import EmailService
 
 
 class AdminPermission(permissions.BasePermission):
-    """Permiso personalizado para usuarios administradores"""
-    
+    """
+    [CAPA 3 — APLICACIÓN] Permiso personalizado para usuarios administradores.
+
+    Implementa el principio de Autorización Basada en Roles (RBAC).
+    OWASP A01: Broken Access Control — previene acceso no autorizado.
+
+    Requisitos para conceder acceso:
+      1. request.user existe (no AnonymousUser) — AUTENTICACIÓN
+      2. El usuario tiene sesión JWT válida (is_authenticated) — JWT LAYER
+      3. El campo 'rol' del modelo es exactamente 'Administrador' — RBAC
+      4. El campo 'estado' es 'Activo' (cuenta no bloqueada) — ESTADO DE CUENTA
+
+    Patrón de diseño: Strategy — define el algoritmo de autorización
+    intercambiable sin modificar las vistas que lo usan.
+    """
+
     def has_permission(self, request, view):
         return (
-            request.user and 
-            request.user.is_authenticated and 
+            request.user and
+            request.user.is_authenticated and
             request.user.rol == 'Administrador' and
             request.user.estado == 'Activo'
         )
@@ -308,7 +323,92 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             return Response({
                 'error': msg
             }, status=status.HTTP_400_BAD_REQUEST)
-    
+
+    @action(detail=True, methods=['post'], url_path='promote_to_admin')
+    def promote_to_admin(self, request, pk=None):
+        """
+        [CAPA 3 — APLICACIÓN] Promover un usuario al rol 'Administrador'.
+
+        SEGURIDAD — Por qué este endpoint existe separado del formulario de creación:
+        ─────────────────────────────────────────────────────────────────────────────
+        Exponer el rol 'Administrador' en un <select> del formulario público o del
+        panel de creación estándar constituye una falla BFLA (Broken Function Level
+        Authorization) y Mass Assignment (OWASP API3):
+          - Un atacante puede enviar {"rol": "Administrador"} directamente via HTTP.
+          - Aunque el backend tenga AdminPermission, la EXPOSICIÓN del rol en el
+            formulario es mala práctica de seguridad por defecto.
+
+        Solución correcta — este endpoint:
+          1. Solo accesible para admins ya autenticados (AdminPermission).
+          2. Requiere la contraseña del admin solicitante (confirmación de identidad).
+          3. Registra la acción en Log_Auditoria (trazabilidad completa).
+          4. Valida que el usuario destino exista y no sea ya administrador.
+          5. Previene que el único admin activo sea el único promotor sin respaldo.
+
+        Principio: Mínimo Privilegio + Separación de Funciones (SoD).
+        OWASP A01: Broken Access Control.
+        """
+        # ── 1. Obtener el usuario a promover ──
+        usuario_destino = self.get_object()
+
+        # ── 2. Verificar que no sea ya administrador ──
+        if usuario_destino.rol == 'Administrador':
+            return Response({
+                'error': f'El usuario {usuario_destino.usuario} ya tiene el rol de Administrador.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ── 3. Confirmar identidad del admin solicitante con su contraseña ──
+        password_confirmacion = request.data.get('password_confirmacion', '').strip()
+        if not password_confirmacion:
+            return Response({
+                'error': 'Se requiere tu contraseña para confirmar esta operación.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.contrib.auth.hashers import check_password as django_check_password
+        if not django_check_password(password_confirmacion, request.user.contrasena):
+            return Response({
+                'error': 'Contraseña incorrecta. No se realizó ningún cambio.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # ── 4. Verificar que el usuario destino esté activo ──
+        if usuario_destino.estado != 'Activo':
+            return Response({
+                'error': f'El usuario debe estar Activo para ser promovido. Estado actual: {usuario_destino.estado}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ── 5. Guardar datos anteriores para auditoría ──
+        datos_anteriores = {
+            'usuario': usuario_destino.usuario,
+            'correo': usuario_destino.correo,
+            'rol': usuario_destino.rol,
+            'estado': usuario_destino.estado
+        }
+
+        # ── 6. Promover ──
+        usuario_destino.rol = 'Administrador'
+        usuario_destino.save(update_fields=['rol'])
+
+        # ── 7. Registrar en auditoría (CAPA 4 — BASE DE DATOS) ──
+        self._registrar_auditoria(
+            request.user,
+            usuario_destino,
+            'Promover a Administrador',
+            datos_anteriores=datos_anteriores,
+            datos_nuevos={'rol': 'Administrador', 'promovido_por': request.user.usuario},
+            ip_admin=self._obtener_ip_cliente(request)
+        )
+
+        logger.info(
+            '[SEGURIDAD] Admin %s (id=%s) promovió a %s (id=%s) al rol Administrador.',
+            request.user.usuario, request.user.pk,
+            usuario_destino.usuario, usuario_destino.pk
+        )
+
+        return Response({
+            'mensaje': f'Usuario {usuario_destino.usuario} promovido a Administrador exitosamente.',
+            'usuario': UsuarioDetailSerializer(usuario_destino).data
+        }, status=status.HTTP_200_OK)
+
     def update(self, request, pk=None, *args, **kwargs):
         """Editar usuario (RF-019)"""
         usuario = self.get_object()
@@ -608,13 +708,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         """
         
         try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
+            EmailService.send_plain_email(asunto, mensaje, [usuario.correo])
         except Exception as exc:
             logger.exception('Error al enviar email de bienvenida a %s: %s', usuario.correo, exc)
     
@@ -634,13 +728,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         """
         
         try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
+            EmailService.send_plain_email(asunto, mensaje, [usuario.correo])
         except Exception as exc:
             logger.exception('Error al enviar email de verificación a %s: %s', usuario.correo, exc)
     
@@ -662,13 +750,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         """
         
         try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
+            EmailService.send_plain_email(asunto, mensaje, [usuario.correo])
         except Exception as exc:
             logger.exception('Error al enviar email de reseteo a %s: %s', usuario.correo, exc)
     

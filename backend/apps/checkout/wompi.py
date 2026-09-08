@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 def _get_base_url() -> str:
     """Return the Wompi API base URL from settings."""
-    return settings.WOMPI_API_URL
+    return settings.WOMPI_API_URL.rstrip('/')
 
 
 def _get_private_key() -> str:
@@ -73,7 +73,7 @@ def get_acceptance_token() -> str | None:
     Se obtiene dinámicamente del endpoint público del merchant.
     """
     try:
-        url = f'{_get_base_url()}/v1/merchants/{_get_public_key()}'
+        url = f'{_get_base_url()}/merchants/{_get_public_key()}'
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         data = resp.json()
@@ -88,6 +88,7 @@ def create_transaction(
     reference: str,
     customer_email: str,
     redirect_url: str,
+    card_token: str,
     customer_full_name: str | None = None,
     customer_phone: str | None = None,
     currency: str = 'COP',
@@ -121,7 +122,7 @@ def create_transaction(
             'payment_method': {
                 'type': 'CARD',
                 'user_type': 'N',
-                'token': None,
+                'token': card_token,
             },
         }
 
@@ -138,7 +139,7 @@ def create_transaction(
             'Content-Type': 'application/json',
         }
 
-        url = f'{_get_base_url()}/v1/transactions'
+        url = f'{_get_base_url()}/transactions'
         resp = requests.post(url, json=payload, headers=headers, timeout=30)
         resp.raise_for_status()
 
@@ -166,7 +167,7 @@ def verify_webhook_signature(request_body: bytes, signature_header: str | None) 
         return False
     try:
         secret = settings.WOMPI_WEBHOOK_SECRET.encode('utf-8')
-        expected = hmac.new(secret, request_body, hashlib.sha256).hexdigest()
+        expected = hmac.HMAC(secret, request_body, hashlib.sha256).hexdigest()
         return hmac.compare_digest(signature_header, expected)
     except Exception as exc:
         logger.error('Error verificando firma webhook: %s', exc)

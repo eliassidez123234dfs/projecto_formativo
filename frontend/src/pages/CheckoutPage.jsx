@@ -1,10 +1,26 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+/**
+ * CheckoutPage.jsx — Página de finalización de pedido (checkout).
+ *
+ * Estructura:
+ * 1. Resumen del carrito cargado del backend (getCheckoutSummary).
+ * 2. Formulario de datos del cliente y dirección de envío.
+ * 3. Vista de confirmación post-pedido con opción de descargar factura PDF.
+ *
+ * Decisiones de diseño:
+ * - Departamento/Ciudad con cascada dinámica usando datos de COLOMBIA_DEPARTAMENTOS.
+ * - Validación en cliente antes de enviar el pedido.
+ * - El pedido queda en estado "Pendiente" para validación administrativa.
+ * - Layout responsivo: grid de 2 columnas en desktop, 1 columna en móvil.
+ */
+import { COLOMBIA_DEPARTAMENTOS } from '../data/colombiaData'
 import { Header } from '../components/Header'
-import { useCart } from '../context/CartContext'
-import { getCheckoutSummary, confirmCheckout, downloadInvoicePdf } from '../services/api'
+import { Link, useNavigate } from 'react-router-dom'
 import { formatCOP } from '../utils/format'
+import { getCheckoutSummary, confirmCheckout, downloadInvoicePdf, tokenizeWompiCard, createWompiPayment } from '../services/api'
+import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useCart } from '../context/CartContext'
 
+// ─── ESTILO BASE PARA TARJETAS ───
 const cardStyle = {
   border: '1px solid var(--color-border)',
   borderRadius: 12,
@@ -13,6 +29,7 @@ const cardStyle = {
   boxShadow: 'var(--shadow-sm)',
 }
 
+// ─── COMPONENTE PRINCIPAL ───
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const { loadCart } = useCart()
@@ -25,9 +42,10 @@ export default function CheckoutPage() {
   // Datos del formulario
   const [customerName, setCustomerName] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
-  const [city, setCity] = useState('')
   const [department, setDepartment] = useState('')
+  const [city, setCity] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [reference, setReference] = useState('')
 
@@ -37,8 +55,12 @@ export default function CheckoutPage() {
 
   // Estado del pedido completado
   const [completedOrder, setCompletedOrder] = useState(null)
+  const [paymentForm, setPaymentForm] = useState({ number: '', cvc: '', expMonth: '', expYear: '', cardHolder: '' })
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentResult, setPaymentResult] = useState(null)
 
-  const loadSummary = useCallback(async () => {
+// ─── CARGA DEL RESUMEN DEL CHECKOUT ───
+const loadSummary = useCallback(async () => {
     setLoading(true)
     try {
       const data = await getCheckoutSummary()
@@ -61,8 +83,26 @@ export default function CheckoutPage() {
     }
   }, [loadSummary])
 
+// ─── CIUDADES DISPONIBLES SEGÚN DEPARTAMENTO ───
+// Filtra las ciudades del JSON estático según el departamento seleccionado.
+const availableCities = useMemo(() => {
+    if (!department) return []
+    const depObj = COLOMBIA_DEPARTAMENTOS.find(d => d.nombre === department)
+    return depObj ? depObj.ciudades : []
+  }, [department])
+
+  const handleDepartmentChange = (e) => {
+    const val = e.target.value
+    setDepartment(val)
+    setCity('')
+    if (fieldErrors.department) {
+      setFieldErrors(prev => ({ ...prev, department: null }))
+    }
+  }
+
   // Validación en cliente antes de enviar
-  function validateForm() {
+// ─── VALIDACIÓN EN CLIENTE ───
+function validateForm() {
     const errors = {}
     if (!customerName.trim()) {
       errors.customerName = 'El nombre completo es requerido.'
@@ -70,7 +110,7 @@ export default function CheckoutPage() {
       errors.customerName = 'El nombre debe tener al menos 3 caracteres.'
     }
 
-    const emailRegex = /^[\w.-]+@[\w.-]+\.\w+$/
+    const emailRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/
     if (!customerEmail.trim()) {
       errors.customerEmail = 'El correo electrónico es requerido.'
     } else if (!emailRegex.test(customerEmail.trim())) {
@@ -81,19 +121,20 @@ export default function CheckoutPage() {
       errors.address = 'La dirección de entrega es requerida.'
     }
 
-    if (!city.trim()) {
-      errors.city = 'La ciudad es requerida.'
-    }
-
     if (!department.trim()) {
       errors.department = 'El departamento es requerido.'
+    }
+
+    if (!city.trim()) {
+      errors.city = 'La ciudad es requerida.'
     }
 
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
 
-  async function confirmCheckoutHandler(e) {
+// ─── ENVÍO DEL PEDIDO ───
+async function confirmCheckoutHandler(e) {
     e.preventDefault()
     setGeneralError('')
 
@@ -106,9 +147,10 @@ export default function CheckoutPage() {
       const payload = {
         customer_name: customerName.trim(),
         customer_email: customerEmail.trim(),
+        phone: phone.trim(),
         address: address.trim(),
-        city: city.trim(),
         department: department.trim(),
+        city: city.trim(),
         postal_code: postalCode.trim(),
         reference: reference.trim(),
       }
@@ -116,11 +158,13 @@ export default function CheckoutPage() {
       const response = await confirmCheckout(payload)
       setCompletedOrder({
         order_id: response.order_id,
+        order_number: response.order_number || `ORD-${String(response.order_id).padStart(6, '0')}`,
         status: response.status,
         status_display: response.status_display || 'Pendiente',
         total: response.total,
         customer_name: response.customer_name || customerName,
         customer_email: response.customer_email || customerEmail,
+        download_pdf_url: response.download_pdf_url,
       })
 
       // Refrescar el estado global del carrito para que quede en 0
@@ -132,22 +176,25 @@ export default function CheckoutPage() {
       if (data.errors) {
         setFieldErrors(data.errors)
       }
-      setGeneralError(data.detail || 'Ocurrió un error al procesar el pedido. Verifica los datos.')
+      setGeneralError(data.detail || data.customer_email || data.customer_name || 'Ocurrió un error al procesar el pedido. Verifica los datos.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Descarga del PDF de la factura personalizada
-  async function handleDownloadPdf() {
+// ─── DESCARGA DE FACTURA PDF ───
+async function handleDownloadPdf() {
     if (!completedOrder?.order_id) return
     setDownloadingPdf(true)
     try {
-      const blob = await downloadInvoicePdf(completedOrder.order_id)
+      const accessToken = completedOrder.download_pdf_url
+        ? new URL(completedOrder.download_pdf_url, window.location.origin).searchParams.get('access')
+        : ''
+      const blob = await downloadInvoicePdf(completedOrder.order_id, accessToken)
       const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', `Factura_Orden_${completedOrder.order_id}.pdf`)
+      link.setAttribute('download', `Factura_${completedOrder.order_number || `Orden_${completedOrder.order_id}`}.pdf`)
       document.body.appendChild(link)
       link.click()
       link.parentNode.removeChild(link)
@@ -160,6 +207,21 @@ export default function CheckoutPage() {
     }
   }
 
+  async function handleSandboxPayment(e) {
+    e.preventDefault()
+    setPaymentLoading(true)
+    setPaymentResult(null)
+    try {
+      const cardToken = await tokenizeWompiCard(paymentForm)
+      const result = await createWompiPayment(completedOrder.order_id, cardToken)
+      setPaymentResult(result)
+    } catch (err) {
+      setPaymentResult({ status: 'ERROR', status_message: err.message })
+    } finally {
+      setPaymentLoading(false)
+    }
+  }
+
   function handleStartNewPurchase() {
     navigate('/catalog')
   }
@@ -168,8 +230,8 @@ export default function CheckoutPage() {
     <>
       <Header cartCount={completedOrder ? 0 : summary.total_items} />
       <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-        {/* Vista cuando el pedido fue confirmado con éxito */}
-        {completedOrder ? (
+      {/* ─── VISTA POST-PEDIDO: CONFIRMACIÓN ─── */}
+      {completedOrder ? (
           <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
             <div style={{ ...cardStyle, padding: 36 }}>
               <div style={{
@@ -180,18 +242,55 @@ export default function CheckoutPage() {
                 ✓
               </div>
 
-              <span className="badge badge-pending" style={{ marginBottom: 12, display: 'inline-block' }}>
-                Estado: {completedOrder.status_display} (Prueba)
+              <form onSubmit={handleSandboxPayment} style={{ ...cardStyle, textAlign: 'left', marginBottom: 24 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Pago de prueba Wompi Sandbox</h2>
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
+                  Usa 4242 4242 4242 4242 para aprobar o 4111 1111 1111 1111 para declinar. Los datos se tokenizan directamente en Wompi.
+                </p>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <input className="checkout-input" inputMode="numeric" placeholder="Número de tarjeta" value={paymentForm.number} onChange={e => setPaymentForm({ ...paymentForm, number: e.target.value })} required />
+                  <input className="checkout-input" placeholder="Nombre del titular" value={paymentForm.cardHolder} onChange={e => setPaymentForm({ ...paymentForm, cardHolder: e.target.value })} required />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    <input className="checkout-input" inputMode="numeric" placeholder="MM" maxLength={2} value={paymentForm.expMonth} onChange={e => setPaymentForm({ ...paymentForm, expMonth: e.target.value })} required />
+                    <input className="checkout-input" inputMode="numeric" placeholder="AAAA" maxLength={4} value={paymentForm.expYear} onChange={e => setPaymentForm({ ...paymentForm, expYear: e.target.value })} required />
+                    <input className="checkout-input" inputMode="numeric" placeholder="CVC" maxLength={4} value={paymentForm.cvc} onChange={e => setPaymentForm({ ...paymentForm, cvc: e.target.value })} required />
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={paymentLoading}>
+                    {paymentLoading ? 'Validando pago...' : 'Pagar en Sandbox'}
+                  </button>
+                  {paymentResult && <p style={{ margin: 0, color: paymentResult.status === 'APPROVED' ? '#059669' : '#b91c1c' }}>
+                    Estado Wompi: <strong>{paymentResult.status}</strong>{paymentResult.status_message ? ` · ${paymentResult.status_message}` : ''}
+                  </p>}
+                </div>
+              </form>
+
+              <span className="badge badge-pending" style={{ marginBottom: 12, display: 'inline-block', backgroundColor: 'var(--color-warning-bg, #FEF3C7)', color: 'var(--color-warning-text, #92400E)', border: '1px solid var(--color-warning-border, #FDE68A)', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>
+                Estado: Pendiente de Validación
               </span>
 
               <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8, color: 'var(--color-text)' }}>
-                ¡Pedido Confirmado con Éxito!
+                ¡Pedido Recibido para Validación!
               </h1>
 
-              <p style={{ color: 'var(--color-text-muted)', fontSize: 15, marginBottom: 24, lineHeight: 1.5 }}>
-                Tu orden <strong>#{completedOrder.order_id}</strong> ha sido enviada al panel de administración en estado pendiente.
-                El stock de los productos comprados ha sido descontado automáticamente.
-              </p>
+              <div style={{
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: 8,
+                padding: '16px',
+                textAlign: 'left',
+                margin: '16px 0 24px',
+                color: 'var(--color-text)',
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}>
+                <p style={{ margin: '0 0 8px 0', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, color: '#1D4ED8' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  Información sobre tu pedido y diseño:
+                </p>
+                <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
+                  Tu diseño y pedido <strong>#{completedOrder.order_number || completedOrder.order_id}</strong> han sido registrados con éxito. Nuestro equipo de administración y producción validará y analizará la viabilidad técnica de estampación del diseño. Una vez sea validado y aprobado por un administrador, recibirás la confirmación para proceder con el pago y la fabricación.
+                </p>
+              </div>
 
               <div style={{
                 background: 'var(--color-bg-secondary, #F8FAFC)',
@@ -205,6 +304,10 @@ export default function CheckoutPage() {
                 flexDirection: 'column',
                 gap: 8,
               }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>N° de Orden:</span>
+                  <span style={{ fontWeight: 700 }}>{completedOrder.order_number || completedOrder.order_id}</span>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Cliente:</span>
                   <strong>{completedOrder.customer_name}</strong>
@@ -247,16 +350,16 @@ export default function CheckoutPage() {
                   </svg>
                   Volver al catálogo
                 </button>
-
               </div>
             </div>
           </div>
         ) : (
           <>
+            {/* ─── FORMULARIO DE CHECKOUT ─── */}
             <div style={{ marginBottom: 24 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Finalizar compra</h1>
+              <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Finalizar pedido</h1>
               <p style={{ color: 'var(--color-text-muted)', fontSize: 14, margin: 0 }}>
-                Modo de prueba demostrativo: confirma tus datos de contacto y entrega para generar tu orden y comprobante en PDF.
+                Ingresa tus datos de contacto y entrega. Tu pedido entrará en revisión técnica de estampado y una vez aprobado por un administrador podrás proceder con el pago.
               </p>
             </div>
 
@@ -324,6 +427,64 @@ export default function CheckoutPage() {
                         )}
                       </div>
 
+                      <div>
+                        <label className="checkout-field-label" htmlFor="checkout-phone">Teléfono / WhatsApp</label>
+                        <input
+                          id="checkout-phone"
+                          type="tel"
+                          className="checkout-input"
+                          value={phone}
+                          onChange={e => setPhone(e.target.value)}
+                          placeholder="Ej. 3101234567"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="checkout-field-label checkout-required" htmlFor="checkout-department">Departamento</label>
+                        <select
+                          id="checkout-department"
+                          className={`checkout-input checkout-select ${fieldErrors.department ? 'input-error' : ''}`}
+                          value={department}
+                          onChange={handleDepartmentChange}
+                          required
+                        >
+                          <option value="">Selecciona un departamento...</option>
+                          {COLOMBIA_DEPARTAMENTOS.map(dep => (
+                            <option key={dep.id} value={dep.nombre}>
+                              {dep.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        {fieldErrors.department && <p className="checkout-error-text">{fieldErrors.department}</p>}
+                      </div>
+
+                      <div>
+                        <label className="checkout-field-label checkout-required" htmlFor="checkout-city">Ciudad / Municipio</label>
+                        <select
+                          id="checkout-city"
+                          className={`checkout-input checkout-select ${fieldErrors.city ? 'input-error' : ''}`}
+                          value={city}
+                          onChange={e => {
+                            setCity(e.target.value)
+                            if (fieldErrors.city) {
+                              setFieldErrors(prev => ({ ...prev, city: null }))
+                            }
+                          }}
+                          disabled={!department}
+                          required
+                        >
+                          <option value="">
+                            {department ? 'Selecciona una ciudad...' : 'Primero elige un departamento'}
+                          </option>
+                          {availableCities.map(c => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                        {fieldErrors.city && <p className="checkout-error-text">{fieldErrors.city}</p>}
+                      </div>
+
                       <div style={{ gridColumn: '1 / -1' }}>
                         <label className="checkout-field-label checkout-required" htmlFor="checkout-address">Dirección de entrega</label>
                         <input
@@ -336,46 +497,10 @@ export default function CheckoutPage() {
                               setFieldErrors(prev => ({ ...prev, address: null }))
                             }
                           }}
-                          placeholder="Calle, carrera, número, barrio"
+                          placeholder="Calle 123 # 45-67, Apto 201"
                           required
                         />
                         {fieldErrors.address && <p className="checkout-error-text">{fieldErrors.address}</p>}
-                      </div>
-
-                      <div>
-                        <label className="checkout-field-label checkout-required" htmlFor="checkout-city">Ciudad</label>
-                        <input
-                          id="checkout-city"
-                          className={`checkout-input ${fieldErrors.city ? 'input-error' : ''}`}
-                          value={city}
-                          onChange={e => {
-                            setCity(e.target.value)
-                            if (fieldErrors.city) {
-                              setFieldErrors(prev => ({ ...prev, city: null }))
-                            }
-                          }}
-                          placeholder="Ej. Bogotá"
-                          required
-                        />
-                        {fieldErrors.city && <p className="checkout-error-text">{fieldErrors.city}</p>}
-                      </div>
-
-                      <div>
-                        <label className="checkout-field-label checkout-required" htmlFor="checkout-department">Departamento</label>
-                        <input
-                          id="checkout-department"
-                          className={`checkout-input ${fieldErrors.department ? 'input-error' : ''}`}
-                          value={department}
-                          onChange={e => {
-                            setDepartment(e.target.value)
-                            if (fieldErrors.department) {
-                              setFieldErrors(prev => ({ ...prev, department: null }))
-                            }
-                          }}
-                          placeholder="Ej. Cundinamarca"
-                          required
-                        />
-                        {fieldErrors.department && <p className="checkout-error-text">{fieldErrors.department}</p>}
                       </div>
 
                       <div>
@@ -390,13 +515,13 @@ export default function CheckoutPage() {
                       </div>
 
                       <div>
-                        <label className="checkout-field-label" htmlFor="checkout-reference">Punto de referencia (opcional)</label>
+                        <label className="checkout-field-label" htmlFor="checkout-reference">Punto de referencia o notas</label>
                         <input
                           id="checkout-reference"
                           className="checkout-input"
                           value={reference}
                           onChange={e => setReference(e.target.value.slice(0, 100))}
-                          placeholder="Ej. Frente al parque principal"
+                          placeholder="Ej. Casa esquinera portón blanco"
                           maxLength={100}
                         />
                         <p className="checkout-counter">{reference.length}/100</p>
@@ -419,7 +544,7 @@ export default function CheckoutPage() {
                       Volver al carrito
                     </Link>
                     <button type="submit" className="btn btn-primary" disabled={submitting || summary.total_items === 0}>
-                      {submitting ? 'Procesando pedido...' : 'Confirmar pedido y generar factura'}
+                      {submitting ? 'Validando y enviando pedido...' : 'Hacer pedido y solicitar validación'}
                     </button>
                   </div>
                 </form>
@@ -464,6 +589,7 @@ export default function CheckoutPage() {
         )}
       </div>
 
+              {/* ─── SECCIÓN DE ESTILOS CSS EN LÍNEA ─── */}
       <style>{`
         .checkout-input {
           width: 100%;
@@ -475,6 +601,9 @@ export default function CheckoutPage() {
           color: var(--color-text);
           background: var(--color-bg);
           transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .checkout-select {
+          cursor: pointer;
         }
         .checkout-input:focus {
           outline: none;
@@ -488,7 +617,6 @@ export default function CheckoutPage() {
           margin: 4px 0 0;
           font-size: 12px;
           color: var(--color-error, #EF4444);
-          font-weight: 500;
         }
         .checkout-input::placeholder { color: var(--color-text-muted); }
         .checkout-field-label {

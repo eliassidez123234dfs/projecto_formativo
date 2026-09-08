@@ -46,6 +46,12 @@ export default function UserList({ filters, onPageChange, onSaved }) {
     }
   }
 
+  async function promoverAdmin(user) {
+    const pwd = prompt(`Para promover a "${user.usuario}" como Administrador, ingresa TU contraseña de administrador:`)
+    if (!pwd) return
+    await doAction(user.id, 'promote_to_admin', { password_confirmacion: pwd })
+  }
+
   async function cambiarEstado(user) {
     const estados = ['Activo', 'Inactivo', 'Bloqueado']
     const current = estados.indexOf(user.estado)
@@ -120,6 +126,16 @@ export default function UserList({ filters, onPageChange, onSaved }) {
                     <button className="btn btn-sm btn-secondary" onClick={() => setEditingUser(u)}>
                       Editar
                     </button>
+                    {u.rol !== 'Administrador' && !u.eliminado && (
+                      <button
+                        className="btn btn-sm btn-primary"
+                        style={{ fontSize: 11 }}
+                        onClick={() => promoverAdmin(u)}
+                        disabled={actionLoading === `promote_to_admin-${u.id}`}
+                      >
+                        👑 Promover
+                      </button>
+                    )}
                     <button
                       className="btn btn-sm btn-ghost"
                       onClick={() => cambiarEstado(u)}

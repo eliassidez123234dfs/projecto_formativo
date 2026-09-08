@@ -62,7 +62,6 @@ export default function AdminUsers() {
     { name: 'password', label: 'Contraseña', type: 'password', required: true, help: 'Mín. 8 caracteres, 1 mayúscula, 1 número, 1 carácter especial (!@#$%^&*)' },
     { name: 'rol', label: 'Rol', type: 'select', required: true, options: [
       { value: 'Usuario', label: 'Usuario' },
-      { value: 'Administrador', label: 'Administrador' },
     ]},
     { name: 'estado', label: 'Estado', type: 'select', value: 'Activo', required: true, options: [
       { value: 'Activo', label: 'Activo' },

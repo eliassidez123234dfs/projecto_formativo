@@ -28,7 +28,6 @@ export const Catalog = () => {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
   const [pageInfo, setPageInfo] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(filters.q);
@@ -72,6 +71,9 @@ export const Catalog = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [filtersOpen]);
 
+  // ── Limpiar timer de debounce al desmontar ──
+  useEffect(() => () => clearTimeout(searchTimer.current), []);
+
   // ── Debounce de búsqueda ──
   const handleSearchChange = useCallback((value) => {
     setSearchQuery(value);
@@ -83,22 +85,20 @@ export const Catalog = () => {
 
   // ── Cargar productos con race-guard ──
   const loadProducts = useCallback(
-    async (reset = true) => {
+    async (targetPage = 1) => {
       const id = ++latest.current;
       setLoading(true);
       setError(null);
       try {
-        const targetPage = reset ? 1 : page + 1;
-        const params = { ...filters, page: targetPage };
+        const params = { ...filters, page: Number(targetPage) || 1 };
         if (sort) params.ordering = sort;
         const data = await fetchCatalog(params);
         if (id !== latest.current) return; // respuesta vieja, descartar
         const results = data.results || data;
-        setProducts((prev) => (reset ? results : [...prev, ...results]));
+        setProducts(results);
         setPage(targetPage);
-        setHasMore(Boolean(data.next));
         setPageInfo(
-          data.next
+          data.count != null
             ? { next: data.next, previous: data.previous, count: data.count }
             : null
         );
@@ -111,12 +111,12 @@ export const Catalog = () => {
         if (id === latest.current) setLoading(false);
       }
     },
-    [filters, page, sort]
+    [filters, sort]
   );
 
   // ── Recargar al cambiar filtros/orden ──
   useEffect(() => {
-    const timer = setTimeout(() => loadProducts(true), 0);
+    const timer = setTimeout(() => loadProducts(1), 0);
     return () => clearTimeout(timer);
   }, [loadProducts]);
 
@@ -277,7 +277,7 @@ export const Catalog = () => {
               <ErrorState
                 error={error}
                 module="catálogo de productos"
-                onRetry={() => loadProducts()}
+                onRetry={() => loadProducts(1)}
               />
             ) : products.length === 0 ? (
               <div className="catalog-empty">
@@ -319,17 +319,29 @@ export const Catalog = () => {
                   ))}
                 </div>
 
-                {pageInfo && hasMore && (
+                {pageInfo && (
                   <div className="catalog-pagination">
-                    <button
-                      className="btn btn-secondary"
-                      disabled={loading}
-                      onClick={() => loadProducts(false)}
-                    >
-                      {loading ? 'Cargando...' : 'Cargar más'}
+                    <button className="btn btn-secondary" disabled={loading || !pageInfo.previous}
+                      onClick={() => loadProducts(page - 1)}>
+                      Anterior
                     </button>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                      Mostrando {products.length} de {pageInfo.count}
+                    <div className="catalog-page-numbers" aria-label="Páginas del catálogo">
+                      {Array.from({ length: Math.ceil(pageInfo.count / 20) }, (_, index) => index + 1)
+                        .filter((number) => number === 1 || number === Math.ceil(pageInfo.count / 20) || Math.abs(number - page) <= 2)
+                        .map((number, index, visible) => (
+                          <span key={number} className="catalog-page-number-wrap">
+                            {index > 0 && number - visible[index - 1] > 1 ? <span className="catalog-page-ellipsis">...</span> : null}
+                            <button className={`catalog-page-number${number === page ? ' is-active' : ''}`} disabled={loading || number === page}
+                              onClick={() => loadProducts(number)}>{number}</button>
+                          </span>
+                        ))}
+                    </div>
+                    <button className="btn btn-secondary" disabled={loading || !pageInfo.next}
+                      onClick={() => loadProducts(page + 1)}>
+                      Siguiente
+                    </button>
+                    <span className="catalog-pagination-summary">
+                      {products.length} productos mostrados · {pageInfo.count} totales · página {page} de {Math.max(1, Math.ceil(pageInfo.count / 20))}
                     </span>
                   </div>
                 )}
