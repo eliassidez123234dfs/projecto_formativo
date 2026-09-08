@@ -70,6 +70,10 @@ class Command(BaseCommand):
                 fecha_registro=timezone.now(),
             )
             self.stdout.write(self.style.SUCCESS("Usuario administrador creado exitosamente."))
+        except Exception as exc:
+            self.stderr.write(self.style.WARNING(f"No se pudo verificar/crear admin: {exc}"))
+            self.stderr.write(self.style.WARNING("La BD puede no estar disponible. Continuando..."))
+            return
 
         self.stdout.write(f"\n{'='*60}")
         self.stdout.write(f"Credenciales:")
