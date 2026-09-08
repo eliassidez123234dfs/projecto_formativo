@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchProductImages, deleteProductImage } from '../services/api'
 import MainLayout from '../components/MainLayout'
+import ConfirmModal from '../components/ConfirmModal'
 import { DEFAULT_IMAGE } from '../constants'
 import toast from 'react-hot-toast'
 
 export const AdminImages = () => {
   const [images, setImages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [confirmDialog, setConfirmDialog] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -18,10 +20,18 @@ export const AdminImages = () => {
 
   useEffect(() => { load() }, [load])
 
-  const handleDelete = async (img) => {
-    if (!confirm(`¿Eliminar esta imagen de "${img.product_name || 'Producto #' + img.product_id}"?`)) return
-    try { await deleteProductImage(img.id); toast.success('Imagen eliminada'); load() }
-    catch { toast.error('Error al eliminar') }
+  const handleDelete = (img) => {
+    setConfirmDialog({
+      title: 'Eliminar imagen',
+      message: `¿Eliminar esta imagen de "${img.product_name || 'Producto #' + img.product_id}"?`,
+      danger: true,
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try { await deleteProductImage(img.id); toast.success('Imagen eliminada'); load() }
+        catch { toast.error('Error al eliminar') }
+      },
+    })
   }
 
   if (loading) return <div className="loading">Cargando imágenes...</div>
@@ -104,5 +114,7 @@ export const AdminImages = () => {
       `}</style>
     </div>
     </MainLayout>
+    {confirmDialog && <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog(null)} />}
+    </>
   )
 }

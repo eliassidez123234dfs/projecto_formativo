@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import InfoModal, { formatChecklist } from './InfoModal'
+import ConfirmModal from './ConfirmModal'
 import Pagination from './Pagination'
 import Spinner from './Spinner'
 import ErrorState from './ErrorState'
@@ -56,6 +57,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
   const [publishConfirmation, setPublishConfirmation] = useState(null)
   const [modal, setModal] = useState(null)
   const [checklistModal, setChecklistModal] = useState(null)
+  const [confirmToggle, setConfirmToggle] = useState(null)
   const totalPages = Math.max(1, Math.ceil((data.count || 0) / 20))
 
   function handlePublish(productId) {
@@ -111,6 +113,16 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
       {modal && <InfoModal type={modal.type} title={modal.title} message={modal.message} checklist={modal.checklist} onClose={() => setModal(null)} />}
       {checklistModal?.checklist && <InfoModal type="info" title="Checklist del producto" message="" checklist={checklistModal.checklist} onClose={() => setChecklistModal(null)} />}
       {checklistModal?.error && <InfoModal type="error" title="Error" message={checklistModal.error} onClose={() => setChecklistModal(null)} />}
+      {confirmToggle && (
+        <ConfirmModal
+          title={confirmToggle.active ? 'Desactivar producto' : 'Activar producto'}
+          message={`¿${confirmToggle.active ? 'Desactivar' : 'Activar'} el producto "${confirmToggle.name}"?`}
+          danger={confirmToggle.active}
+          confirmLabel={confirmToggle.active ? 'Desactivar' : 'Activar'}
+          onConfirm={() => { onToggle?.(confirmToggle.id); setConfirmToggle(null) }}
+          onCancel={() => setConfirmToggle(null)}
+        />
+      )}
 
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>
         <div className="search-input">
@@ -187,7 +199,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
                       <button className="btn btn-sm btn-ghost" type="button" onClick={() => onEdit?.(p.id)}>
                         Editar
                       </button>
-                      <button className="btn btn-sm btn-ghost" type="button" onClick={() => { if (confirm(`¿${p.is_active ? 'Desactivar' : 'Activar'} el producto "${p.name}"?`)) onToggle?.(p.id) }}>
+                      <button className="btn btn-sm btn-ghost" type="button" onClick={() => setConfirmToggle({ id: p.id, name: p.name, active: p.is_active })}>
                         {p.is_active ? 'Desactivar' : 'Activar'}
                       </button>
                       <button className="btn btn-sm btn-ghost" type="button" onClick={() => safeChecklist(p.id, setChecklistModal)}>

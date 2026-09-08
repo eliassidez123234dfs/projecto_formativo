@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import AdminLayout from '../components/AdminLayout'
 import InfoModal from '../components/InfoModal'
+import ConfirmModal from '../components/ConfirmModal'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
@@ -38,6 +39,7 @@ export default function AdminProductApproval() {
   const [count, setCount] = useState(0)
   const [processing, setProcessing] = useState(null)
   const [modal, setModal] = useState(null)
+  const [confirmDialog, setConfirmDialog] = useState(null)
   const pageSize = 20
 
   const loadProducts = useCallback(async () => {
@@ -101,6 +103,7 @@ export default function AdminProductApproval() {
           onClose={() => setModal(null)}
         />
       )}
+      {confirmDialog && <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog(null)} />}
 
       <div className="admin-stats">
         <div className="stat-card">
@@ -165,7 +168,11 @@ export default function AdminProductApproval() {
                         <button
                           className="btn btn-sm btn-primary"
                           disabled={processing === p.id || !p.ready_to_publish}
-                          onClick={() => { if (confirm(`¿Aprobar y publicar "${p.name}"?`)) handleApprove(p.id) }}
+                          onClick={() => setConfirmDialog({
+                            title: 'Aprobar producto',
+                            message: `¿Aprobar y publicar "${p.name}"?`,
+                            onConfirm: () => { setConfirmDialog(null); handleApprove(p.id) },
+                          })}
                           title={!p.ready_to_publish ? 'Completa el checklist antes de aprobar' : ''}
                         >
                           {processing === p.id ? '...' : 'Aprobar'}
@@ -174,7 +181,13 @@ export default function AdminProductApproval() {
                           className="btn btn-sm btn-ghost"
                           style={{ color: 'var(--color-error)' }}
                           disabled={processing === p.id}
-                          onClick={() => { if (confirm(`¿Rechazar y desactivar "${p.name}"?`)) handleReject(p.id) }}
+                          onClick={() => setConfirmDialog({
+                            title: 'Rechazar producto',
+                            message: `¿Rechazar y desactivar "${p.name}"?`,
+                            danger: true,
+                            confirmLabel: 'Rechazar',
+                            onConfirm: () => { setConfirmDialog(null); handleReject(p.id) },
+                          })}
                         >
                           Rechazar
                         </button>

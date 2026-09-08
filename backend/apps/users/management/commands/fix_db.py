@@ -2,46 +2,134 @@ import sys
 from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from django.db import connection
+from django.apps import apps
+
+
+FIELD_TYPE_MAP = {
+    'AutoField': 'BIGSERIAL PRIMARY KEY',
+    'BigAutoField': 'BIGSERIAL PRIMARY KEY',
+    'IntegerField': 'INTEGER DEFAULT 0',
+    'SmallIntegerField': 'SMALLINT DEFAULT 0',
+    'BigIntegerField': 'BIGINT DEFAULT 0',
+    'CharField': 'VARCHAR({max_length})',
+    'TextField': 'TEXT',
+    'EmailField': 'VARCHAR(254)',
+    'URLField': 'VARCHAR({max_length})',
+    'BooleanField': 'BOOLEAN DEFAULT FALSE',
+    'NullBooleanField': 'BOOLEAN',
+    'FloatField': 'DOUBLE PRECISION',
+    'DecimalField': 'NUMERIC(10, 2)',
+    'DateField': 'DATE',
+    'DateTimeField': 'TIMESTAMP WITH TIME ZONE',
+    'TimeField': 'TIME',
+    'FileField': 'VARCHAR(100)',
+    'ImageField': 'VARCHAR(100)',
+    'JSONField': 'JSONB DEFAULT \'{}\'',
+    'UUIDField': 'UUID',
+    'PositiveIntegerField': 'INTEGER DEFAULT 0',
+    'PositiveSmallIntegerField': 'SMALLINT DEFAULT 0',
+    'PositiveBigIntegerField': 'BIGINT DEFAULT 0',
+    'ForeignKey': 'INTEGER',
+    'OneToOneField': 'INTEGER',
+    'ManyToManyField': None,  # skip, handled separately
+}
+
+
+def get_column_sql(field):
+    """Generate SQL for a Django field."""
+    field_type = type(field).__name__
+
+    if field_type in ('ForeignKey', 'OneToOneField'):
+        return 'INTEGER'
+
+    template = FIELD_TYPE_MAP.get(field_type)
+    if template is None:
+        return None
+
+    if isinstance(template, str) and '{max_length}' in template:
+        return template.format(max_length=getattr(field, 'max_length', 255))
+
+    return template
 
 
 class Command(BaseCommand):
-    help = "Falsifica migraciones problemáticas y crea admin"
+    help = "Arregla la BD: agrega columnas faltantes, falsifica migraciones y crea admin"
 
     def handle(self, *args, **options):
-        self.stdout.write("=== Paso 0: Agregar columnas faltantes con SQL ===")
+        self.stdout.write(self.style.NOTICE("=== Paso 0: Detectar y agregar columnas faltantes ==="))
+
         with connection.cursor() as cursor:
-            # Verificar y agregar is_superuser
-            cursor.execute("""
-                SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'usuarios' AND column_name = 'is_superuser'
-            """)
-            if not cursor.fetchone():
-                cursor.execute("ALTER TABLE usuarios ADD COLUMN is_superuser BOOLEAN DEFAULT FALSE")
-                self.stdout.write(self.style.SUCCESS("  Columna is_superuser agregada"))
-            else:
-                self.stdout.write("  Columna is_superuser ya existe")
+            for model in apps.get_models():
+                if not model._meta.managed:
+                    continue
+                if model._meta.proxy:
+                    continue
 
-            # Verificar y agregar token_version
-            cursor.execute("""
-                SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'usuarios' AND column_name = 'token_version'
-            """)
-            if not cursor.fetchone():
-                cursor.execute("ALTER TABLE usuarios ADD COLUMN token_version INTEGER DEFAULT 0")
-                self.stdout.write(self.style.SUCCESS("  Columna token_version agregada"))
-            else:
-                self.stdout.write("  Columna token_version ya existe")
+                table_name = model._meta.db_table
 
-            # Verificar y agregar is_staff
+                try:
+                    cursor.execute(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = %s",
+                        [table_name]
+                    )
+                    existing = {row[0] for row in cursor.fetchall()}
+                except Exception:
+                    continue
+
+                if not existing:
+                    continue
+
+                for field in model._meta.local_fields:
+                    col_name = field.column
+
+                    if col_name in existing:
+                        continue
+
+                    sql = get_column_sql(field)
+                    if sql is None:
+                        continue
+
+                    nullable = 'NULL' if field.null else 'NOT NULL DEFAULT '
+                    if field.has_default():
+                        default = field.get_default()
+                        if default is not None:
+                            if isinstance(default, bool):
+                                default_sql = 'TRUE' if default else 'FALSE'
+                            elif isinstance(default, (int, float)):
+                                default_sql = str(default)
+                            elif isinstance(default, str):
+                                default_sql = f"'{default}'"
+                            else:
+                                default_sql = f"'{default}'"
+                            nullable = f'NOT NULL DEFAULT {default_sql}'
+                        else:
+                            nullable = 'NULL'
+                    elif field.null:
+                        nullable = 'NULL'
+                    else:
+                        nullable = 'NOT NULL'
+
+                    sql_type = sql.replace(' PRIMARY KEY', '')
+                    alter = f'ALTER TABLE {table_name} ADD COLUMN {col_name} {sql_type} {nullable}'
+                    try:
+                        cursor.execute(alter)
+                        self.stdout.write(self.style.SUCCESS(
+                            f"  + {table_name}.{col_name} ({type(field).__name__})"
+                        ))
+                    except Exception as e:
+                        self.stdout.write(f"  ! {table_name}.{col_name}: {e}")
+
+            # Fix orders_order specifically - drop shipping_department if exists
             cursor.execute("""
                 SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'usuarios' AND column_name = 'is_staff'
+                WHERE table_name = 'orders_order' AND column_name = 'shipping_department'
             """)
             if cursor.fetchone():
-                cursor.execute("ALTER TABLE usuarios DROP COLUMN is_staff")
-                self.stdout.write(self.style.SUCCESS("  Columna is_staff eliminada"))
+                cursor.execute("ALTER TABLE orders_order DROP COLUMN shipping_department")
+                self.stdout.write(self.style.SUCCESS("  - orders_order.shipping_department eliminada"))
 
-        self.stdout.write("\n=== Paso 1: Arreglando migraciones conflictivas ===")
+        self.stdout.write("\n=== Paso 1: Falsificar migraciones conflictivas ===")
 
         problematic = [
             ('orders', '0004_add_shipping_payment_fields'),
@@ -100,13 +188,13 @@ class Command(BaseCommand):
             except Exception as e:
                 self.stdout.write(f"  Skip: {app}.{name} ({e})")
 
-        self.stdout.write("\n=== Ahora ejectutando migrate normal ===")
+        self.stdout.write("\n=== Paso 2: Ejecutar migrate normal ===")
         try:
             call_command('migrate', '--run-syncdb', verbosity=1)
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"Migrate tuvo advertencias: {e}"))
 
-        self.stdout.write("\n=== Creando admin ===")
+        self.stdout.write("\n=== Paso 3: Creando admin ===")
         call_command('ensure_admin', verbosity=1)
 
         self.stdout.write(self.style.SUCCESS("\n¡Listo!"))

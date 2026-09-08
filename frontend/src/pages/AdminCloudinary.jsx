@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import AdminLayout from '../components/AdminLayout'
+import ConfirmModal from '../components/ConfirmModal'
 import Spinner from '../components/Spinner'
 import { fetchCloudinaryResources, deleteCloudinaryResources } from '../services/api'
 
@@ -20,6 +21,7 @@ export default function AdminCloudinary() {
   const [deleting, setDeleting] = useState(false)
   const [selected, setSelected] = useState([])
   const [error, setError] = useState(null)
+  const [confirmDialog, setConfirmDialog] = useState(null)
   const pageCursorsRef = useRef({ 1: '' })
   const requestIdRef = useRef(0)
 
@@ -88,24 +90,31 @@ export default function AdminCloudinary() {
 
   const handleDelete = async (publicIds = selected) => {
     if (!publicIds.length) return
-    const many = publicIds.length > 1
-    if (!window.confirm(`¿Eliminar ${publicIds.length} recurso(s) de Cloudinary permanentemente?`)) return
-    setDeleting(true)
-    try {
-      const res = await deleteCloudinaryResources(publicIds, resourceType)
-      if (res.error) {
-        toast.error(`Error: ${res.error}`)
-      } else if (Array.isArray(res.deleted) && res.deleted.length) {
-        toast.success(`Se eliminaron ${res.deleted.length} recurso(s) de Cloudinary`)
-      } else {
-        toast.warning('No se pudo eliminar ningún recurso')
-      }
-      refresh()
-    } catch (err) {
-      toast.error(err?.response?.data?.error || err.message || 'No se pudo eliminar')
-    } finally {
-      setDeleting(false)
-    }
+    setConfirmDialog({
+      title: 'Eliminar recursos',
+      message: `¿Eliminar ${publicIds.length} recurso(s) de Cloudinary permanentemente?`,
+      danger: true,
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        setDeleting(true)
+        try {
+          const res = await deleteCloudinaryResources(publicIds, resourceType)
+          if (res.error) {
+            toast.error(`Error: ${res.error}`)
+          } else if (Array.isArray(res.deleted) && res.deleted.length) {
+            toast.success(`Se eliminaron ${res.deleted.length} recurso(s) de Cloudinary`)
+          } else {
+            toast.warning('No se pudo eliminar ningún recurso')
+          }
+          refresh()
+        } catch (err) {
+          toast.error(err?.response?.data?.error || err.message || 'No se pudo eliminar')
+        } finally {
+          setDeleting(false)
+        }
+      },
+    })
   }
 
   const goToPage = (page) => {
@@ -327,6 +336,7 @@ export default function AdminCloudinary() {
           )}
         </div>
       </div>
+      {confirmDialog && <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog(null)} />}
     </AdminLayout>
   )
 }

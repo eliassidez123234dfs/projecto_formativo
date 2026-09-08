@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { fetchAdminUsers, adminUserAction } from '../services/api'
 import UserEditModal from './UserEditModal'
 import InfoModal from './InfoModal'
+import ConfirmModal from './ConfirmModal'
 import Pagination from './Pagination'
 import Spinner from './Spinner'
 import ErrorState from './ErrorState'
@@ -16,6 +17,7 @@ export default function UserList({ filters, onPageChange, onSaved }) {
   const [editingUser, setEditingUser] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
   const [modal, setModal] = useState(null)
+  const [confirmDialog, setConfirmDialog] = useState(null)
 
   const loadUsers = useCallback(async () => {
     setLoading(true)
@@ -46,27 +48,55 @@ export default function UserList({ filters, onPageChange, onSaved }) {
     }
   }
 
-  async function cambiarEstado(user) {
+  function cambiarEstado(user) {
     const estados = ['Activo', 'Inactivo', 'Bloqueado']
     const current = estados.indexOf(user.estado)
     const next = estados[(current + 1) % estados.length]
-    if (!confirm(`¿Cambiar estado de "${user.usuario}" de "${user.estado}" a "${next}"?`)) return
-    await doAction(user.id, 'cambiar_estado', { estado: next, motivo: `Cambiado a ${next} por administrador` })
+    setConfirmDialog({
+      title: 'Cambiar estado',
+      message: `¿Cambiar estado de "${user.usuario}" de "${user.estado}" a "${next}"?`,
+      danger: next === 'Bloqueado',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        await doAction(user.id, 'cambiar_estado', { estado: next, motivo: `Cambiado a ${next} por administrador` })
+      },
+    })
   }
 
-  async function desbloquear(userId) {
-    if (!confirm('¿Desbloquear este usuario? Podrá iniciar sesión nuevamente.')) return
-    await doAction(userId, 'desbloquear')
+  function desbloquear(userId) {
+    setConfirmDialog({
+      title: 'Desbloquear usuario',
+      message: '¿Desbloquear este usuario? Podrá iniciar sesión nuevamente.',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        await doAction(userId, 'desbloquear')
+      },
+    })
   }
 
-  async function resetearPassword(userId) {
-    if (!confirm('¿Estás seguro de resetear la contraseña de este usuario?')) return
-    await doAction(userId, 'resetear_password')
+  function resetearPassword(userId) {
+    setConfirmDialog({
+      title: 'Resetear contraseña',
+      message: '¿Estás seguro de resetear la contraseña de este usuario?',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        await doAction(userId, 'resetear_password')
+      },
+    })
   }
 
-  async function eliminar(userId) {
-    if (!confirm('¿Estás seguro de eliminar este usuario? Esta acción es reversible por otro administrador.')) return
-    await doAction(userId, 'eliminar_logicamente')
+  function eliminar(userId) {
+    setConfirmDialog({
+      title: 'Eliminar usuario',
+      message: '¿Estás seguro de eliminar este usuario? Esta acción es reversible por otro administrador.',
+      danger: true,
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        await doAction(userId, 'eliminar_logicamente')
+      },
+    })
   }
 
   if (loading) return <div className="card"><Spinner text="Cargando usuarios..." /></div>
@@ -80,6 +110,7 @@ export default function UserList({ filters, onPageChange, onSaved }) {
   return (
     <div className="card">
       {modal && <InfoModal type={modal.type} title={modal.title} message={modal.message} onClose={() => setModal(null)} />}
+      {confirmDialog && <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog(null)} />}
 
       <div className="card-body">
         <table className="admin-table">
