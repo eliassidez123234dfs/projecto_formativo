@@ -1,7 +1,9 @@
 import React from "react";
 import { Canvas } from "@react-three/fiber";
-import { Center } from "@react-three/drei";
+import { Center, Environment } from "@react-three/drei";
+import { useSnapshot } from "valtio";
 
+import state from "../store";
 import Shirt from "./Shirt";
 import Backdrop from "./Backdrop";
 import CameraRig from "./CameraRig";
@@ -32,6 +34,7 @@ class WebGLErrorBoundary extends React.Component {
 }
 
 const CanvasModel = () => {
+  const snap = useSnapshot(state);
   return (
     <WebGLErrorBoundary>
       <Canvas

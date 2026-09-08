@@ -340,6 +340,11 @@ urlpatterns = [
 
     # Monitoreo / logs de errores del frontend
     path('api/logging/', include('apps.monitoring.urls')),
+
+    # Editor 3D — sesión segura (datos sensibles en cookie, no en URL)
+    path('api/editor-session/save/', editor_session_save, name='editor-session-save'),
+    path('api/editor-session/', editor_session_get, name='editor-session-get'),
+    path('api/editor-session/commit/', editor_session_commit, name='editor-session-commit'),
 ]
 
 # Media files

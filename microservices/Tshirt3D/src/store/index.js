@@ -33,9 +33,11 @@ const state = proxy({
  * estos datos.
  */
 export async function loadEditorSession() {
-  const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/';
+  const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL || (
+    import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '/api'
+  );
   try {
-    const resp = await fetch(`${API_URL.replace(/\/+$/, '')}/editor-session/`, {
+    const resp = await fetch(`${BACKEND_API_URL.replace(/\/+$/, '')}/editor-session/`, {
       credentials: 'include',
     });
     if (!resp.ok) throw new Error('No session');

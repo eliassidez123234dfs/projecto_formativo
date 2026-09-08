@@ -1,5 +1,8 @@
 const API_URL = import.meta.env.VITE_API_URL ?? (
-  import.meta.env.DEV ? "http://127.0.0.1:8000/api/orders/" : "/api/orders/"
+  import.meta.env.DEV ? "http://127.0.0.1:8000/api/" : "/api/"
+);
+const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL ?? (
+  import.meta.env.DEV ? "http://127.0.0.1:8000/api" : "/api"
 );
 const MODELS3D_API_URL = import.meta.env.VITE_MODELS3D_API_URL ?? (
   import.meta.env.DEV ? "http://127.0.0.1:8000/api/models3d/models/" : "/api/models3d/models/"
@@ -161,7 +164,7 @@ export const addDesignToCart = async () => {
   const csrfToken = getCookie("csrftoken");
   if (csrfToken) headers["X-CSRFToken"] = csrfToken;
 
-  const response = await fetch(`${API_BASE}/editor-session/commit/`, {
+  const response = await fetch(`${BACKEND_API_URL}/editor-session/commit/`, {
     method: "POST",
     headers,
     credentials: "include", // importante: la sesión del carrito vive en cookies

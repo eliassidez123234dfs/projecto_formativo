@@ -22,7 +22,9 @@
 import { getAccessToken } from '../services/authService';
 import { buildApiUrl } from '../services/api';
 
-export const EDITOR_BASE_URL = import.meta.env.VITE_EDITOR_3D_URL || 'http://127.0.0.1:5174/';
+export const EDITOR_BASE_URL = import.meta.env.VITE_TSHIRT3D_URL || (
+  import.meta.env.DEV ? 'http://127.0.0.1:5174/' : '/editor/'
+);
 
 /** Hex por defecto usado cuando la variante no trae color_hex. */
 export const COLOR_FALLBACK = '#6B7280';
