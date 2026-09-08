@@ -116,13 +116,21 @@ export default function AdminLayout({ children, title, subtitle }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try { return localStorage.getItem('sidebarOpen') !== 'false' } catch { return true }
+    try {
+      if (window.innerWidth <= 768) return false
+      return localStorage.getItem('sidebarOpen') !== 'false'
+    } catch { return true }
   })
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768)
   const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768)
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (mobile) setSidebarOpen(false)
+    }
+    handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
