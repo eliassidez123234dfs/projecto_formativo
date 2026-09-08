@@ -12,34 +12,43 @@ const state = proxy({
   fullDecal: './circuit.png',
   logoPosition: [0, 0.04, 0.15],
   logoScale: 0.15,
-  // Solo el modo de apertura es una preferencia de UI no sensible.
   mode: new URLSearchParams(window.location.search).get('mode') || 'new',
   colorName: '',
   size: '',
-  // ── Datos sensibles (cargados desde la sesión del backend) ──
   productId: null,
   productName: '',
   variantId: null,
   quantity: 1,
+  sessionToken: null,
   sessionLoaded: false,
   sessionError: false,
 });
 
 /**
- * Carga los datos sensibles del editor desde la sesión del backend.
- * Se llama una vez al montar la app. Los valores devueltos ya fueron
- * validados por el servidor (producto activo/aprobado, variante válida,
- * cantidad acotada por stock). El editor NUNCA confía en la URL para
- * estos datos.
+ * Carga los datos sensibles del editor desde la BD usando el token temporal.
+ * El token se pasa por URL: /editor/?session_token=xxx
  */
 export async function loadEditorSession() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('session_token');
+
+  if (!token) {
+    state.sessionLoaded = true;
+    state.sessionError = true;
+    return;
+  }
+
+  state.sessionToken = token;
+
   const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL || (
     import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '/api'
   );
+
   try {
-    const resp = await fetch(`${BACKEND_API_URL.replace(/\/+$/, '')}/editor-session/`, {
-      credentials: 'include',
-    });
+    const resp = await fetch(
+      `${BACKEND_API_URL.replace(/\/+$/, '')}/editor-session/?token=${encodeURIComponent(token)}`,
+      { credentials: 'include' }
+    );
     if (!resp.ok) throw new Error('No session');
     const data = await resp.json();
     state.productId = data.productId || null;

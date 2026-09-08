@@ -2,21 +2,14 @@
  * editor3d.js  —  Utilidades para abrir el editor 3D (microservicio Tshirt3D)
  *
  * SEGURIDAD: Los datos sensibles (productId, variantId, quantity) se
- * almacenan en la SESIÓN del backend ANTES de abrir el editor y se validan
- * en el servidor contra la base de datos (producto activo/aprobado,
- * variante válida, stock). En la URL solo viajan parámetros de UI
- * (mode, color, colorName, size) que no afectan la lógica de negocio.
- *
- * El precio, el stock y la talla/color autorizados SIEMPRE los calcula el
- * backend a partir de la BD, nunca del cliente.
+ * almacenan en la BD con un token temporal ANTES de abrir el editor.
+ * El token expira en 60 minutos y es de una sola vez.
  *
  * Flujo:
- *   1. POST /api/editor-session/save/  → guarda datos sensibles en la sesión
- *   2. Abre el editor con solo parámetros de UI en la URL
- *   3. El editor llama GET /api/editor-session/ para recuperar los datos
- *
- * Si el guardado de sesión falla, NO se abre el editor: el usuario recibe
- * un error en lugar de un editor roto que no podría guardar el diseño.
+ *   1. POST /api/editor-session/save/  → guarda datos en BD, retorna token
+ *   2. Abre el editor con el token en la URL: /editor/?session_token=xxx
+ *   3. El editor llama GET /api/editor-session/?token=xxx para recuperar datos
+ *   4. El editor llama POST /api/editor-session/commit/?token=xxx para agregar al carrito
  */
 
 import { getAccessToken } from '../services/authService';
@@ -30,11 +23,7 @@ export const EDITOR_BASE_URL = import.meta.env.VITE_TSHIRT3D_URL || (
 export const COLOR_FALLBACK = '#6B7280';
 
 /**
- * Guarda los datos sensibles del editor en la sesión del backend.
- * Adjunta el JWT si existe para reforzar la autenticación (opcional:
- * el endpoint funciona con cookie de sesión, que comparte la pestaña
- * del editor por ser el mismo sitio).
- * @returns {Promise<object>} respuesta del backend si fue exitosa
+ * Guarda los datos sensibles del editor en la BD y retorna un token temporal.
  */
 async function saveEditorSession({ productId, variant, quantity }) {
   const headers = { 'Content-Type': 'application/json' };
@@ -66,11 +55,10 @@ async function saveEditorSession({ productId, variant, quantity }) {
 }
 
 /**
- * Construye la URL del editor 3D SOLO con parámetros de UI (no sensibles).
- * Los datos sensibles se recuperan del backend vía sesión.
+ * Construye la URL del editor 3D con el token y parámetros de UI.
  */
-export function buildEditorUrl({ variant, mode = 'new' }) {
-  const qs = new URLSearchParams({ mode });
+export function buildEditorUrl({ token, variant, mode = 'new' }) {
+  const qs = new URLSearchParams({ session_token: token });
   if (variant) {
     if (variant.color_hex) qs.set('color', variant.color_hex);
     if (variant.color) qs.set('colorName', variant.color);
@@ -81,14 +69,12 @@ export function buildEditorUrl({ variant, mode = 'new' }) {
 
 /**
  * Abre el editor 3D en una pestaña nueva.
- * 1. Guarda los datos sensibles en la sesión del backend (validados).
+ * 1. Guarda los datos sensibles en la BD (validados).
  * 2. Si el guardado falla → lanza error (el caller muestra el toast).
- * 3. Abre el editor con solo parámetros de UI en la URL.
- *
- * @throws {Error} si la sesión no se pudo guardar o validar.
+ * 3. Abre el editor con el token en la URL.
  */
 export async function openEditor({ productId, variant, quantity = 1, mode = 'new' }) {
-  await saveEditorSession({ productId, variant, quantity });
-  const url = buildEditorUrl({ variant, mode });
+  const result = await saveEditorSession({ productId, variant, quantity });
+  const url = buildEditorUrl({ token: result.token, variant, mode });
   return window.open(url, '_blank', 'noopener,noreferrer');
 }

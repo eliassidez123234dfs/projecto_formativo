@@ -89,23 +89,15 @@ def me_view(request):
 @api_view(['POST'])
 @perm_decorator([IsAuthenticated])
 def editor_session_save(request):
-    """Guarda datos sensibles del editor 3D en la sesión del backend (cookie).
+    """Guarda datos sensibles del editor 3D en la BD con un token temporal.
 
     SEGURIDAD:
-    - NUNCA se pasan por URL productId, variantId, quantity ni rol.
-      Los datos viajan en el cuerpo de la petición y se guardan en la
-      sesión Django (cookie sessionid, HttpOnly y SameSite).
-    - El editor 3D (otra pestaña/origen del mismo sitio) lee estos datos
-      mediante GET /api/editor-session/, reutilizando la misma cookie.
-    - Sin autenticación JWT: el editor no puede acceder al access token
-      en memoria del tab principal. La cookie de sesión es la única
-      credencial compartida entre orígenes del mismo sitio.
+    - Los datos viajan en el cuerpo de la petición y se guardan en la BD
+      con un token UUID de una sola vez (expira en 60 minutos).
+    - El editor 3D (origen distinto) lee estos datos usando el token
+      pasado por URL, sin depender de cookies cross-site.
     - Validación FUERTE contra la BD: producto activo/aprobado, variante
       perteneciente al producto, cantidad entre 1 y min(999, stock).
-    - Los valores autoritativos (precio, stock, talla, color) SIEMPRE se
-      derivan de la BD, nunca del cliente. La talla/color del payload se
-      usa solo como referencia de UI y se descarta si no coincide con la
-      variante.
     """
     if not _editor_origin_allowed(request):
         return JsonResponse({'error': 'Origen no permitido.'}, status=403)
@@ -133,8 +125,6 @@ def editor_session_save(request):
     except (Product.DoesNotExist, Variant.DoesNotExist, TypeError, ValueError):
         return JsonResponse({'error': 'Producto o variante no válidos.'}, status=400)
 
-    # Cantidad: entero estricto, acotada 1..min(999, stock) — se ignora
-    # cualquier valor fuera de rango en lugar de fallar el flujo.
     try:
         quantity = int(data.get('quantity', 1))
     except (TypeError, ValueError):
@@ -147,7 +137,6 @@ def editor_session_save(request):
             status=400,
         )
 
-    # Datos autoritativos: talla/color SIEMPRE desde la BD, nunca del cliente.
     editor_data = {
         'productId': str(product.id),
         'productName': product.name,
@@ -157,43 +146,44 @@ def editor_session_save(request):
         'size': variant.size,
         'color': variant.color,
         'colorHex': variant.color_hex or data.get('colorHex') or '#6B7280',
-        # Timestamp de creación para expirar la sesión del editor.
         'createdAt': timezone.now().isoformat(),
     }
-    request.session['editor_3d'] = editor_data
-    request.session.save()
 
-    return JsonResponse({'ok': True})
+    from apps.models3d.editor_session import EditorSession
+    session = EditorSession.objects.create(data=editor_data)
+
+    return JsonResponse({'ok': True, 'token': str(session.token)})
 
 
 @csrf_exempt
 @api_view(['GET'])
 @perm_decorator([AllowAny])
 def editor_session_get(request):
-    """Recupera los datos del editor 3D desde la sesión del backend.
+    """Recupera los datos del editor 3D usando un token temporal.
 
-    Devuelve SOLO los campos necesarios para el flujo de guardado del
-    diseño. La sesión expira después de EDITOR_SESSION_MAX_AGE minutos
-    para evitar reutilizar datos obsoletos.
+    El token se pasa como query param ?token=... o header X-Editor-Token.
+    La sesión expira después de 60 minutos y se marca como usada al commit.
     """
     EDITOR_SESSION_MAX_AGE_MINUTES = 60
-    editor_data = request.session.get('editor_3d')
-    if not editor_data:
-        return JsonResponse({'error': 'No hay datos de editor en la sesión'}, status=404)
 
-    created_at = editor_data.get('createdAt')
-    if created_at:
-        try:
-            created_dt = timezone.datetime.fromisoformat(created_at)
-            if timezone.now() - created_dt > timezone.timedelta(minutes=EDITOR_SESSION_MAX_AGE_MINUTES):
-                request.session.pop('editor_3d', None)
-                request.session.save()
-                return JsonResponse({'error': 'La sesión del editor ha expirado. Abre el editor desde el catálogo.'}, status=410)
-        except (ValueError, TypeError):
-            request.session.pop('editor_3d', None)
-            request.session.save()
-            return JsonResponse({'error': 'Sesión del editor inválida. Abre el editor desde el catálogo.'}, status=410)
+    token_str = request.GET.get('token') or request.headers.get('X-Editor-Token')
+    if not token_str:
+        return JsonResponse({'error': 'Token de sesión requerido.'}, status=400)
 
+    from apps.models3d.editor_session import EditorSession
+    try:
+        session = EditorSession.objects.get(token=token_str)
+    except (EditorSession.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Sesión del editor no válida.'}, status=404)
+
+    if session.used:
+        return JsonResponse({'error': 'Esta sesión ya fue utilizada.'}, status=410)
+
+    if session.is_expired(EDITOR_SESSION_MAX_AGE_MINUTES):
+        session.delete()
+        return JsonResponse({'error': 'La sesión del editor ha expirado. Abre el editor desde el catálogo.'}, status=410)
+
+    editor_data = session.data
     return JsonResponse({
         'productId': editor_data.get('productId'),
         'productName': editor_data.get('productName'),
@@ -209,11 +199,10 @@ def editor_session_get(request):
 @api_view(['POST'])
 @perm_decorator([AllowAny])
 def editor_session_commit(request):
-    """Agrega al carrito la selección validada guardada en la sesión.
+    """Agrega al carrito la selección validada usando el token temporal.
 
-    El cliente no puede escoger producto, variante ni cantidad en este paso.
-    La sesión es de un solo uso y los datos comerciales se vuelven a validar
-    contra la base de datos justo antes de modificar el carrito.
+    El token se pasa como query param ?token=... o header X-Editor-Token.
+    La sesión es de un solo uso y los datos se revalidan contra la BD.
     """
     from django.db import transaction
     from apps.carts.models import Cart, CartItem
@@ -223,9 +212,21 @@ def editor_session_commit(request):
     if not _editor_origin_allowed(request):
         return JsonResponse({'error': 'Origen no permitido.'}, status=403)
 
-    editor_data = request.session.get('editor_3d')
-    if not editor_data:
+    token_str = request.GET.get('token') or request.headers.get('X-Editor-Token')
+    if not token_str:
+        return JsonResponse({'error': 'Token de sesión requerido.'}, status=400)
+
+    from apps.models3d.editor_session import EditorSession
+    try:
+        session = EditorSession.objects.get(token=token_str, used=False)
+    except (EditorSession.DoesNotExist, ValueError):
         return JsonResponse({'error': 'La sesión del editor no existe o ya fue utilizada.'}, status=404)
+
+    if session.is_expired():
+        session.delete()
+        return JsonResponse({'error': 'La sesión del editor ha expirado.'}, status=410)
+
+    editor_data = session.data
 
     try:
         product = Product.objects.get(
@@ -236,21 +237,21 @@ def editor_session_commit(request):
         )
         quantity = int(editor_data['quantity'])
     except (KeyError, TypeError, ValueError, Product.DoesNotExist, Variant.DoesNotExist):
-        request.session.pop('editor_3d', None)
-        request.session.save()
+        session.delete()
         return JsonResponse({'error': 'La selección del editor ya no es válida.'}, status=400)
 
     if quantity < 1 or quantity > 999 or quantity > variant.stock:
-        request.session.pop('editor_3d', None)
-        request.session.save()
+        session.delete()
         return JsonResponse({'error': 'La cantidad ya no está disponible.'}, status=400)
 
-    if not request.session.session_key:
+    session_key = request.session.session_key
+    if not session_key:
         request.session.save()
+        session_key = request.session.session_key
 
     with transaction.atomic():
         cart, _ = Cart.objects.get_or_create(
-            session_key=request.session.session_key,
+            session_key=session_key,
             defaults={'user': request.user if request.user.is_authenticated else None},
         )
         if request.user.is_authenticated and cart.user_id is None:
@@ -271,8 +272,9 @@ def editor_session_commit(request):
             item.unit_price = variant.effective_price
             item.save(update_fields=['quantity', 'unit_price', 'updated_at'])
 
-    request.session.pop('editor_3d', None)
-    request.session.save()
+    session.used = True
+    session.save(update_fields=['used'])
+
     return JsonResponse(CartItemSerializer(item, context={'request': request}).data, status=201)
 
 # Vista directa para verificar email desde el link del correo

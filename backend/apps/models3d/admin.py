@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Model3D, Model3DImage
+from .editor_session import EditorSession
 
 # Registro del gestor global de recursos de Cloudinary (CloudinaryResourceAdmin)
 from . import cloudinary_admin  # noqa: F401
@@ -61,3 +62,10 @@ class Model3DImageAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(EditorSession)
+class EditorSessionAdmin(admin.ModelAdmin):
+    list_display = ('token', 'used', 'created_at')
+    list_filter = ('used', 'created_at')
+    readonly_fields = ('token', 'data', 'created_at')
