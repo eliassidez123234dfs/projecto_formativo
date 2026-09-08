@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../services/api'
+import { setTokens, isAuthenticated } from '../services/authService'
 import '../styles/AuthPage.css'
 
 function passwordStrength(pw) {
@@ -41,8 +42,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
   }, [mode])
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    if (token) navigate('/dashboard')
+    if (isAuthenticated()) navigate('/dashboard')
   }, [navigate])
 
   useEffect(() => {
@@ -116,9 +116,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
     try {
       const response = await api.post('login/', loginData)
       const data = response.data
-      localStorage.setItem('access_token', data.access)
-      localStorage.setItem('refresh_token', data.refresh)
-      localStorage.setItem('usuario', JSON.stringify(data.usuario))
+      setTokens(data.access, data.refresh, data.usuario)
       const usr = data.usuario || {}
       navigate(usr.rol === 'Administrador' ? '/dashboard' : '/')
     } catch (error) {

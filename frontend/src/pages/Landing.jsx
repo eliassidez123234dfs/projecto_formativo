@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { useCart } from '../context/CartContext'
 import { buildApiUrl, fetchCatalog } from '../services/api'
+import { isAuthenticated } from '../services/authService'
 import '../styles/Landing.css'
 
 const FALLBACK_IMG = '/white-tshirt.png'
@@ -104,7 +105,7 @@ const steps = [
 export const Landing = () => {
   const navigate = useNavigate()
   const { cart } = useCart()
-  const loggedIn = typeof window !== 'undefined' ? Boolean(localStorage.getItem('access_token')) : false
+  const loggedIn = isAuthenticated()
   const [products, setProducts] = useState([])
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { logClientError } from '../utils/logger';
+import { getAccessToken, setTokens, clearAuth, getStoredRefreshToken } from './authService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/';
 export const buildApiUrl = (endpoint) => `${API_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
@@ -46,7 +47,7 @@ const sessionApi = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -68,12 +69,10 @@ api.interceptors.response.use(
       }
       originalRequest._retry = true;
       isRefreshing = true;
-      const refreshToken = localStorage.getItem('refresh_token');
+      const refreshToken = getStoredRefreshToken();
       if (!refreshToken) {
         isRefreshing = false;
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('usuario');
+        clearAuth();
         return Promise.reject(error);
       }
       try {
@@ -81,16 +80,15 @@ api.interceptors.response.use(
           `${API_BASE_URL.replace(/\/+$/, '')}/token/refresh/`,
           { refresh: refreshToken }
         );
-        const newToken = response.data.access;
-        localStorage.setItem('access_token', newToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        processQueue(null, newToken);
+        const newAccess = response.data.access;
+        const newRefresh = response.data.refresh || refreshToken;
+        setTokens(newAccess, newRefresh);
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+        processQueue(null, newAccess);
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('usuario');
+        clearAuth();
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }

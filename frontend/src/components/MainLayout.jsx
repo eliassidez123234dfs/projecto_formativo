@@ -10,7 +10,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { getAccessToken, clearAuth, isAuthenticated, getCurrentUser } from '../services/authService'
 import useAppStore from '../store/appStore'
-import { fetchCurrentUser, buildApiUrl } from '../services/api'
+import { buildApiUrl } from '../services/api'
 import { Breadcrumbs } from './Breadcrumbs'
 import '../styles/main-layout.css'
 
@@ -144,15 +144,13 @@ export default function MainLayout({ children, title, subtitle }) {
       return
     }
     if (!usuario) {
-      fetchCurrentUser().then(user => {
-        if (user) {
-          setUsuario(user)
-
-        } else {
-          navigate('/login')
-        }
-        setLoadingUser(false)
-      })
+      const user = getCurrentUser()
+      if (user) {
+        setUsuario(user)
+      } else {
+        navigate('/login')
+      }
+      setLoadingUser(false)
     } else {
       setLoadingUser(false)
     }

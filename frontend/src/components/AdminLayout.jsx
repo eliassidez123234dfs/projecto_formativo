@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { clearAuth, getCurrentUser } from '../services/authService'
 import '../styles/admin.css'
 
 const Icons = {
@@ -122,7 +123,7 @@ export default function AdminLayout({ children, title, subtitle }) {
     } catch { return true }
   })
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768)
-  const usuario = (() => { try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null } })()
+  const usuario = getCurrentUser()
 
   useEffect(() => {
     const handleResize = () => {
@@ -165,9 +166,7 @@ export default function AdminLayout({ children, title, subtitle }) {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('usuario')
+    clearAuth()
     navigate('/login')
   }
 
