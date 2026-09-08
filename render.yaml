@@ -10,7 +10,7 @@ services:
     buildCommand: |
       pip install -r requirements.txt --quiet
       python manage.py collectstatic --noinput --clear
-    preDeployCommand: python manage.py migrate --noinput
+    preDeployCommand: python manage.py migrate --noinput && python manage.py ensure_admin
     startCommand: gunicorn config.wsgi:application --config gunicorn.conf.py
     healthCheckPath: /api/health/
     envVars:
