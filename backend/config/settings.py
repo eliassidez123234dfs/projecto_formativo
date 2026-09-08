@@ -553,7 +553,7 @@ BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8000')
 
 # =============================================================================
 #  CORREO ELECTRÓNICO — EmailService
-#  Soporta EMAIL_BACKEND=console|smtp o la clase Django completa en .env.
+#  Soporta Resend mediante RESEND_API_KEY y, como fallback local, EMAIL_BACKEND.
 #  Usado por EmailService (services/email_service.py) para:
 #  - Verificación de email al registrarse (RF-003)
 #  - Recuperación de contraseña (RF-009)
@@ -561,6 +561,7 @@ BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8000')
 #  - Notificaciones de contacto (RF-031)
 # =============================================================================
 _email_backend_env = env('EMAIL_BACKEND', default='').strip()
+RESEND_API_KEY = env('RESEND_API_KEY', default='')
 if _email_backend_env.lower() == 'console':
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 elif _email_backend_env.lower() == 'smtp':
@@ -580,7 +581,7 @@ EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
 EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=10)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@sistema.com')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='onboarding@resend.dev')
 
 # =============================================================================
 #  MONGODB — BASE DE DATOS NO RELACIONAL (POLYGLOT PERSISTENCE)

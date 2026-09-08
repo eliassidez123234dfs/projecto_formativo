@@ -25,6 +25,7 @@ from ..models import (
 from .serializers import (
     UsuarioSerializer, UsuarioDetailSerializer, LogAuditoriaSerializer
 )
+from apps.users.services.email_service import EmailService
 
 
 class AdminPermission(permissions.BasePermission):
@@ -608,13 +609,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         """
         
         try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
+            EmailService.send_plain_email(asunto, mensaje, [usuario.correo])
         except Exception as exc:
             logger.exception('Error al enviar email de bienvenida a %s: %s', usuario.correo, exc)
     
@@ -634,13 +629,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         """
         
         try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
+            EmailService.send_plain_email(asunto, mensaje, [usuario.correo])
         except Exception as exc:
             logger.exception('Error al enviar email de verificación a %s: %s', usuario.correo, exc)
     
@@ -662,13 +651,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         """
         
         try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [usuario.correo],
-                fail_silently=False
-            )
+            EmailService.send_plain_email(asunto, mensaje, [usuario.correo])
         except Exception as exc:
             logger.exception('Error al enviar email de reseteo a %s: %s', usuario.correo, exc)
     

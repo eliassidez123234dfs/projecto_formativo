@@ -29,6 +29,7 @@ from .serializers import (
     RecuperacionPasswordSerializer, NuevaPasswordSerializer,
     CambioPasswordSerializer, ActualizarPerfilSerializer, LogAuditoriaSerializer
 )
+from apps.users.services.email_service import EmailService
 
 
 class RegistroViewSet(viewsets.ViewSet):
@@ -167,18 +168,7 @@ class RegistroViewSet(viewsets.ViewSet):
     
 
     def _send_email(self, asunto, mensaje, destinatarios):
-        try:
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                destinatarios,
-                fail_silently=False
-            )
-            return True
-        except Exception as exc:
-            logger.exception('Error al enviar email a %s: %s', destinatarios, exc)
-            return False
+        return EmailService.send_plain_email(asunto, mensaje, destinatarios)
 
     def _enviar_email_verificacion(self, usuario, token=None):
         """Enviar email de verificación"""

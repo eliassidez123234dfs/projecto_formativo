@@ -32,6 +32,9 @@ llamar a send_mail directamente.
 """
 
 import logging
+import json
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 from datetime import timedelta
 
 from django.conf import settings
@@ -70,6 +73,26 @@ class EmailService:
             True si el envío fue exitoso, False en caso contrario.
         """
         try:
+            if settings.RESEND_API_KEY:
+                payload = json.dumps({
+                    'from': settings.DEFAULT_FROM_EMAIL,
+                    'to': recipient_list,
+                    'subject': subject,
+                    'text': message,
+                }).encode('utf-8')
+                request = Request(
+                    'https://api.resend.com/emails',
+                    data=payload,
+                    headers={
+                        'Authorization': f'Bearer {settings.RESEND_API_KEY}',
+                        'Content-Type': 'application/json',
+                    },
+                    method='POST',
+                )
+                with urlopen(request, timeout=15) as response:
+                    if response.status not in (200, 201):
+                        raise RuntimeError(f'Resend respondió HTTP {response.status}')
+                return True
             send_mail(
                 subject,
                 message,
@@ -81,6 +104,11 @@ class EmailService:
         except Exception as exc:
             logger.exception('Error al enviar email a %s: %s', recipient_list, exc)
             return False
+
+    @staticmethod
+    def send_plain_email(subject, message, recipient_list):
+        """Envía un mensaje simple usando el mismo canal configurado."""
+        return EmailService._send(subject, message, recipient_list)
 
     # ── Correo de verificación de cuenta (RF-003) ──
     # Se envía después del registro. Incluye un enlace con el token
