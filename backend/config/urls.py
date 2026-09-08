@@ -302,6 +302,9 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
+    # Usuario autenticado
+    path('api/me/', me_view, name='me-view'),
+
     # Verificación directa de email desde el link del correo
     path('api/auth/verificar-email/', verificar_email_directo, name='verificar-email-directo'),
 
