@@ -4,6 +4,11 @@
 @import "tailwindcss";
 
 /* =========================================
+   DARK MODE — Vincula dark: al atributo data-theme del HTML
+   ========================================= */
+@variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* =========================================
    CUSTOM THEME - Colores del proyecto RED
    ========================================= */
 @theme {
