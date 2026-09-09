@@ -2,7 +2,7 @@
 #  ARCHIVO: settings.py
 #  PROPÓSITO: Configuración principal del proyecto Django "Red Estampación".
 #             Define todos los parámetros del framework: apps instaladas,
-#             middleware, bases de datos (SQLite/PostgreSQL + MongoDB),
+#             middleware, bases de datos (SQLite/PostgreSQL),
 #             autenticación JWT, pasarela de pagos Wompi, almacenamiento
 #             Cloudinary, correo electrónico, CORS, seguridad HTTP, etc.
 #
@@ -68,7 +68,7 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost'])
 #  PATRÓN DE DISEÑO: Modular Monolith (Módulos con baja cohesión cruzada).
 #  Cada PROJECT_APP es un módulo independiente con sus propios modelos,
 #  vistas, serializadores y URLs. Las dependencias entre módulos se
-#  resuelven vía ForeignKeys y llamadas a servicios en apps.users (mongo_service).
+#  resuelven vía ForeignKeys y llamadas a servicios entre módulos.
 #  NOTA: apps.users DEBE ir antes de django.contrib.auth (requerimiento
 #  oficial de Django para AUTH_USER_MODEL personalizados).
 # =============================================================================
@@ -88,7 +88,7 @@ DJANGO_APPS = [
 # ── Módulos del negocio ──
 # Cada app implementa un dominio específico con alta cohesión interna
 # y bajo acoplamiento externo:
-# - users:      Gestión de usuarios, autenticación JWT, auditoría, MongoDB
+# - users:      Gestión de usuarios, autenticación JWT, auditoría
 # - products:   Catálogo de productos, variantes, imágenes, reseñas
 # - landing:    Formulario de contacto y página de aterrizaje
 # - orders:     Pedidos, facturación, ciclo de vida de órdenes
@@ -583,27 +583,7 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='onboarding@resend.dev')
 
-# =============================================================================
-#  MONGODB — BASE DE DATOS NO RELACIONAL (POLYGLOT PERSISTENCE)
-#  Configuración flexible según USE_MONGODB:
-#  - 'true': habilita MongoDB para diseños 3D, logs, carritos
-#  - 'false': usa solo Django ORM (PostgreSQL/SQLite)
-#
-#  Complementa a PostgreSQL para datos no estructurados o con esquema variable:
-#  - saved_designs:  Configuraciones completas de diseños 3D (JSON anidado).
-#  - audit_logs:     Logs de eventos del sistema (Event Sourcing).
-#  - cart_sessions:  Carritos de compra persistentes (multi-dispositivo).
-#  - community_templates: Plantillas 3D compartidas por la comunidad.
-#
-#  PATRÓN DE DISEÑO: Polyglot Persistence / CQRS parcial.
-# =============================================================================
-USE_MONGODB = env.bool('USE_MONGODB', default=True)
-if USE_MONGODB:
-    MONGODB_URI = env('MONGODB_URI', default='mongodb://localhost:27017/projecto_formativo')
-    MONGODB_NAME = env('MONGODB_NAME', default='projecto_formativo')
-else:
-    MONGODB_URI = ''
-    MONGODB_NAME = ''
+
 
 # =============================================================================
 #  REGLAS DE CONTRASEÑA — RN-001

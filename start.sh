@@ -23,9 +23,6 @@ python manage.py migrate --noinput
 echo "=== Verificando usuario administrador ==="
 python manage.py ensure_admin
 
-echo "=== Verificando MongoDB ==="
-python manage.py check_mongo || echo "WARN: MongoDB no disponible, continuando..."
-
 echo "=== Iniciando servidor con Gunicorn ==="
 exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \

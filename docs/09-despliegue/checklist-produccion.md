@@ -153,13 +153,13 @@ servicios desplegados. No se deben publicar secretos en variables `VITE_*`.
 ## 9. Documentación
 
 - [ ] README.md completo (descripción, stack, setup, arquitectura)
-- [ ] API_DOCUMENTATION.md actualizada y completa
-- [ ] SETUP_GUIDE.md funcional (developers nuevos pueden correr el proyecto)
-- [ ] CONTRIBUTING.md con guía de contribución
-- [ ] DESIGN_GUIDE.md actualizado
-- [ ] CONTRACTS.md (contratos OpenAPI) actualizado
+- [ ] `docs/07-api/` — Documentación de endpoints actualizada
+- [ ] `docs/08-instalacion-entorno-desarrollo/` — Guías de configuración funcionales
+- [ ] `docs/11-gestion-proyecto/contributing.md` — Guía de contribución
+- [ ] `docs/05-arquitectura/diseno-visual.md` — Guía de diseño actualizada
+- [ ] `docs/07-api/contratos.md` — Contratos OpenAPI actualizados
 - [ ] Manual de usuario para administradores
-- [ ] CHANGELOG.md por release
+- [ ] `docs/12-historial/changelog.md` — Changelog por release
 
 ---
 

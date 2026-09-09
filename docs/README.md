@@ -82,6 +82,9 @@
 ### 13. Administracion
 - [13.1 Panel Admin: Estado y Pendientes](13-admin/panel-admin-estado-y-pendientes.md) - Funcionalidades existentes, faltantes y deuda tecnica del panel
 
+### 14. Seguridad
+- [14.1 Vulnerabilidades](seguridad/vulnerabilidades.md) - Auditoria de seguridad completa, VULN-001 a VULN-027
+
 ### Archivados
 - [Archivo de documentacion](archive/) - Documentos historicos y reportes de auditoria
 
@@ -102,7 +105,7 @@
 | **Paginas Frontend** | 22 paginas / 15 componentes reutilizables |
 | **Autenticacion** | JWT (access 15min + refresh 7dias) + Sesion |
 | **Contenedores** | Docker Compose (backend + frontend) |
-| **Documentos** | 40+ archivos organizados en 13 secciones numeradas + archive |
+| **Documentos** | 40+ archivos organizados en 14 secciones + archive |
 
 ---
 

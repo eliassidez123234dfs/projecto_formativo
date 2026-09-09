@@ -26,32 +26,33 @@ Como el backend es una API (no sirve HTML al usuario final), lo correcto no son 
 Se logra centralizando el manejador de excepciones de DRF:
 
 ```python
-# apps/core/exceptions.py
-from rest_framework.views import exception_handler
+# apps/users/error_handler.py
+from rest_framework.views import exception_handler as drf_exception_handler
 import logging
 
 logger = logging.getLogger(__name__)
 
 def custom_exception_handler(exc, context):
-    response = exception_handler(exc, context)
+    response = drf_exception_handler(exc, context)
 
     if response is not None:
-        response.data = {
-            'error': True,
-            'status_code': response.status_code,
-            'message': response.data.get('detail', str(response.data)),
-        }
-    else:
-        # Excepción no controlada (error 500 real, no HTTPException de DRF)
-        logger.error(f"Error no controlado: {exc}", exc_info=True)
+        # DRF exceptions: format consistently
+        return response
 
-    return response
+    # Unhandled exception: log full traceback, return generic error
+    logger.critical(f"Unhandled exception: {exc}", exc_info=True)
+    from rest_framework import status
+    from django.http import JsonResponse
+    return JsonResponse(
+        {'error': True, 'message': 'Error interno del servidor'},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
 ```
 
 ```python
 # config/settings.py
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'apps.users.error_handler.custom_exception_handler',
 }
 ```
 

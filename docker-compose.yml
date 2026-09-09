@@ -14,8 +14,7 @@ services:
     env_file:
       - .env
     depends_on:
-      mongo:
-        condition: service_started
+      - frontend
 
   frontend:
     build:
@@ -51,16 +50,6 @@ services:
     depends_on:
       - backend
 
-  mongo:
-    image: mongo:7
-    container_name: proyecto_mongo
-    ports:
-      - '27017:27017'
-    volumes:
-      - mongo_data:/data/db
-    restart: unless-stopped
-
 volumes:
   backend_media:
   backend_static:
-  mongo_data:

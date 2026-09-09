@@ -7,9 +7,11 @@ from apps.users.models import Usuario
 
 
 class Command(BaseCommand):
-    help = "Asegura que el usuario administrador exista y esté activo. "
-           "Lee credenciales de variables de entorno: "
-           "ADMIN_USUARIO, ADMIN_CORREO, ADMIN_PASSWORD"
+    help = (
+        "Asegura que el usuario administrador exista y esté activo. "
+        "Lee credenciales de variables de entorno: "
+        "ADMIN_USUARIO, ADMIN_CORREO, ADMIN_PASSWORD"
+    )
 
     def handle(self, *args, **options):
         admin_usuario = os.environ.get('ADMIN_USUARIO', '')

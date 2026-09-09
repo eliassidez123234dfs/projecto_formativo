@@ -40,7 +40,7 @@ router.register(r'contacto', ContactoViewSet, basename='contacto')
 
 
 def health_check(request):
-    """Endpoint de salud para Render. Verifica PostgreSQL y MongoDB."""
+    """Endpoint de salud para Render. Verifica PostgreSQL."""
     from django.db import connection
     db_ok = True
     try:
@@ -48,18 +48,10 @@ def health_check(request):
     except Exception:
         db_ok = False
 
-    mongo_ok = False
-    try:
-        from apps.users.mongodb import ping_mongo
-        mongo_ok = ping_mongo()
-    except Exception:
-        pass
-
     status_code = 200 if db_ok else 503
     return JsonResponse({
         'status': 'ok' if db_ok else 'degraded',
         'postgres': db_ok,
-        'mongo': mongo_ok,
     }, status=status_code)
 
 

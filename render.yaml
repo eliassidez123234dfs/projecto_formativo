@@ -59,12 +59,6 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: USE_MONGODB
-        value: "true"
-      - key: MONGODB_URI
-        sync: false
-      - key: MONGODB_NAME
-        value: "projecto_formativo"
       - key: WOMPI_PUBLIC_KEY
         sync: false
       - key: WOMPI_PRIVATE_KEY

@@ -98,7 +98,7 @@ Ademas, las contraseñas deben cumplir reglas estrictas (RN-001):
 
 Esto se valida en el serializer de registro (lineas 50-61), en el cambio de contraseña (linea 256), y en la creacion de usuarios por admin (lineas 213-228).
 
-Si un usuario falla el login **5 veces seguidas**, su cuenta se bloquea automaticamente (lineas 112-121). Los admins no se bloquean por seguridad.
+Si un usuario falla el login **5 veces seguidas**, su cuenta se bloquea automaticamente (lineas 114-119). El bloqueo aplica a **todos** los usuarios, incluyendo administradores (RN-010).
 
 ---
 
@@ -297,29 +297,23 @@ Si tuvieras que decirlo en 30 segundos:
 1. **Cookies HttpOnly en vez de localStorage para JWT**
    - Ahora los tokens se guardan en localStorage, que es accesible por JavaScript. Si alguien logra inyectar XSS (aunque no encontramos vectores), podria robar los tokens. Lo ideal es usar cookies HttpOnly+Secure+SameSite.
 
-2. **Headers de seguridad HTTP en el frontend**
-   - Falta Content-Security-Policy, X-Content-Type-Options, Referrer-Policy. Estos se pueden configurar en Nginx o en el backend.
-
-3. **Dockerfile de produccion para el frontend**
+2. **Dockerfile de produccion para el frontend**
    - Ahora el Dockerfile ejecuta `npm run dev` (servidor de desarrollo). Deberia hacer un build de produccion y servir con Nginx.
 
-4. **Docker containers sin usuario root**
+3. **Docker containers sin usuario root**
    - Los contenedores corren como root. Deberian usar un usuario no-root con `USER node` o similar.
 
-5. **Healthchecks en docker-compose**
+4. **Healthchecks en docker-compose**
    - Falta definir healthchecks para que Docker sepa si el contenedor esta vivo.
 
-6. **Blacklist de tokens JWT**
-   - Esta configurado `BLACKLIST_AFTER_ROTATION: False` en settings. Si lo activas, cada refresh invalidaria el token anterior.
-
-7. **NO commitmentes el `.env` real al repositorio**
+5. **NO commitmentes el `.env` real al repositorio**
    - Aunque el `.gitignore` lo excluye, doble checkea con `git status` antes de hacer push.
 
-8. **SECRET_KEY en produccion**
+6. **SECRET_KEY en produccion**
    - La SECRET_KEY actual tiene prefijo `django-insecure-`. En produccion genera una real con `python -c "import secrets; print(secrets.token_url64(64))"`.
 
-9. **Consolida los archivos .env**
+7. **Consolida los archivos .env**
    - Tienes `.env` en la raiz, en `backend/`, en `backend/config/`, en `frontend/`, y en `microservices/Tshirt3D/`. Algunos tienen secretos distintos. Unifica todo en un solo `.env` raiz.
 
-10. **Validacion server-side obligatoria para admin**
-    - El ProtectedRoute del frontend es solo para UI. Asegurate de que **cada** endpoint admin valide el JWT y el rol en el backend (que ya lo hace, pero es bueno verificar que no haya endpoints admin sin proteccion).
+8. **Validacion server-side obligatoria para admin**
+   - El ProtectedRoute del frontend es solo para UI. Asegurate de que **cada** endpoint admin valide el JWT y el rol en el backend (que ya lo hace, pero es bueno verificar que no haya endpoints admin sin proteccion).
