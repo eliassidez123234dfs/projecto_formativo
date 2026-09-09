@@ -16,7 +16,7 @@ export const CartProvider = ({ children }) => {
       const data = await fetchCart();
       setCart(data);
     } catch (error) {
-      console.error('Error al cargar el carrito:', error);
+      if (import.meta.env.DEV) console.error('Error al cargar el carrito:', error);
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export const CartProvider = ({ children }) => {
       await clearCartApi();
       setCart({ items: [], total_items: 0, total_amount: '0.00' });
     } catch (error) {
-      console.error('Error al vaciar el carrito:', error);
+      if (import.meta.env.DEV) console.error('Error al vaciar el carrito:', error);
     }
   };
 

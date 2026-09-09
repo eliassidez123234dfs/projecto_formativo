@@ -74,12 +74,12 @@ def _build_error_response(exc, http_status, request=None):
     else:
         error_data = {
             'errorCode': 'APP-500',
-            'exception': type(exc).__name__,
-            'message': str(exc) or 'Error interno del servidor',
+            'exception': 'ServerError',
+            'message': 'Error interno del servidor',
             'userMessage': 'Ocurrió un error inesperado. Intenta más tarde.',
             'severity': 'CRITICAL',
             'context': {},
-            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z') + 'Z',
+            'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
             'requestId': get_current_request_id() or '',
         }
 
@@ -132,12 +132,12 @@ def custom_exception_handler(exc, context):
 
             error_data = {
                 'errorCode': f'DRF-{response.status_code}',
-                'exception': type(exc).__name__,
-                'message': str(exc),
+                'exception': 'ValidationError' if response.status_code < 500 else 'ServerError',
+                'message': 'Error de validación' if response.status_code < 500 else 'Error interno del servidor',
                 'userMessage': first_msg,
                 'severity': 'WARNING' if response.status_code < 500 else 'ERROR',
                 'context': dict(data) if isinstance(data, dict) else {},
-                'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z') + 'Z',
+                'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                 'requestId': get_current_request_id() or '',
             }
             return JsonResponse(error_data, status=response.status_code)

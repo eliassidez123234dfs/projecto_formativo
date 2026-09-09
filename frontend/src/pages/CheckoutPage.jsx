@@ -48,7 +48,7 @@ export default function CheckoutPage() {
       const data = await getCheckoutSummary()
       setSummary(data)
     } catch (err) {
-      console.error('Error cargando checkout summary:', err)
+      if (import.meta.env.DEV) console.error('Error cargando checkout summary:', err)
     } finally {
       setLoading(false)
     }
@@ -161,7 +161,7 @@ export default function CheckoutPage() {
       link.parentNode.removeChild(link)
       window.URL.revokeObjectURL(url)
     } catch (err) {
-      console.error('Error descargando factura PDF:', err)
+      if (import.meta.env.DEV) console.error('Error descargando factura PDF:', err)
       alert('No se pudo descargar la factura en PDF. Por favor intenta de nuevo.')
     } finally {
       setDownloadingPdf(false)

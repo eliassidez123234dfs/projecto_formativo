@@ -4,14 +4,12 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
-from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Q, Case, When, Value, IntegerField
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
-import uuid
 from datetime import timedelta
 import secrets
 import string
@@ -271,7 +269,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             fecha_expiracion = timezone.now() + timedelta(hours=24)
             token = Token_Verificacion.objects.create(
                 usuario=usuario,
-                token=str(uuid.uuid4()),
+                token=secrets.token_urlsafe(32),
                 tipo='Verificacion_Email',
                 fecha_expiracion=fecha_expiracion
             )
@@ -469,7 +467,7 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         fecha_expiracion = timezone.now() + timedelta(hours=1)
         token = Token_Verificacion.objects.create(
             usuario=usuario,
-            token=str(uuid.uuid4()),
+            token=secrets.token_urlsafe(32),
             tipo='Recuperacion_Password',
             fecha_expiracion=fecha_expiracion
         )
@@ -560,34 +558,15 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     def _generar_contrasena_temporal(self):
         """Generar contraseña temporal que cumple RN-001"""
         caracteres_especiales = '!@#$%^&*()'
-        mientras = True
-        while mientras:
-            contrasena = ''
-            
-            # Agregar mayúsculas
-            contrasena += secrets.choice(string.ascii_uppercase)
-            
-            # Agregar número
-            contrasena += secrets.choice(string.digits)
-            
-            # Agregar carácter especial
-            contrasena += secrets.choice(caracteres_especiales)
-            
-            # Completar el resto
-            resto = secrets.choice(string.ascii_letters + string.digits + caracteres_especiales)
-            contrasena += ''.join(
-                secrets.choice(string.ascii_letters + string.digits) 
-                for _ in range(5)
-            )
-            
-            # Mezclar
-            contrasena_lista = list(contrasena)
-            secrets.SystemRandom().shuffle(contrasena_lista)
-            contrasena = ''.join(contrasena_lista)
-            
-            mientras = False
-        
-        return contrasena
+        contrasena = (
+            secrets.choice(string.ascii_uppercase)
+            + secrets.choice(string.digits)
+            + secrets.choice(caracteres_especiales)
+            + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(5))
+        )
+        contrasena_lista = list(contrasena)
+        secrets.SystemRandom().shuffle(contrasena_lista)
+        return ''.join(contrasena_lista)
     
     def _enviar_email_bienvenida(self, usuario, contrasena_temporal, token):
         """Enviar email de bienvenida con credenciales"""

@@ -106,7 +106,6 @@ export function setTokens(access, refresh, usuario) {
   // access token: SOLO memoria, nunca persistir (OWASP A03:2021)
   if (refresh) {
     writeLS(LS_REFRESH, refresh)
-    try { sessionStorage.setItem('refresh_token', refresh) } catch { /* ignore */ }
   }
   if (usuario) writeLS(LS_USER, JSON.stringify(usuario))
   else removeLS(LS_USER)
@@ -119,15 +118,14 @@ export function clearAuth() {
   currentUser = null
   removeLS(LS_REFRESH)
   removeLS(LS_USER)
-  // Limpiar access_token legacy de localStorage (el sistema antiguo lo ahí)
+  // Limpiar tokens legacy de localStorage
   removeLS('access_token')
-  try { sessionStorage.removeItem('refresh_token') } catch { /* ignore */ }
   notify()
 }
 
-/** Recupera el refresh token almacenado (localStorage, con fallback a sessionStorage legacy). */
+/** Recupera el refresh token almacenado en localStorage. */
 export function getStoredRefreshToken() {
-  return readLS(LS_REFRESH) || (() => { try { return sessionStorage.getItem('refresh_token') } catch { return null } })()
+  return readLS(LS_REFRESH)
 }
 
 /** Verifica si existe un token válido (en memoria o refresh token almacenado). */

@@ -111,13 +111,12 @@ class LoginSerializer(serializers.Serializer):
         # Validar contraseña
         from django.contrib.auth.hashers import check_password
         if not check_password(data['contrasena'], usuario.contrasena):
-            if usuario.rol != 'Administrador':
-                # Incrementar intentos fallidos (RN-010)
-                usuario.intentos_fallidos += 1
-                if usuario.intentos_fallidos >= 5:
-                    usuario.estado = 'Bloqueado'
-                    usuario.fecha_bloqueo = timezone.now()
-                usuario.save()
+            # Incrementar intentos fallidos (RN-010) — aplica a TODOS los usuarios
+            usuario.intentos_fallidos += 1
+            if usuario.intentos_fallidos >= 5:
+                usuario.estado = 'Bloqueado'
+                usuario.fecha_bloqueo = timezone.now()
+            usuario.save()
             raise ValidationError("Credenciales inválidas.")
         
         # Reset intentos fallidos al login exitoso
@@ -189,12 +188,7 @@ class RecuperacionPasswordSerializer(serializers.Serializer):
     correo = serializers.EmailField(required=True)
     
     def validate_correo(self, value):
-        """Validar que el usuario existe"""
-        try:
-            Usuario.objects.get(correo=value, eliminado=False)
-        except Usuario.DoesNotExist:
-            raise ValidationError("Usuario no encontrado.")
-        
+        """Validar formato de correo. No revela si el usuario existe."""
         return value
 
 class NuevaPasswordSerializer(serializers.Serializer):

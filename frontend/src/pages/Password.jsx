@@ -87,12 +87,25 @@ export const NuevaPassword = () => {
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState({});
 
+  const passwordStrength = (pwd) => {
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[a-z]/.test(pwd)) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/\d/.test(pwd)) score++;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) score++;
+    const labels = ['Muy débil', 'Débil', 'Aceptable', 'Buena', 'Fuerte', 'Muy fuerte'];
+    const colors = ['#EF4444', '#F97316', '#EAB308', '#22C55E', '#10B981', '#059669'];
+    return { score, label: labels[score] || 'Muy débil', color: colors[score] || '#EF4444' };
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const handleSubmit = async (e) => {
@@ -100,6 +113,25 @@ export const NuevaPassword = () => {
     setLoading(true);
     setErrors({});
     setMessage('');
+
+    const newErrors = {};
+    if (!formData.contrasena || formData.contrasena.length < 8)
+      newErrors.contrasena = 'La contraseña debe tener al menos 8 caracteres.';
+    else if (!/[A-Z]/.test(formData.contrasena))
+      newErrors.contrasena = 'Debe incluir al menos una letra mayúscula.';
+    else if (!/\d/.test(formData.contrasena))
+      newErrors.contrasena = 'Debe incluir al menos un número.';
+    else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.contrasena))
+      newErrors.contrasena = 'Debe incluir al menos un carácter especial.';
+
+    if (formData.contrasena !== formData.confirmar_contrasena)
+      newErrors.confirmar_contrasena = 'Las contraseñas no coinciden.';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(buildApiUrl('auth/nueva_password/'), {
@@ -143,10 +175,29 @@ export const NuevaPassword = () => {
               name="contrasena"
               value={formData.contrasena}
               onChange={handleChange}
-              placeholder="Mín 8 caracteres"
+              placeholder="Mín 8 caracteres, mayúscula, número y especial"
               required
+              minLength={8}
             />
-            {errors.contrasena && <span className="error">{errors.contrasena[0]}</span>}
+            {formData.contrasena.length > 0 && (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ display: 'flex', gap: 3, marginBottom: 2 }}>
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} style={{
+                      flex: 1, height: 4, borderRadius: 2,
+                      background: i <= passwordStrength(formData.contrasena).score
+                        ? passwordStrength(formData.contrasena).color
+                        : '#e5e7eb',
+                      transition: 'background 0.2s'
+                    }} />
+                  ))}
+                </div>
+                <span style={{ fontSize: 11, color: passwordStrength(formData.contrasena).color }}>
+                  {passwordStrength(formData.contrasena).label}
+                </span>
+              </div>
+            )}
+            {errors.contrasena && <span className="error">{errors.contrasena}</span>}
           </div>
 
           <div className="form-group">

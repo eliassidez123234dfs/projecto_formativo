@@ -7,7 +7,6 @@ from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
-from django.core.mail import send_mail
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
@@ -85,60 +84,56 @@ class RegistroViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def reenviar_verificacion(self, request):
-        """Endpoint para reenviar email de verificación (RF-003, RN-006)"""
+        """Endpoint para reenviar email de verificación (RF-003, RN-006).
+        Retorna siempre la misma respuesta para prevenir enumeración de usuarios."""
         serializer = ReenvioVerificacionSerializer(data=request.data)
         if serializer.is_valid():
-            usuario = Usuario.objects.get(correo=serializer.validated_data['correo'])
-            
-            # Crear nuevo token
-            fecha_expiracion = timezone.now() + timedelta(hours=24)
-            nuevo_token = Token_Verificacion.objects.create(
-                usuario=usuario,
-                token=secrets.token_urlsafe(32),
-                tipo='Verificacion_Email',
-                fecha_expiracion=fecha_expiracion
-            )
-            
-            # Enviar email
-            if not self._enviar_email_verificacion(usuario, nuevo_token.token):
-                return Response({
-                    'error': 'No se pudo enviar el correo de verificación. Intenta más tarde.'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            return Response({
-                'mensaje': 'Email de verificación reenviado. Revisa tu bandeja de entrada.'
-            }, status=status.HTTP_200_OK)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                usuario = Usuario.objects.get(correo=serializer.validated_data['correo'])
+            except Usuario.DoesNotExist:
+                pass
+            else:
+                # Crear nuevo token
+                fecha_expiracion = timezone.now() + timedelta(hours=24)
+                nuevo_token = Token_Verificacion.objects.create(
+                    usuario=usuario,
+                    token=secrets.token_urlsafe(32),
+                    tipo='Verificacion_Email',
+                    fecha_expiracion=fecha_expiracion
+                )
+                # Enviar email (silenciar errores internos)
+                self._enviar_email_verificacion(usuario, nuevo_token.token)
+
+        return Response({
+            'mensaje': 'Si el correo está registrado, recibirás un enlace de verificación.'
+        }, status=status.HTTP_200_OK)
     
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
     def recuperar_password(self, request):
-        """Endpoint para solicitar recuperación de contraseña (RF-002)"""
+        """Endpoint para solicitar recuperación de contraseña (RF-002).
+        Retorna siempre la misma respuesta para prevenir enumeración de usuarios."""
         serializer = RecuperacionPasswordSerializer(data=request.data)
         if serializer.is_valid():
-            usuario = Usuario.objects.get(correo=serializer.validated_data['correo'])
-            
-            # Crear token de recuperación (RN-005: expira en 1 hora)
-            fecha_expiracion = timezone.now() + timedelta(hours=1)
-            token = Token_Verificacion.objects.create(
-                usuario=usuario,
-                token=secrets.token_urlsafe(32),
-                tipo='Recuperacion_Password',
-                fecha_expiracion=fecha_expiracion
-            )
-            
-            # Enviar email
-            if not self._enviar_email_recuperacion(usuario, token.token):
-                return Response({
-                    'error': 'No se pudo enviar el correo de recuperación. Intenta más tarde.'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            return Response({
-                'mensaje': 'Se ha enviado un enlace de recuperación a tu correo.'
-            }, status=status.HTTP_200_OK)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                usuario = Usuario.objects.get(correo=serializer.validated_data['correo'])
+            except Usuario.DoesNotExist:
+                pass
+            else:
+                # Crear token de recuperación (RN-005: expira en 1 hora)
+                fecha_expiracion = timezone.now() + timedelta(hours=1)
+                token = Token_Verificacion.objects.create(
+                    usuario=usuario,
+                    token=secrets.token_urlsafe(32),
+                    tipo='Recuperacion_Password',
+                    fecha_expiracion=fecha_expiracion
+                )
+                # Enviar email (silenciar errores internos)
+                self._enviar_email_recuperacion(usuario, token.token)
+
+        return Response({
+            'mensaje': 'Si el correo está registrado, recibirás un enlace de recuperación.'
+        }, status=status.HTTP_200_OK)
     
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
@@ -181,7 +176,7 @@ class RegistroViewSet(viewsets.ViewSet):
         
         if token:
             enlace = f"{settings.BACKEND_URL}/api/auth/verificar-email/?token={token}"
-            logger.info('Enlace de verificación para %s: %s', usuario.correo, enlace)
+            logger.info('Enlace de verificación enviado para usuario %s', usuario.id)
             asunto = "Verifica tu cuenta"
             mensaje = f"""
             Hola {usuario.usuario},
@@ -273,7 +268,20 @@ class LoginViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def logout(self, request):
-        """Endpoint de logout (RF-012, RN-013)"""
+        """Endpoint de logout (RF-012, RN-013).
+        Blacklistea el refresh token para prevenir uso futuro."""
+        refresh_token = request.data.get('refresh')
+        if refresh_token:
+            try:
+                from rest_framework_simplejwt.tokens import RefreshToken
+                from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+                token_obj = RefreshToken(refresh_token)
+                jti = token_obj['jti']
+                outstanding = OutstandingToken.objects.filter(jti=jti).first()
+                if outstanding:
+                    BlacklistedToken.objects.get_or_create(token=outstanding)
+            except Exception:
+                logger.exception('Error blacklisteando refresh token en logout')
         request.session.cycle_key()
         return Response({
             'mensaje': 'Sesión cerrada exitosamente'

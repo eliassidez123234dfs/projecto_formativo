@@ -1,14 +1,30 @@
+import secrets
+import string
 from django.core.management.base import BaseCommand
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 
 from apps.users.models import Usuario
 
+
+def _generar_contrasena():
+    """Genera una contraseña aleatoria que cumple RN-001."""
+    especial = '!@#$%^&*()'
+    contrasena = (
+        secrets.choice(string.ascii_uppercase)
+        + secrets.choice(string.digits)
+        + secrets.choice(especial)
+        + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(5))
+    )
+    lista = list(contrasena)
+    secrets.SystemRandom().shuffle(lista)
+    return ''.join(lista)
+
+
 USERS = [
     {
         "usuario": "admin",
         "correo": "admin@redestampacion.com",
-        "contrasena": "Admin123!",
         "rol": "Administrador",
         "estado": "Activo",
         "email_verificado": True,
@@ -17,7 +33,6 @@ USERS = [
     {
         "usuario": "juanperez",
         "correo": "juan@example.com",
-        "contrasena": "Cliente1!",
         "rol": "Usuario",
         "estado": "Activo",
         "email_verificado": True,
@@ -25,7 +40,6 @@ USERS = [
     {
         "usuario": "mariagarcia",
         "correo": "maria@example.com",
-        "contrasena": "Cliente2!",
         "rol": "Usuario",
         "estado": "Activo",
         "email_verificado": True,
@@ -33,7 +47,6 @@ USERS = [
     {
         "usuario": "carloslopez",
         "correo": "carlos@example.com",
-        "contrasena": "Cliente3!",
         "rol": "Usuario",
         "estado": "Activo",
         "email_verificado": True,
@@ -41,7 +54,6 @@ USERS = [
     {
         "usuario": "ana martinez",
         "correo": "ana@example.com",
-        "contrasena": "Cliente4!",
         "rol": "Usuario",
         "estado": "Activo",
         "email_verificado": True,
@@ -49,7 +61,6 @@ USERS = [
     {
         "usuario": "pedroramirez",
         "correo": "pedro@example.com",
-        "contrasena": "Cliente5!",
         "rol": "Usuario",
         "estado": "Inactivo",
         "email_verificado": False,
@@ -58,17 +69,18 @@ USERS = [
 
 
 class Command(BaseCommand):
-    help = "Crea usuarios de prueba (admin + clientes)"
+    help = "Crea usuarios de prueba (admin + clientes). Genera contraseñas aleatorias."
 
     def handle(self, *args, **options):
         created_list = []
 
         for udata in USERS:
+            contrasena = _generar_contrasena()
             user, created = Usuario.objects.get_or_create(
                 correo=udata["correo"],
                 defaults={
                     "usuario": udata["usuario"],
-                    "contrasena": make_password(udata["contrasena"]),
+                    "contrasena": make_password(contrasena),
                     "rol": udata["rol"],
                     "estado": udata["estado"],
                     "email_verificado": udata["email_verificado"],
@@ -77,7 +89,7 @@ class Command(BaseCommand):
                 },
             )
             if created:
-                created_list.append((udata["usuario"], udata["correo"], udata["contrasena"], udata["rol"]))
+                created_list.append((udata["usuario"], udata["correo"], contrasena, udata["rol"]))
 
         self.stdout.write(self.style.SUCCESS(f"\nUsuarios creados: {len(created_list)}"))
         self.stdout.write("=" * 60)

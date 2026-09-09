@@ -21,7 +21,7 @@ RED utiliza **JWT (JSON Web Token)** para la autenticacion de API, implementado 
 3. Login:      POST /api/login/login/    -> Genera tokens JWT
 4. API Calls:  Header: Authorization: Bearer <access_token>
 5. Refresh:    POST /api/token/refresh/  -> Obtiene nuevo access_token
-6. Logout:     POST /api/login/logout/   -> Rotacion de sesion
+6. Logout:     POST /api/login/logout/   -> Blacklistea refresh token y rota sesion
 ```
 
 ## 22.2 Endpoints de Autenticacion
@@ -143,9 +143,16 @@ Inicio de sesion. Genera tokens JWT y migra carrito anonimo.
 ```
 
 ### POST /api/login/logout/
-Cierre de sesion. Requiere autenticacion.
+Cierre de sesion. Blacklistea el refresh token para prevenir uso futuro. Requiere autenticacion.
 
 **Headers:** `Authorization: Bearer <access_token>`
+
+**Request (opcional):**
+```json
+{
+    "refresh": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
 
 **Response (200):**
 ```json

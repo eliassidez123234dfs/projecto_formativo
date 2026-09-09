@@ -20,8 +20,8 @@ class Command(BaseCommand):
             ))
             return
 
-        self.stdout.write(f'  URI: {settings.MONGODB_URI[:40]}...')
         self.stdout.write(f'  Base de datos: {settings.MONGODB_NAME}')
+        self.stdout.write(f'  URI configurada: {"Sí" if settings.MONGODB_URI else "No"}')
 
         try:
             from apps.users.mongodb import get_mongo_client, ping_mongo, close_mongo_connection

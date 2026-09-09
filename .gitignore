@@ -1,23 +1,18 @@
 # =============================================================================
-<<<<<<< HEAD
 # .gitignore unificado – Python, Django, Node, React, macOS, Linux, IDEs, IA
 # =============================================================================
 
-# Solo subir uno de estos dos al repositorio, dependiendo del gestor de paquetes que se use:
-# package-lock.json
-# yarn.lock
-=======
-#  Seguridad y secretos
+# Seguridad y secretos
 # =============================================================================
 .env
 .env.*
 !.env.example
+!.env.template
 *.key
 *.pem
 *.cert
 *.crt
 .cache_ggshield
->>>>>>> origin/main
 
 # =============================================================================
 #  Python / Django
@@ -46,8 +41,7 @@ static_root/
 *.log
 
 # =============================================================================
-<<<<<<< HEAD
-# Sistemas operativos
+#  Sistemas operativos
 # =============================================================================
 # Linux
 *~
@@ -84,7 +78,7 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # =============================================================================
-# IDEs y editores
+#  IDEs y editores
 # =============================================================================
 .vscode/
 .vscode/*
@@ -106,199 +100,15 @@ $RECYCLE.BIN/
 *.sublime-project
 
 # =============================================================================
-# Python / Django
-# =============================================================================
-# Byte‑compiled / optimizados / DLL
-*.py[cod]
-*$py.class
-__pycache__/
-
-# Extensiones C
-*.so
-
-# Empaquetado y distribución
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Logs de instalación
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Informes de cobertura / tests
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Traducciones
-*.mo
-*.pot
-
-# Django
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-db.sqlite3.backup
-*.sql
-*.sql.gz
-*.dump
-media/
-staticfiles/
-static_root/
-
-# Variables de entorno
-.env
-.env.*
-!.env.example
-!.env.template
-
-# Logs y archivos de proceso
-*.log
-*.pid
-*.seed
-*.pid.lock
-
-# Flask
-instance/
-.webassets-cache
-
-# Scrapy
-.scrapy
-
-# Sphinx
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv (comentado por defecto)
-# .python-version
-
-# Pipenv / Poetry / PDM (lockfiles comentados)
-# Pipfile.lock
-# poetry.lock
-poetry.toml
-# pdm.lock
-.pdm.toml
-
-# PEP 582
-__pypackages__/
-
-# Celery
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath
-*.sage.py
-
-# Entornos virtuales
-.venv/
-venv/
-=======
-#  Entorno virtual
-# =============================================================================
-venv/
-.venv/
->>>>>>> origin/main
-env/
-ENV/
-env.bak/
-venv.bak/
-.virtualenvs/
-
-<<<<<<< HEAD
-# Spyder
-.spyderproject
-.spyproject
-
-# Rope
-.ropeproject
-
-# MkDocs
-/site
-
-# Mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre
-.pyre/
-
-# Pytype
-.pytype/
-
-# Cython
-cython_debug/
-
-# Ruff
-.ruff_cache/
-
-# LSP
-pyrightconfig.json
-
-# Claves y certificados
-*.key
-*.pem
-*.cert
-*.crt
-.cache_ggshield
-
-# =============================================================================
-# Node.js / JavaScript / Frontend
-# =============================================================================
-# Logs
-logs
-=======
-# =============================================================================
 #  Node.js / Frontend
 # =============================================================================
 node_modules/
->>>>>>> origin/main
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .lh/
 
-<<<<<<< HEAD
 # Reportes de diagnóstico
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
@@ -324,7 +134,6 @@ bower_components
 build/Release
 
 # Directorios de dependencias
-node_modules/
 jspm_packages/
 web_modules/
 
@@ -412,11 +221,19 @@ psd
 thumb
 sketch
 
-# Otros frontend
-.lh/
+# =============================================================================
+#  Entorno virtual
+# =============================================================================
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.virtualenvs/
 
 # =============================================================================
-# Herramientas de IA y automatización
+#  Herramientas de IA y automatización
 # =============================================================================
 .agents/
 .agents/*
@@ -459,109 +276,6 @@ conductor/
 conductor/*
 
 # =============================================================================
-# Proyecto‑específico y archivos personales
-# =============================================================================
-Ficha Proyecto RED.md
-estructura_proyecto_completo.txt
-taiga.json
-COMPONENTS_EXAMPLES.jsx
-
-# Matriz de requerimientos (dump Excel)
-Matrix\ de\ requerimientos.xlsx/
-Matrix\ de\ requerimientos.xlsx.zip
-lista\ de\ chequeos/
-
-# Backend concreto
-backend/.coverage
-backend/htmlcov/
-backend/.pytest_cache/
-backend/*.db
-backend/media/
-backend/static/
-backend/.env
-backend/config/.env
-
-# Microservicios
-microservices/*/node_modules/
-microservices/*/.env
-microservices/*/.venv/
-microservices/*/venv/
-
-# Docker
-.docker/
-
-# Neon (base de datos)
-.neon*
-.neon/
-
-# Reportes de testing
-test-reports/
-allure-results/
-*.test.js.snap
-
-# Miscelánea
-*.bak
-*.orig
-*.tmp
-*.temp
-=======
-# =============================================================================
-#  IDEs y editores
-# =============================================================================
-.vscode/
-.idea/
-.vs/
-*.swp
-*.swo
-*~
-*.code-workspace
-.history/
-.ntvs_analysis.dat
-*.sublime-workspace
-*.sublime-project
-
-# =============================================================================
-#  OS archivos temporales
-# =============================================================================
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# =============================================================================
-#  Herramientas IA y automatización (no código del proyecto)
-# =============================================================================
-.agents/
-.auxly/
-.claude/
-.cursor/
-.cursorrules
-.goose/
-.kiro/
-.specify/
-.agents/*
-.auxly/*
-.claude/*
-.cursor/*
-.goose/*
-.kiro/*
-.specify/*
-skills-lock.json
-AGENTS.md
-AI_AGENTS_STRATEGY.md
-.github/agents/
-.github/instructions/
-.github/prompts/
-.github/skills/
-.github/.ace-version.json
-.github/hooks/
-
-# =============================================================================
 #  Datos personales y documentación sensible
 # =============================================================================
 Ficha Proyecto RED.md
@@ -585,6 +299,8 @@ backend/.pytest_cache/
 backend/*.db
 backend/media/
 backend/static/
+backend/.env
+backend/config/.env
 
 # =============================================================================
 #  Microservicios
@@ -627,19 +343,12 @@ coverage/
 *.pid
 *.seed
 
->>>>>>> origin/main
+# Ejemplos de código
 .ejemplos_codigo/
 .ejemplos_codigo/*
 ejemplos_codigo/
 ejemplos_codigo/*
 ejemplos_codigo
-<<<<<<< HEAD
 
-# =============================================================================
-# Notas adicionales (comentarios de la versión original)
-# =============================================================================
-# Si usas collectstatic, descomenta la siguiente línea:
-<django-project-name>/staticfiles/
-=======
-.aider*
->>>>>>> origin/main
+# Archivos de cambios personales (no subir)
+CAMBIOS_USERS_*.md

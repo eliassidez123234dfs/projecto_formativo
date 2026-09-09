@@ -1,3 +1,4 @@
+import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
@@ -5,28 +6,29 @@ from django.utils import timezone
 from apps.users.models import Usuario
 
 
-ADMIN_DATA = {
-    "usuario": "hurtado_elias",
-    "correo": "hurtadoelias025@gmail.com",
-    "contrasena": "RedAdmin_2026_xQ7m_4",
-    "rol": "Administrador",
-    "estado": "Activo",
-    "email_verificado": True,
-    "is_superuser": True,
-}
-
-
 class Command(BaseCommand):
-    help = "Asegura que el usuario administrador exista y esté activo"
+    help = "Asegura que el usuario administrador exista y esté activo. "
+           "Lee credenciales de variables de entorno: "
+           "ADMIN_USUARIO, ADMIN_CORREO, ADMIN_PASSWORD"
 
     def handle(self, *args, **options):
-        correo = ADMIN_DATA["correo"]
+        admin_usuario = os.environ.get('ADMIN_USUARIO', '')
+        admin_correo = os.environ.get('ADMIN_CORREO', '')
+        admin_password = os.environ.get('ADMIN_PASSWORD', '')
+
+        if not all([admin_usuario, admin_correo, admin_password]):
+            self.stderr.write(self.style.WARNING(
+                'Variables de entorno ADMIN_USUARIO, ADMIN_CORREO y ADMIN_PASSWORD '
+                'no están configuradas. Saltando creación de admin.'
+            ))
+            return
+
         self.stdout.write(f"\n{'='*60}")
-        self.stdout.write(f"Verificando usuario administrador: {correo}")
+        self.stdout.write(f"Verificando usuario administrador: {admin_correo}")
         self.stdout.write(f"{'='*60}\n")
 
         try:
-            usuario = Usuario.objects.get(correo=correo)
+            usuario = Usuario.objects.get(correo=admin_correo)
             self.stdout.write(self.style.WARNING(f"Usuario encontrado: {usuario.usuario} (ID: {usuario.id})"))
             self.stdout.write(f"  Estado actual: {usuario.estado}")
             self.stdout.write(f"  Rol: {usuario.rol}")
@@ -60,13 +62,13 @@ class Command(BaseCommand):
         except Usuario.DoesNotExist:
             self.stdout.write(self.style.WARNING("Usuario no encontrado. Creando..."))
             Usuario.objects.create(
-                usuario=ADMIN_DATA["usuario"],
-                correo=correo,
-                contrasena=make_password(ADMIN_DATA["contrasena"]),
-                estado=ADMIN_DATA["estado"],
-                rol=ADMIN_DATA["rol"],
-                email_verificado=ADMIN_DATA["email_verificado"],
-                is_superuser=ADMIN_DATA["is_superuser"],
+                usuario=admin_usuario,
+                correo=admin_correo,
+                contrasena=make_password(admin_password),
+                estado="Activo",
+                rol="Administrador",
+                email_verificado=True,
+                is_superuser=True,
                 fecha_registro=timezone.now(),
             )
             self.stdout.write(self.style.SUCCESS("Usuario administrador creado exitosamente."))
@@ -77,6 +79,5 @@ class Command(BaseCommand):
 
         self.stdout.write(f"\n{'='*60}")
         self.stdout.write(f"Credenciales:")
-        self.stdout.write(f"  Correo:      {correo}")
-        self.stdout.write(f"  Contrasena:  {ADMIN_DATA['contrasena']}")
+        self.stdout.write(f"  Correo:      {admin_correo}")
         self.stdout.write(f"{'='*60}\n")

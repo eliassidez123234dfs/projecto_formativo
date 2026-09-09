@@ -104,17 +104,20 @@ class ContentSecurityPolicyMiddleware(MiddlewareMixin):
     """Agrega el header Content-Security-Policy a todas las respuestas para mitigar XSS y ataques de inyección de contenido."""
 
     def process_response(self, request, response):
+        from django.conf import settings
+        wompi_domain = getattr(settings, 'WOMPI_CHECKOUT_DOMAIN', 'https://checkout.wompi.co')
+
         csp = (
             "default-src 'self'; "
             "script-src 'self'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self'; "
             "img-src 'self' data: blob: https://res.cloudinary.com; "
             "font-src 'self'; "
             "connect-src 'self'; "
             "frame-src 'none'; "
             "object-src 'none'; "
             "base-uri 'self'; "
-            "form-action 'self' https://sandbox.wompi.co; "
+            f"form-action 'self' {wompi_domain}; "
         )
         response['Content-Security-Policy'] = csp
         return response

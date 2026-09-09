@@ -40,7 +40,7 @@ def send_password_reset_email_async(self, usuario_id: int, token: str):
         from apps.users.models import Token_Verificacion
         token_obj = Token_Verificacion.objects.filter(
             usuario=usuario, tipo='Recuperacion_Password'
-        ).order_by('-created_at').first()
+        ).order_by('-fecha_creacion').first()
 
         if token_obj:
             EmailService.send_password_reset_email(usuario, token_obj)

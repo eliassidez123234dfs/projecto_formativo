@@ -24,7 +24,7 @@ class UsuarioJWTAuthentication(JWTAuthentication):
             raise AuthenticationFailed('User not found', code='user_not_found')
 
         # Verificar estado del usuario en cada request (revocación inmediata)
-        if user.estado in ('Inactivo', 'Bloqueado'):
+        if user.eliminado or user.estado in ('Inactivo', 'Bloqueado'):
             raise AuthenticationFailed(
                 'Tu cuenta está desactivada o bloqueada.',
                 code='user_disabled'
