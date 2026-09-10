@@ -468,6 +468,11 @@ def link_design_to_product(request):
     except (Product.DoesNotExist, TypeError, ValueError):
         return Response({'error': 'Producto no encontrado.'}, status=404)
 
+    # Verificar límite de imágenes antes de crear
+    existing_count = ProductImage.objects.filter(product=product).count()
+    if existing_count >= 5:
+        return Response({'error': 'Máximo 5 imágenes por producto.'}, status=409)
+
     # Descargar imagen desde Cloudinary
     try:
         img_response = http_requests.get(cloudinary_url, timeout=15)

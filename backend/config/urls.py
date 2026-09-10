@@ -318,11 +318,15 @@ def editor_session_link_design(request):
     except Exception:
         return JsonResponse({'error': 'No se pudo descargar la imagen de Cloudinary.'}, status=502)
 
+    # Verificar límite de imágenes antes de crear
+    existing_count = ProductImage.objects.filter(product=product).count()
+    if existing_count >= 5:
+        return JsonResponse({'error': 'Máximo 5 imágenes por producto.'}, status=409)
+
     # Crear ProductImage
     filename = f"design_{product.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.png"
     img_file = ContentFile(img_response.content, name=filename)
 
-    existing_count = ProductImage.objects.filter(product=product).count()
     image = ProductImage(
         product=product,
         image=img_file,
