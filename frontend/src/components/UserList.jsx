@@ -113,6 +113,7 @@ export default function UserList({ filters, onPageChange, onSaved }) {
       {confirmDialog && <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog(null)} />}
 
       <div className="card-body">
+        <div className="table-responsive">
         <table className="admin-table">
           <thead>
             <tr>
@@ -188,6 +189,7 @@ export default function UserList({ filters, onPageChange, onSaved }) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {editingUser && (

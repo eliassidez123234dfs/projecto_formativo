@@ -147,6 +147,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
         <div className="empty-state"><p>No se encontraron productos.</p></div>
       ) : (
         <>
+          <div className="table-responsive">
           <table className="admin-table">
             <thead>
               <tr>
@@ -221,6 +222,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
               ))}
             </tbody>
           </table>
+          </div>
 
           <Pagination page={page} totalPages={totalPages} count={data.count} label="productos" onPageChange={setPage} />
         </>

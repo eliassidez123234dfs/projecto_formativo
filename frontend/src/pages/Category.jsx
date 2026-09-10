@@ -55,7 +55,7 @@ export const Category = () => {
         <h1 style={{ fontSize: 24, fontWeight: 800 }}>{categoryName}</h1>
 
         <form onSubmit={e => e.preventDefault()}
-          style={{ display: 'flex', gap: 10, margin: '20 0', flexWrap: 'wrap', padding: 16, background: 'var(--color-bg-tertiary)', borderRadius: 12, border: '1px solid var(--color-border-light)', alignItems: 'center' }}>
+          style={{ display: 'flex', gap: 10, margin: '20px 0', flexWrap: 'wrap', padding: 16, background: 'var(--color-bg-tertiary)', borderRadius: 12, border: '1px solid var(--color-border-light)', alignItems: 'center' }}>
           <input name="q" placeholder="Buscar..." value={filters.q} onChange={handleFilterChange}
             style={{ height: 40, padding: '0 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, flex: 1, minWidth: 140 }} />
           <select name="ordering" value={filters.ordering} onChange={handleFilterChange}
