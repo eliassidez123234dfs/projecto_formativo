@@ -117,7 +117,7 @@ export const createModel3D = async (modelData = {}) => {
 };
 
 /** Agrega al carrito usando el token temporal de la sesión. */
-export const addDesignToCart = async () => {
+export const addDesignToCart = async (imageId) => {
   const headers = { "Content-Type": "application/json" };
   const csrfToken = getCookie("csrftoken");
   if (csrfToken) headers["X-CSRFToken"] = csrfToken;
@@ -127,10 +127,14 @@ export const addDesignToCart = async () => {
     throw new Error("No hay sesión del editor. Vuelve al catálogo y abre el editor desde un producto.");
   }
 
+  const body = {};
+  if (imageId) body.image_id = imageId;
+
   const response = await fetch(`${BACKEND_API_URL}/editor-session/commit/?token=${encodeURIComponent(sessionToken)}`, {
     method: "POST",
     headers,
     credentials: "include",
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

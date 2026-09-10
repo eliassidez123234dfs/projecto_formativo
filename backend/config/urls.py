@@ -199,11 +199,12 @@ def editor_session_commit(request):
 
     El token se pasa como query param ?token=... o header X-Editor-Token.
     La sesión es de un solo uso y los datos se revalidan contra la BD.
+    Body opcional: { "image_id": 123 } — imagen del diseño del editor 3D.
     """
     from django.db import transaction
     from apps.carts.models import Cart, CartItem
     from apps.carts.api.serializers import CartItemSerializer
-    from apps.products.models import Product, Variant
+    from apps.products.models import Product, ProductImage, Variant
 
     if not _editor_origin_allowed(request):
         return JsonResponse({'error': 'Origen no permitido.'}, status=403)
@@ -211,6 +212,14 @@ def editor_session_commit(request):
     token_str = request.GET.get('token') or request.headers.get('X-Editor-Token')
     if not token_str:
         return JsonResponse({'error': 'Token de sesión requerido.'}, status=400)
+
+    # Leer image_id del body (opcional)
+    image_id = None
+    try:
+        body = request.data if hasattr(request, 'data') else {}
+        image_id = body.get('image_id')
+    except Exception:
+        pass
 
     from apps.models3d.editor_session import EditorSession
     try:
@@ -240,6 +249,14 @@ def editor_session_commit(request):
         session.delete()
         return JsonResponse({'error': 'La cantidad ya no está disponible.'}, status=400)
 
+    # Validar image_id si se proporcionó
+    product_image = None
+    if image_id:
+        try:
+            product_image = ProductImage.objects.get(pk=int(image_id), product=product)
+        except (ProductImage.DoesNotExist, TypeError, ValueError):
+            return JsonResponse({'error': 'La imagen del diseño no fue encontrada.'}, status=404)
+
     session_key = request.session.session_key
     if not session_key:
         request.session.save()
@@ -258,7 +275,11 @@ def editor_session_commit(request):
             cart=cart,
             product=product,
             variant=variant,
-            defaults={'quantity': quantity, 'unit_price': variant.effective_price},
+            defaults={
+                'quantity': quantity,
+                'unit_price': variant.effective_price,
+                'product_image': product_image,
+            },
         )
         if not created:
             new_quantity = item.quantity + quantity
@@ -266,7 +287,9 @@ def editor_session_commit(request):
                 return JsonResponse({'error': 'La cantidad total supera el stock disponible.'}, status=400)
             item.quantity = new_quantity
             item.unit_price = variant.effective_price
-            item.save(update_fields=['quantity', 'unit_price', 'updated_at'])
+            if product_image:
+                item.product_image = product_image
+            item.save(update_fields=['quantity', 'unit_price', 'product_image', 'updated_at'])
 
     session.used = True
     session.save(update_fields=['used'])

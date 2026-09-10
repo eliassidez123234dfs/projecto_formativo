@@ -35,6 +35,7 @@ const Customizer = () => {
   const [saveMessage, setSaveMessage] = useState("");
   const [saveLockSeconds, setSaveLockSeconds] = useState(0);
   const [designSaved, setDesignSaved] = useState(false);
+  const [savedImageId, setSavedImageId] = useState(null);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
@@ -142,7 +143,8 @@ const Customizer = () => {
 
                   if (state.productId) {
                     setSaveStatus("Vinculando diseño al producto...");
-                    await linkDesignToProduct(uploadedUrl);
+                    const linkResult = await linkDesignToProduct(uploadedUrl);
+                    setSavedImageId(linkResult.image_id || null);
                     setDesignSaved(true);
                     if (state.isAdminSession) {
                       setSaveOk(true);
@@ -181,7 +183,7 @@ const Customizer = () => {
                   if (isAddingToCart || !designSaved) return;
                   setIsAddingToCart(true);
                   try {
-                    await addDesignToCart();
+                    await addDesignToCart(savedImageId);
                     setSaveOk(true);
                     setSaveMessage("Producto agregado al carrito con tu diseño.");
                     setShowResultModal(true);

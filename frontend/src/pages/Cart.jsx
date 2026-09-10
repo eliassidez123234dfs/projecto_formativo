@@ -163,7 +163,7 @@ export const Cart = () => {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <img
-                  src={item.product_image || DEFAULT_IMAGE}
+                  src={item.design_image || item.product_image || DEFAULT_IMAGE}
                   alt={item.product_name}
                   onError={(e) => { e.target.src = DEFAULT_IMAGE }}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}

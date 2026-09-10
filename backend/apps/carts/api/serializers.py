@@ -9,6 +9,7 @@ from apps.products.models import Product, Variant
 class CartItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_image = serializers.SerializerMethodField()
+    design_image = serializers.SerializerMethodField()
     variant_label = serializers.SerializerMethodField()
     variant_size = serializers.CharField(source='variant.size', read_only=True)
     variant_color = serializers.CharField(source='variant.color', read_only=True)
@@ -19,11 +20,12 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = [
-            'id', 'product', 'product_name', 'product_image', 'variant', 'variant_label',
+            'id', 'product', 'product_name', 'product_image', 'design_image',
+            'variant', 'variant_label',
             'variant_size', 'variant_color', 'variant_stock', 'variant_hex',
             'quantity', 'unit_price', 'subtotal', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'product_name', 'product_image', 'variant_label', 'variant_size', 'variant_color', 'variant_stock', 'variant_hex', 'subtotal', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'product_name', 'product_image', 'design_image', 'variant_label', 'variant_size', 'variant_color', 'variant_stock', 'variant_hex', 'subtotal', 'created_at', 'updated_at']
 
     def get_product_image(self, obj):
         image = obj.product.main_image
@@ -31,6 +33,14 @@ class CartItemSerializer(serializers.ModelSerializer):
             return None
         try:
             return image.image.url
+        except Exception:
+            return None
+
+    def get_design_image(self, obj):
+        if not obj.product_image_id:
+            return None
+        try:
+            return obj.product_image.image.url
         except Exception:
             return None
 
