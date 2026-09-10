@@ -169,8 +169,12 @@ export default function AdminLayout({ children, title, subtitle }) {
     navigate('/login')
   }
 
+  const gridStyle = isMobile
+    ? {}
+    : { gridTemplateColumns: sidebarOpen ? '220px 1fr' : '54px 1fr' }
+
   return (
-    <div className="main-layout" style={{ gridTemplateColumns: sidebarOpen ? '220px 1fr' : '54px 1fr' }}>
+    <div className="main-layout" style={gridStyle}>
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-text">

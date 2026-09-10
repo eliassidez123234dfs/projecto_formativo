@@ -828,7 +828,7 @@
   }
 
   .mobile-sidebar-toggle {
-    display: flex;
+    display: flex !important;
   }
 
   .content-header {
