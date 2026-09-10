@@ -137,11 +137,21 @@ class Command(BaseCommand):
                     token UUID NOT NULL UNIQUE,
                     data JSONB NOT NULL DEFAULT '{}',
                     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                    used BOOLEAN NOT NULL DEFAULT FALSE
+                    used BOOLEAN NOT NULL DEFAULT FALSE,
+                    is_admin_session BOOLEAN NOT NULL DEFAULT FALSE
                 )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_editorsession_token ON models3d_editorsession(token)")
             self.stdout.write(self.style.SUCCESS("  Tabla models3d_editorsession verificada"))
+
+            # Ensure is_admin_session column exists (for tables created before the column was added)
+            cursor.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'models3d_editorsession' AND column_name = 'is_admin_session'
+            """)
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE models3d_editorsession ADD COLUMN is_admin_session BOOLEAN NOT NULL DEFAULT FALSE")
+                self.stdout.write(self.style.SUCCESS("  + models3d_editorsession.is_admin_session"))
 
         self.stdout.write("\n=== Paso 1: Falsificar migraciones conflictivas ===")
 
