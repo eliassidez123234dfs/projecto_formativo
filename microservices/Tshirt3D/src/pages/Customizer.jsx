@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useSnapshot } from "valtio";
 
 import state from "../store";
-import { reader, uploadCanvasToCloudinary, linkDesignToProduct } from "../config/helpers";
+import { reader, uploadCanvasToCloudinary, linkDesignToProduct, addDesignToCart } from "../config/helpers";
 import { EditorTabs, FilterTabs, DecalTypes } from "../config/constants";
 import { fadeAnimation, slideAnimation } from "../config/motion";
 import { ColorPicker, FilePicker, Tab } from "../components";
@@ -34,6 +34,8 @@ const Customizer = () => {
   const [saveOk, setSaveOk] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [saveLockSeconds, setSaveLockSeconds] = useState(0);
+  const [designSaved, setDesignSaved] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
     if (saveLockSeconds <= 0) return undefined;
@@ -141,8 +143,14 @@ const Customizer = () => {
                   if (state.productId) {
                     setSaveStatus("Vinculando diseño al producto...");
                     await linkDesignToProduct(uploadedUrl);
-                    setSaveOk(true);
-                    setSaveMessage(`El diseño se guardó como imagen del producto #${state.productId}. Ya aparece en el catálogo.`);
+                    setDesignSaved(true);
+                    if (state.isAdminSession) {
+                      setSaveOk(true);
+                      setSaveMessage(`El diseño se guardó como imagen del producto #${state.productId}. Ya aparece en el catálogo.`);
+                    } else {
+                      setSaveOk(true);
+                      setSaveMessage(`Diseño guardado. Podés agregar el producto al carrito ahora.`);
+                    }
                   } else {
                     setSaveOk(true);
                     setSaveMessage("El diseño se guardó en Cloudinary. Para vincularlo a un producto, crea uno desde el admin.");
@@ -164,6 +172,36 @@ const Customizer = () => {
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
             </button>
+            {!state.isAdminSession && state.productId && (
+              <button
+                className="download-btn"
+                title="Agregar al carrito"
+                style={{ background: designSaved ? 'rgba(16,185,129,0.8)' : 'rgba(100,116,139,0.5)' }}
+                onClick={async () => {
+                  if (isAddingToCart || !designSaved) return;
+                  setIsAddingToCart(true);
+                  try {
+                    await addDesignToCart();
+                    setSaveOk(true);
+                    setSaveMessage("Producto agregado al carrito con tu diseño.");
+                    setShowResultModal(true);
+                  } catch (error) {
+                    setSaveOk(false);
+                    setSaveMessage(friendlyError(error));
+                    setShowResultModal(true);
+                  } finally {
+                    setIsAddingToCart(false);
+                  }
+                }}
+                disabled={isAddingToCart || !designSaved}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3/5 h-3/5">
+                  <circle cx="9" cy="21" r="1" />
+                  <circle cx="20" cy="21" r="1" />
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                </svg>
+              </button>
+            )}
             {saveLockSeconds > 0 && (
               <span className="text-white/90 text-[11px] font-semibold bg-red-900/80 backdrop-blur-md rounded-full px-3 py-1.5 border border-red-400/40">
                 Espera {saveLockSeconds}s para reintentar
@@ -225,11 +263,19 @@ const Customizer = () => {
                     </p>
                     {saveOk && state.productId && (
                       <div className="flex flex-wrap gap-2 mt-3">
+                        {!state.isAdminSession && (
+                          <a
+                            href={`${FRONTEND_URL}/cart`}
+                            className="inline-block text-[11px] font-semibold text-emerald-300 border border-emerald-400/40 rounded-full px-3 py-1 hover:bg-emerald-400/10"
+                          >
+                            Ir al carrito →
+                          </a>
+                        )}
                         <a
                           href={`${FRONTEND_URL}/product/${state.productId}`}
-                          className="inline-block text-[11px] font-semibold text-emerald-300 border border-emerald-400/40 rounded-full px-3 py-1 hover:bg-emerald-400/10"
+                          className="inline-block text-[11px] font-semibold text-slate-300 border border-slate-400/40 rounded-full px-3 py-1 hover:bg-slate-400/10"
                         >
-                          Ver producto →
+                          Ver producto
                         </a>
                         <a
                           href={`${FRONTEND_URL}/catalog`}

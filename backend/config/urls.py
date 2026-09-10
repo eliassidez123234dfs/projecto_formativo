@@ -142,7 +142,10 @@ def editor_session_save(request):
     }
 
     from apps.models3d.editor_session import EditorSession
-    session = EditorSession.objects.create(data=editor_data)
+    session = EditorSession.objects.create(
+        data=editor_data,
+        is_admin_session=bool(data.get('isAdmin', False)),
+    )
 
     return JsonResponse({'ok': True, 'token': str(session.token)})
 
@@ -184,6 +187,7 @@ def editor_session_get(request):
         'size': editor_data.get('size'),
         'color': editor_data.get('color'),
         'colorHex': editor_data.get('colorHex'),
+        'isAdminSession': session.is_admin_session,
     })
 
 

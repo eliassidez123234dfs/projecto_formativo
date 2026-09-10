@@ -163,7 +163,7 @@ export default function AdminProductDetail() {
                 return
               }
               try {
-                await openEditor({ productId: product.id, variant, quantity: 1, mode: 'new' })
+                await openEditor({ productId: product.id, variant, quantity: 1, mode: 'new', isAdmin: true })
               } catch (err) {
                 toast.error(err?.message || 'No se pudo abrir el editor 3D')
               }

@@ -22,6 +22,7 @@ const state = proxy({
   sessionToken: null,
   sessionLoaded: false,
   sessionError: false,
+  isAdminSession: false,
 });
 
 /**
@@ -58,6 +59,7 @@ export async function loadEditorSession() {
     state.color = isValidHex(data.colorHex) ? data.colorHex : '#353934';
     state.colorName = data.color || '';
     state.size = data.size || '';
+    state.isAdminSession = !!data.isAdminSession;
     state.sessionLoaded = true;
     state.sessionError = false;
   } catch {

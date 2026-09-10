@@ -25,7 +25,7 @@ export const COLOR_FALLBACK = '#6B7280';
 /**
  * Guarda los datos sensibles del editor en la BD y retorna un token temporal.
  */
-async function saveEditorSession({ productId, variant, quantity }) {
+async function saveEditorSession({ productId, variant, quantity, isAdmin }) {
   const headers = { 'Content-Type': 'application/json' };
   const accessToken = getAccessToken();
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
@@ -38,6 +38,7 @@ async function saveEditorSession({ productId, variant, quantity }) {
       productId,
       variantId: variant?.id,
       quantity,
+      isAdmin: !!isAdmin,
     }),
   });
 
@@ -73,8 +74,8 @@ export function buildEditorUrl({ token, variant, mode = 'new' }) {
  * 2. Si el guardado falla → lanza error (el caller muestra el toast).
  * 3. Abre el editor con el token en la URL.
  */
-export async function openEditor({ productId, variant, quantity = 1, mode = 'new' }) {
-  const result = await saveEditorSession({ productId, variant, quantity });
+export async function openEditor({ productId, variant, quantity = 1, mode = 'new', isAdmin = false }) {
+  const result = await saveEditorSession({ productId, variant, quantity, isAdmin });
   const url = buildEditorUrl({ token: result.token, variant, mode });
   return window.open(url, '_blank', 'noopener,noreferrer');
 }
