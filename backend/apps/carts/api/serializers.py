@@ -37,6 +37,8 @@ class CartItemSerializer(serializers.ModelSerializer):
             return None
 
     def get_design_image(self, obj):
+        if obj.design_url:
+            return obj.design_url
         if not obj.product_image_id:
             return None
         try:

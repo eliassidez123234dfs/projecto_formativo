@@ -117,7 +117,7 @@ export const createModel3D = async (modelData = {}) => {
 };
 
 /** Agrega al carrito usando el token temporal de la sesión. */
-export const addDesignToCart = async (imageId) => {
+export const addDesignToCart = async (imageId, cloudinaryUrl) => {
   const headers = { "Content-Type": "application/json" };
   const csrfToken = getCookie("csrftoken");
   if (csrfToken) headers["X-CSRFToken"] = csrfToken;
@@ -129,6 +129,7 @@ export const addDesignToCart = async (imageId) => {
 
   const body = {};
   if (imageId) body.image_id = imageId;
+  if (cloudinaryUrl) body.cloudinary_url = cloudinaryUrl;
 
   const response = await fetch(`${BACKEND_API_URL}/editor-session/commit/?token=${encodeURIComponent(sessionToken)}`, {
     method: "POST",

@@ -219,11 +219,13 @@ def editor_session_commit(request):
     if not token_str:
         return JsonResponse({'error': 'Token de sesión requerido.'}, status=400)
 
-    # Leer image_id del body (opcional)
+    # Leer image_id y cloudinary_url del body (opcionales)
     image_id = None
+    cloudinary_url = None
     try:
         body = request.data if hasattr(request, 'data') else {}
         image_id = body.get('image_id')
+        cloudinary_url = body.get('cloudinary_url')
     except Exception:
         pass
 
@@ -255,13 +257,25 @@ def editor_session_commit(request):
         session.delete()
         return JsonResponse({'error': f'El stock de la variante {variant.size} {variant.color} ya no está disponible ({variant.stock} unidades).', 'code': 'OUT_OF_STOCK'}, status=400)
 
-    # Validar image_id si se proporcionó
+    # Validar image_id si se proporcionó (admin) o preparar design_url (usuario)
     product_image = None
-    if image_id:
+    design_url = None
+    is_admin = session.is_admin_session
+
+    if is_admin and image_id:
         try:
             product_image = ProductImage.objects.get(pk=int(image_id), product=product)
         except (ProductImage.DoesNotExist, TypeError, ValueError):
-            return JsonResponse({'error': 'La imagen del diseño no fue encontrada.'}, status=404)
+            return JsonResponse({'error': 'La imagen del diseño no fue encontrada.', 'code': 'IMAGE_NOT_FOUND'}, status=404)
+    elif not is_admin and cloudinary_url:
+        design_url = cloudinary_url
+    elif not is_admin and image_id:
+        # Fallback: si el usuario envió image_id en vez de cloudinary_url, buscar la imagen
+        try:
+            pi = ProductImage.objects.get(pk=int(image_id), product=product)
+            design_url = pi.image.url if pi.image else None
+        except (ProductImage.DoesNotExist, TypeError, ValueError):
+            pass
 
     session_key = request.session.session_key
     if not session_key:
@@ -285,6 +299,7 @@ def editor_session_commit(request):
                 'quantity': quantity,
                 'unit_price': variant.effective_price,
                 'product_image': product_image,
+                'design_url': design_url,
             },
         )
         if not created:
@@ -295,7 +310,9 @@ def editor_session_commit(request):
             item.unit_price = variant.effective_price
             if product_image:
                 item.product_image = product_image
-            item.save(update_fields=['quantity', 'unit_price', 'product_image', 'updated_at'])
+            if design_url:
+                item.design_url = design_url
+            item.save(update_fields=['quantity', 'unit_price', 'product_image', 'design_url', 'updated_at'])
 
     session.used = True
     session.save(update_fields=['used'])
@@ -353,7 +370,15 @@ def editor_session_link_design(request):
     except Exception:
         return JsonResponse({'error': 'No se pudo descargar la imagen desde Cloudinary. Verificá que la URL sea válida.', 'code': 'CLOUDINARY_ERROR'}, status=502)
 
-    # Verificar límite de imágenes antes de crear
+    # Solo el admin crea ProductImage pública. El usuario NO (diseño privado).
+    if not session.is_admin_session:
+        return JsonResponse({
+            'ok': True,
+            'cloudinary_url': cloudinary_url,
+            'product_id': product.id,
+        }, status=200)
+
+    # Admin: verificar límite de imágenes antes de crear
     existing_count = ProductImage.objects.filter(product=product).count()
     if existing_count >= 5:
         return JsonResponse({
@@ -372,9 +397,6 @@ def editor_session_link_design(request):
         order=existing_count + 1,
     )
     image.save()
-
-    session.used = True
-    session.save(update_fields=['used'])
 
     return JsonResponse({
         'ok': True,

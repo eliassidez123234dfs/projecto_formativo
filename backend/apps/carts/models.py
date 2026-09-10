@@ -37,6 +37,7 @@ class CartItem(models.Model):
 	quantity = models.PositiveIntegerField(default=1)
 	unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 	product_image = models.ForeignKey('products.ProductImage', null=True, blank=True, on_delete=models.SET_NULL, related_name='cart_items')
+	design_url = models.URLField(max_length=500, null=True, blank=True, help_text='URL privada del diseño del usuario (Cloudinary). No se muestra en el catálogo.')
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
 
