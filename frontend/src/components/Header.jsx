@@ -237,6 +237,9 @@ export const Header = ({ cartCount: propCartCount }) => {
             {loggedIn ? (
               <>
                 <Link to="/perfil" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-text)', fontSize: 14, textDecoration: 'none' }}>Mi Perfil</Link>
+                {user?.rol === 'Administrador' && (
+                  <Link to="/admin" onClick={() => setMobileOpen(false)} style={{ padding: '10px 0', color: 'var(--color-primary)', fontSize: 14, textDecoration: 'none', fontWeight: 600 }}>Panel de Administración</Link>
+                )}
                 <button onClick={() => { handleLogout(); setMobileOpen(false) }} style={{ padding: '10px 0', background: 'none', border: 'none', color: '#dc2626', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>Cerrar Sesión</button>
               </>
             ) : (
