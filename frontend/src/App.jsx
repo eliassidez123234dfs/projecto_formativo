@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -9,31 +9,32 @@ import ScrollTopButton from './components/ScrollTopButton';
 import './styles/theme.css';
 import './styles/globals.css';
 import './styles/scroll-top.css';
-import { Landing } from './pages/Landing';
-import AuthPage from './pages/AuthPage';
-import { Dashboard } from './pages/Dashboard';
-import { Catalog } from './pages/Catalog';
-import { Category } from './pages/Category';
-import { ProductDetail } from './pages/ProductDetail';
-import { Cart } from './pages/Cart';
-import AdminCart from './pages/AdminCart';
-import AdminCartDetail from './pages/AdminCartDetail';
-import { VerificarEmail, VerificacionPendiente } from './pages/Email';
-import { RecuperarPassword, NuevaPassword } from './pages/Password';
 
-// Nuevos imports desde la rama jose
-import AdminDashboard from './pages/AdminDashboard';
-import AdminProducts from './pages/AdminProducts';
-import AdminProductDetail from './pages/AdminProductDetail';
-import AdminUsers from './pages/AdminUsers';
-import AdminContact from './pages/AdminContact';
-import AdminAudit from './pages/AdminAudit';
-import AdminOrders from './pages/AdminOrders';
-import AdminOrderDetail from './pages/AdminOrderDetail';
-import AdminProductApproval from './pages/AdminProductApproval';
-import AdminCloudinary from './pages/AdminCloudinary';
-import UserProfile from './pages/UserProfile';
-import CheckoutPage from './pages/CheckoutPage';
+const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
+const AuthPage = lazy(() => import('./pages/AuthPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Catalog = lazy(() => import('./pages/Catalog').then(m => ({ default: m.Catalog })));
+const Category = lazy(() => import('./pages/Category').then(m => ({ default: m.Category })));
+const ProductDetail = lazy(() => import('./pages/ProductDetail').then(m => ({ default: m.ProductDetail })));
+const Cart = lazy(() => import('./pages/Cart').then(m => ({ default: m.Cart })));
+const AdminCart = lazy(() => import('./pages/AdminCart'));
+const AdminCartDetail = lazy(() => import('./pages/AdminCartDetail'));
+const VerificarEmail = lazy(() => import('./pages/Email').then(m => ({ default: m.VerificarEmail })));
+const VerificacionPendiente = lazy(() => import('./pages/Email').then(m => ({ default: m.VerificacionPendiente })));
+const RecuperarPassword = lazy(() => import('./pages/Password').then(m => ({ default: m.RecuperarPassword })));
+const NuevaPassword = lazy(() => import('./pages/Password').then(m => ({ default: m.NuevaPassword })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminProducts = lazy(() => import('./pages/AdminProducts'));
+const AdminProductDetail = lazy(() => import('./pages/AdminProductDetail'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const AdminContact = lazy(() => import('./pages/AdminContact'));
+const AdminAudit = lazy(() => import('./pages/AdminAudit'));
+const AdminOrders = lazy(() => import('./pages/AdminOrders'));
+const AdminOrderDetail = lazy(() => import('./pages/AdminOrderDetail'));
+const AdminProductApproval = lazy(() => import('./pages/AdminProductApproval'));
+const AdminCloudinary = lazy(() => import('./pages/AdminCloudinary'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 
 function EditorRedirect() {
   useEffect(() => {
@@ -70,6 +71,11 @@ function App() {
             }}
           />
           <ScrollTopButton />
+          <Suspense fallback={
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'system-ui' }}>
+              <p>Cargando...</p>
+            </div>
+          }>
           <Routes>
             {/* Rutas existentes de integracion-total */}
             <Route path="/" element={<Landing />} />
@@ -110,6 +116,7 @@ function App() {
             <Route path="/catalogo" element={<Catalog />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
       </CartProvider>
