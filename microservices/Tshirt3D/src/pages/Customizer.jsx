@@ -15,6 +15,22 @@ const CUSTOMER_ERROR_MAP = {
     "No se pudo capturar el diseño. Intenta recargar la página.",
   "No se pudo capturar el canvas como imagen.":
     "Error al capturar la imagen. Intenta de nuevo.",
+  "SESSION_EXPIRED":
+    "La sesión del editor expiró. Volvé a abrir el editor desde el producto.",
+  "SESSION_ALREADY_USED":
+    "Esta sesión ya fue utilizada. El diseño ya se guardó.",
+  "IMAGE_LIMIT_REACHED":
+    "Este producto ya tiene el máximo de imágenes. Eliminá una antes de agregar otra.",
+  "OUT_OF_STOCK":
+    "La variante seleccionada no tiene stock disponible.",
+};
+
+const getApiErrorCode = (err) => {
+  const msg = err?.message || "";
+  for (const [code] of Object.entries(CUSTOMER_ERROR_MAP)) {
+    if (msg.includes(code)) return code;
+  }
+  return null;
 };
 
 const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
@@ -81,7 +97,15 @@ const Customizer = () => {
 
   const friendlyError = (err) => {
     const msg = err?.message || "";
-    return CUSTOMER_ERROR_MAP[msg] || "Ocurrió un error al guardar. Inténtalo de nuevo.";
+    // Check for API error codes first
+    const code = getApiErrorCode(err);
+    if (code && CUSTOMER_ERROR_MAP[code]) return CUSTOMER_ERROR_MAP[code];
+    // Check for exact message matches
+    if (CUSTOMER_ERROR_MAP[msg]) return CUSTOMER_ERROR_MAP[msg];
+    // Extract specific error from API response if available
+    const apiMatch = msg.match(/No se pudo (?:vincular|agregar).*?:\s*(.+)/i);
+    if (apiMatch) return apiMatch[1];
+    return "Ocurrió un error al guardar. Inténtalo de nuevo.";
   };
 
   return (

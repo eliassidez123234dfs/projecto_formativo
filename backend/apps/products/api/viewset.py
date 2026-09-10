@@ -461,24 +461,29 @@ def link_design_to_product(request):
     is_main = data.get('is_main', False)
 
     if not product_id or not cloudinary_url:
-        return Response({'error': 'product_id y cloudinary_url son requeridos.'}, status=400)
+        return Response({'error': 'Se requieren los campos product_id y cloudinary_url.', 'code': 'MISSING_FIELDS'}, status=400)
 
     try:
         product = Product.objects.get(pk=int(product_id))
     except (Product.DoesNotExist, TypeError, ValueError):
-        return Response({'error': 'Producto no encontrado.'}, status=404)
+        return Response({'error': 'El producto no fue encontrado.', 'code': 'PRODUCT_NOT_FOUND'}, status=404)
 
     # Verificar límite de imágenes antes de crear
     existing_count = ProductImage.objects.filter(product=product).count()
     if existing_count >= 5:
-        return Response({'error': 'Máximo 5 imágenes por producto.'}, status=409)
+        return Response({
+            'error': f'Este producto ya tiene el máximo de imágenes permitidas ({existing_count}/5). Eliminá una antes de agregar otra.',
+            'code': 'IMAGE_LIMIT_REACHED',
+        }, status=409)
 
     # Descargar imagen desde Cloudinary
     try:
         img_response = http_requests.get(cloudinary_url, timeout=15)
         img_response.raise_for_status()
+    except http_requests.Timeout:
+        return Response({'error': 'La descarga de la imagen desde Cloudinary tardó demasiado. Intentá de nuevo.', 'code': 'CLOUDINARY_TIMEOUT'}, status=502)
     except Exception:
-        return Response({'error': 'No se pudo descargar la imagen de Cloudinary.'}, status=502)
+        return Response({'error': 'No se pudo descargar la imagen desde Cloudinary. Verificá que la URL sea válida.', 'code': 'CLOUDINARY_ERROR'}, status=502)
 
     # Crear ProductImage
     filename = f"design_{product.id}_{now().strftime('%Y%m%d%H%M%S')}.png"

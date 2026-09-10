@@ -100,22 +100,22 @@ def editor_session_save(request):
         data = request.data
 
     if not isinstance(data, dict):
-        return JsonResponse({'error': 'Cuerpo de la petición inválido.'}, status=400)
+        return JsonResponse({'error': 'El cuerpo de la petición debe ser un JSON válido.', 'code': 'INVALID_BODY'}, status=400)
 
     product_id = data.get('productId')
     variant_id = data.get('variantId')
 
     if not product_id or not variant_id:
-        return JsonResponse({'error': 'productId y variantId son requeridos.'}, status=400)
+        return JsonResponse({'error': 'Se requieren los campos productId y variantId.', 'code': 'MISSING_FIELDS'}, status=400)
 
     try:
         from apps.products.models import Product, Variant
         product = Product.objects.get(pk=int(product_id))
         if not product.is_active or not product.is_approved:
-            return JsonResponse({'error': 'El producto no está disponible.'}, status=400)
+            return JsonResponse({'error': 'El producto no está disponible para personalización.', 'code': 'PRODUCT_UNAVAILABLE'}, status=400)
         variant = Variant.objects.get(pk=int(variant_id), product=product)
     except (Product.DoesNotExist, Variant.DoesNotExist, TypeError, ValueError):
-        return JsonResponse({'error': 'Producto o variante no válidos.'}, status=400)
+        return JsonResponse({'error': 'El producto o la variante seleccionada no existen.', 'code': 'INVALID_PRODUCT_VARIANT'}, status=400)
 
     try:
         quantity = int(data.get('quantity', 1))
@@ -125,7 +125,7 @@ def editor_session_save(request):
         quantity = 1
     if quantity > variant.stock:
         return JsonResponse(
-            {'error': 'La cantidad supera el stock disponible de la variante.'},
+            {'error': f'El stock de la variante {variant.size} {variant.color} es {variant.stock}. La cantidad solicitada ({quantity}) lo supera.', 'code': 'INSUFFICIENT_STOCK'},
             status=400,
         )
 
@@ -172,11 +172,17 @@ def editor_session_get(request):
         return JsonResponse({'error': 'Sesión del editor no válida.'}, status=404)
 
     if session.used:
-        return JsonResponse({'error': 'Esta sesión ya fue utilizada.'}, status=410)
+        return JsonResponse({
+            'error': 'Esta sesión del editor ya fue utilizada. Si ya guardaste un diseño, revisá el producto en el catálogo.',
+            'code': 'SESSION_ALREADY_USED',
+        }, status=409)
 
     if session.is_expired(EDITOR_SESSION_MAX_AGE_MINUTES):
         session.delete()
-        return JsonResponse({'error': 'La sesión del editor ha expirado. Abre el editor desde el catálogo.'}, status=410)
+        return JsonResponse({
+            'error': 'La sesión del editor ha expirado (60 minutos). Volvé a abrir el editor desde el producto.',
+            'code': 'SESSION_EXPIRED',
+        }, status=410)
 
     editor_data = session.data
     return JsonResponse({
@@ -225,11 +231,11 @@ def editor_session_commit(request):
     try:
         session = EditorSession.objects.get(token=token_str, used=False)
     except (EditorSession.DoesNotExist, ValueError):
-        return JsonResponse({'error': 'La sesión del editor no existe o ya fue utilizada.'}, status=404)
+        return JsonResponse({'error': 'La sesión del editor no existe o ya fue utilizada. Abrí el editor desde el producto.', 'code': 'SESSION_NOT_FOUND'}, status=404)
 
     if session.is_expired():
         session.delete()
-        return JsonResponse({'error': 'La sesión del editor ha expirado.'}, status=410)
+        return JsonResponse({'error': 'La sesión del editor ha expirado (60 minutos). Volvé a abrir el editor desde el producto.', 'code': 'SESSION_EXPIRED'}, status=410)
 
     editor_data = session.data
 
@@ -243,11 +249,11 @@ def editor_session_commit(request):
         quantity = int(editor_data['quantity'])
     except (KeyError, TypeError, ValueError, Product.DoesNotExist, Variant.DoesNotExist):
         session.delete()
-        return JsonResponse({'error': 'La selección del editor ya no es válida.'}, status=400)
+        return JsonResponse({'error': 'El producto o la variante del editor ya no están disponibles. Abrí el editor de nuevo.', 'code': 'INVALID_SELECTION'}, status=400)
 
     if quantity < 1 or quantity > 999 or quantity > variant.stock:
         session.delete()
-        return JsonResponse({'error': 'La cantidad ya no está disponible.'}, status=400)
+        return JsonResponse({'error': f'El stock de la variante {variant.size} {variant.color} ya no está disponible ({variant.stock} unidades).', 'code': 'OUT_OF_STOCK'}, status=400)
 
     # Validar image_id si se proporcionó
     product_image = None
@@ -318,37 +324,42 @@ def editor_session_link_design(request):
     cloudinary_url = data.get('cloudinary_url')
 
     if not token_str or not cloudinary_url:
-        return JsonResponse({'error': 'token y cloudinary_url son requeridos.'}, status=400)
+        return JsonResponse({'error': 'Se requieren los campos token y cloudinary_url.', 'code': 'MISSING_FIELDS'}, status=400)
 
     try:
         session = EditorSession.objects.get(token=token_str, used=False)
     except (EditorSession.DoesNotExist, ValueError):
-        return JsonResponse({'error': 'Sesión del editor no válida o ya utilizada.'}, status=404)
+        return JsonResponse({'error': 'La sesión del editor no es válida o ya fue utilizada. Abrí el editor desde el producto.', 'code': 'SESSION_NOT_FOUND'}, status=404)
 
     if session.is_expired():
         session.delete()
-        return JsonResponse({'error': 'La sesión del editor ha expirado.'}, status=410)
+        return JsonResponse({'error': 'La sesión del editor ha expirado (60 minutos). Volvé a abrir el editor desde el producto.', 'code': 'SESSION_EXPIRED'}, status=410)
 
     product_id = session.data.get('productId')
     if not product_id:
-        return JsonResponse({'error': 'No hay producto asociado a esta sesión.'}, status=400)
+        return JsonResponse({'error': 'La sesión no tiene un producto asociado. Abrí el editor desde la ficha de un producto.', 'code': 'NO_PRODUCT'}, status=400)
 
     try:
         product = Product.objects.get(pk=int(product_id))
     except (Product.DoesNotExist, TypeError, ValueError):
-        return JsonResponse({'error': 'Producto no encontrado.'}, status=404)
+        return JsonResponse({'error': 'El producto ya no existe en el sistema.', 'code': 'PRODUCT_NOT_FOUND'}, status=404)
 
     # Descargar imagen desde Cloudinary
     try:
         img_response = http_requests.get(cloudinary_url, timeout=15)
         img_response.raise_for_status()
+    except http_requests.Timeout:
+        return JsonResponse({'error': 'La descarga de la imagen desde Cloudinary tardó demasiado. Intentá de nuevo.', 'code': 'CLOUDINARY_TIMEOUT'}, status=502)
     except Exception:
-        return JsonResponse({'error': 'No se pudo descargar la imagen de Cloudinary.'}, status=502)
+        return JsonResponse({'error': 'No se pudo descargar la imagen desde Cloudinary. Verificá que la URL sea válida.', 'code': 'CLOUDINARY_ERROR'}, status=502)
 
     # Verificar límite de imágenes antes de crear
     existing_count = ProductImage.objects.filter(product=product).count()
     if existing_count >= 5:
-        return JsonResponse({'error': 'Máximo 5 imágenes por producto.'}, status=409)
+        return JsonResponse({
+            'error': f'Este producto ya tiene el máximo de imágenes permitidas ({existing_count}/5). Eliminá una antes de agregar otra.',
+            'code': 'IMAGE_LIMIT_REACHED',
+        }, status=409)
 
     # Crear ProductImage
     filename = f"design_{product.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.png"
