@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useParams, Link, useLocation } from 'react-router-dom'
 import { fetchProductDetail } from '../services/api'
-import { Button, Card } from '../components/ui'
+import { Card } from '../components/ui'
 import Product3DViewer from '../components/Product3DViewer'
 
 const EDITOR_URL = import.meta.env.VITE_TSHIRT3D_URL || (
@@ -11,15 +11,12 @@ const EDITOR_URL = import.meta.env.VITE_TSHIRT3D_URL || (
 export const Product3D = () => {
   const { id } = useParams()
   const { search } = useLocation()
-  const navigate = useNavigate()
   const params = new URLSearchParams(search)
   const mode = params.get('mode') || 'view'
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [viewMode, setViewMode] = useState('3d')
-  const [selectedSize, setSelectedSize] = useState('')
-  const [selectedColor, setSelectedColor] = useState('')
 
   useEffect(() => {
     if (!id) { setLoading(false); return }
@@ -29,11 +26,6 @@ export const Product3D = () => {
       .finally(() => setLoading(false))
   }, [id])
 
-  const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor)
-
-  const editorUrl = `${EDITOR_URL}?mode=${mode}${id ? `&productId=${id}` : ''}`
-  const iframeUrl = `${EDITOR_URL}/preview?productId=${id}`
-
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
@@ -42,21 +34,7 @@ export const Product3D = () => {
     )
   }
 
-  const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor);
-
-  const openEditor = () => {
-    const base = import.meta.env.VITE_TSHIRT3D_URL || (
-      import.meta.env.DEV ? 'http://127.0.0.1:5174/' : '/editor/'
-    );
-    const qs = new URLSearchParams({ mode });
-    if (id) qs.set('productId', id);
-    if (selectedVariant) {
-      qs.set('variantId', String(selectedVariant.id));
-      if (selectedVariant.color_hex) qs.set('color', selectedVariant.color_hex);
-      qs.set('colorName', selectedVariant.color);
-    }
-    window.open(`${base}?${qs.toString()}`, '_blank');
-  };
+  const editorUrl = `${EDITOR_URL}?mode=${mode}${id ? `&productId=${id}` : ''}`
 
   return (
     <div className="container py-4">
@@ -66,15 +44,15 @@ export const Product3D = () => {
 
       <Card title={product ? `Vista 3D: ${product.name}` : 'Vista 3D'} className="mb-4">
         <div className="d-flex gap-2 mb-3">
-          <Button variant={viewMode === '3d' ? 'danger' : 'outline-secondary'} size="sm" onClick={() => setViewMode('3d')}>
+          <button className={`btn btn-sm ${viewMode === '3d' ? 'btn-danger' : 'btn-outline-secondary'}`} onClick={() => setViewMode('3d')}>
             Vista 3D
-          </Button>
-          <Button variant={viewMode === 'editor' ? 'danger' : 'outline-secondary'} size="sm" onClick={() => setViewMode('editor')}>
+          </button>
+          <button className={`btn btn-sm ${viewMode === 'editor' ? 'btn-danger' : 'btn-outline-secondary'}`} onClick={() => setViewMode('editor')}>
             Editor completo
-          </Button>
-          <Button variant="outline-danger" size="sm" onClick={() => window.open(editorUrl, '_blank')}>
+          </button>
+          <button className="btn btn-sm btn-outline-danger" onClick={() => window.open(editorUrl, '_blank')}>
             Abrir en nueva pestaña
-          </Button>
+          </button>
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}
@@ -83,7 +61,7 @@ export const Product3D = () => {
           <Product3DViewer height={480} />
         ) : (
           <div style={{ width: '100%', height: 600, borderRadius: 12, overflow: 'hidden', border: '1px solid #ddd' }}>
-            <iframe src={iframeUrl} title="Editor 3D" width="100%" height="100%" style={{ border: 'none' }} />
+            <iframe src={editorUrl} title="Editor 3D" width="100%" height="100%" style={{ border: 'none' }} />
           </div>
         )}
       </Card>

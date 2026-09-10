@@ -28,7 +28,7 @@ export const AdminImages = () => {
       confirmLabel: 'Eliminar',
       onConfirm: async () => {
         setConfirmDialog(null)
-        try { await deleteProductImage(img.id); toast.success('Imagen eliminada'); load() }
+        try { await deleteProductImage(img.product, img.id); toast.success('Imagen eliminada'); load() }
         catch { toast.error('Error al eliminar') }
       },
     })
@@ -37,6 +37,7 @@ export const AdminImages = () => {
   if (loading) return <div className="loading">Cargando imágenes...</div>
 
   return (
+    <>
     <MainLayout title="Imágenes Cloudinary" subtitle="Administra las imágenes de productos subidas a Cloudinary">
     <div className="admin-images">
       <div className="content-header-inline">
@@ -115,6 +116,5 @@ export const AdminImages = () => {
     </div>
     </MainLayout>
     {confirmDialog && <ConfirmModal {...confirmDialog} onCancel={() => setConfirmDialog(null)} />}
-    </>
   )
 }

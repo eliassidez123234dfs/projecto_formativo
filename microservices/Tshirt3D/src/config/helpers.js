@@ -98,48 +98,6 @@ export const uploadCanvasToCloudinary = async (options = {}) => {
   return response.json();
 };
 
-export const sendCanvasToApi = async (orderData = {}) => {
-  let dataURL = orderData.image;
-  if (!dataURL) {
-    const canvas = document.querySelector("canvas");
-    if (!canvas) {
-      throw new Error("No se encontró el canvas para el pedido.");
-    }
-
-    state.captureTransparent = true;
-    await waitForNextFrames(2);
-    dataURL = canvas.toDataURL("image/png");
-    state.captureTransparent = false;
-  }
-
-  const payload = {
-    image: dataURL,
-    imageUrl: orderData.imageUrl || null,
-    cloudinaryPublicId: orderData.cloudinaryPublicId || null,
-    status: "pending",
-    designColor: orderData.designColor || "",
-    logoTexture: orderData.logoTexture || null,
-    fullTexture: orderData.fullTexture || null,
-    logoScale: orderData.logoScale ?? null,
-    notes: orderData.notes || "Pedido pendiente de verificación",
-  };
-
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error al enviar pedido: ${response.status} ${errorText}`);
-  }
-
-  return response.json();
-};
-
 export const createModel3D = async (modelData = {}) => {
   const response = await fetch(MODELS3D_API_URL, {
     method: "POST",

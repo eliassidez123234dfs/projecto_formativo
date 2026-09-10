@@ -232,6 +232,11 @@ export const fetchProductAudits = async (id) => {
 };
 
 // ─────────── IMÁGENES de producto (admin) ───────────
+export const fetchProductImages = async () => {
+  const response = await api.get('products/images/');
+  return response.data;
+};
+
 export const createProductImage = async (id, formData) => {
   const response = await api.post(`products/${id}/images/`, formData);
   return response.data;

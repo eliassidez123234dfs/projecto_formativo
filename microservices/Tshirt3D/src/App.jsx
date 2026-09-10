@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import Canvas from "./canvas/index.jsx";
 import Customizer from "./pages/Customizer.jsx";
-import Preview from "./pages/Preview.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import state, { loadEditorSession } from "./store/index.js";
 
 const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
 
 function App() {
-  const [previewOrder, setPreviewOrder] = useState(null);
   const [ready, setReady] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [renderError, setRenderError] = useState(null);
@@ -73,14 +71,8 @@ function App() {
       )}
       {!renderError && (
       <main className="app transition-all ease-in">
-        {!previewOrder ? (
-          <>
-            <Canvas />
-            <Customizer onOrderCreated={setPreviewOrder} />
-          </>
-        ) : (
-          <Preview order={previewOrder} onBack={() => setPreviewOrder(null)} />
-        )}
+        <Canvas />
+        <Customizer />
       </main>
       )}
     </ErrorBoundary>
