@@ -70,7 +70,7 @@ function App() {
         </div>
       )}
       {!renderError && (
-      <main className="app transition-all ease-in">
+      <main className="app">
         <Canvas />
         <Customizer />
       </main>

@@ -39,9 +39,10 @@ const CanvasModel = () => {
     <WebGLErrorBoundary>
       <Canvas
       shadows
-      camera={{ position: [0, 0, 2], fov: 25 }} // fov = field of view
+      camera={{ position: [0, 0, 2], fov: 25 }}
+      dpr={[1, 2]}
       gl={{ preserveDrawingBuffer: true, alpha: true }}
-      className="w-full max-w-full h-full transition-all ease-in"
+      className="w-full max-w-full h-full"
       fallback={(
         <div className="flex h-full w-full items-center justify-center bg-slate-950 p-6 text-center text-white">
           <div className="max-w-md">
