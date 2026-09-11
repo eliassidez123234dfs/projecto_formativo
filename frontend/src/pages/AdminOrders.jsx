@@ -10,29 +10,33 @@ import { formatCOP } from '../utils/format'
 import { useCallback, useEffect, useState } from 'react'
 
 const STATUS_LABELS = {
-  pendiente: 'Pendiente',
+  pendiente_validacion: 'Pendiente de Validación',
+  aprobado: 'Aprobado (Listo para Pago)',
   pagado: 'Pagado',
-  produccion: 'Producción (Aceptado)',
+  produccion: 'Producción (En Fabricación)',
   enviado: 'Enviado',
   entregado: 'Entregado',
   cancelado: 'Cancelado',
   // Alias de compatibilidad
-  pending: 'Pendiente',
+  pendiente: 'Pendiente',
+  paid: 'Pagado',
   processing: 'Producción',
   completed: 'Entregado',
 }
 
 const STATUS_BADGE = {
-  pendiente: 'badge-pending',
-  pending: 'badge-pending',
+  pendiente_validacion: 'badge-pending',
+  aprobado: 'badge-warning',
   pagado: 'badge-approved',
-  paid: 'badge-approved',
   produccion: 'badge-active',
-  processing: 'badge-active',
   enviado: 'badge-active',
   entregado: 'badge-active',
-  completed: 'badge-active',
   cancelado: 'badge-inactive',
+  // Alias
+  pending: 'badge-pending',
+  paid: 'badge-approved',
+  processing: 'badge-active',
+  completed: 'badge-active',
   cancelled: 'badge-inactive',
 }
 
@@ -90,13 +94,13 @@ export default function AdminOrders() {
     setUpdatingId(orderId)
     try {
       const res = await approveAdminOrder(orderId)
-      toast.success(res.message || `Estampación de orden #${orderId} aceptada y notificación enviada por correo.`)
+      toast.success(res.message || `Orden #${orderId} aprobada. El cliente puede proceder con el pago.`)
       setOrders(prev => ({
         ...prev,
-        results: prev.results.map(o => o.id === orderId ? { ...o, status: 'produccion' } : o),
+        results: prev.results.map(o => o.id === orderId ? { ...o, status: 'aprobado' } : o),
       }))
     } catch (err) {
-      toast.error(formatError(err, 'Error al aceptar la estampación del diseño.'))
+      toast.error(formatError(err, 'Error al aprobar la orden.'))
     } finally {
       setUpdatingId(null)
     }
@@ -107,7 +111,8 @@ export default function AdminOrders() {
   ]
 
   const SELECTABLE_STATUSES = [
-    { val: 'pendiente', label: 'Pendiente' },
+    { val: 'pendiente_validacion', label: 'Pendiente de Validación' },
+    { val: 'aprobado', label: 'Aprobado' },
     { val: 'pagado', label: 'Pagado' },
     { val: 'produccion', label: 'Producción' },
     { val: 'enviado', label: 'Enviado' },
@@ -131,7 +136,7 @@ export default function AdminOrders() {
       <div className="admin-toolbar">
         <div className="admin-toolbar-left">
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {['', 'pendiente', 'pagado', 'produccion', 'enviado', 'entregado', 'cancelado'].map(s => (
+            {['', 'pendiente_validacion', 'aprobado', 'pagado', 'produccion', 'enviado', 'entregado', 'cancelado'].map(s => (
               <button
                 key={s}
                 className={`btn btn-sm ${statusFilter === s ? 'btn-primary' : 'btn-ghost'}`}
@@ -170,7 +175,7 @@ export default function AdminOrders() {
                 </thead>
                 <tbody>
                   {orders.results.map(order => {
-                    const isPending = order.status === 'pendiente' || order.status === 'pending'
+                    const isPendingValidation = order.status === 'pendiente_validacion'
                     return (
                       <tr key={order.id}>
                         <td><code>#{order.id}</code></td>
@@ -207,16 +212,16 @@ export default function AdminOrders() {
                         <td>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</td>
                         <td>
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                            {isPending && (
+                            {isPendingValidation && (
                               <button
                                 type="button"
                                 className="btn btn-sm btn-primary"
                                 disabled={updatingId === order.id}
                                 onClick={() => handleApproveOrder(order.id)}
-                                title="Aceptar estampación y enviar email de notificación al cliente"
+                                title="Validar y aprobar el diseño para que el cliente pueda pagar"
                                 style={{ whiteSpace: 'nowrap' }}
                               >
-                                ✓ Aceptar Diseño
+                                ✓ Aprobar Diseño
                               </button>
                             )}
                             <Link to={`/admin-orders/${order.id}`} className="btn btn-sm btn-secondary">

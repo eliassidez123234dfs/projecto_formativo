@@ -9,15 +9,33 @@ import { useParams, Link } from 'react-router-dom'
 
 
 const STATUS_LABELS = {
-  pending: 'Pendiente',
+  pendiente_validacion: 'Pendiente de Validación',
+  aprobado: 'Aprobado (Listo para Pago)',
+  pagado: 'Pagado',
+  produccion: 'Producción (En Fabricación)',
+  enviado: 'Enviado',
+  entregado: 'Entregado',
+  cancelado: 'Cancelado',
+  // Compatibilidad
+  pending: 'Pendiente de Validación',
+  approved: 'Aprobado',
   paid: 'Pagado',
-  processing: 'En proceso',
-  completed: 'Completado',
+  processing: 'Producción',
+  completed: 'Entregado',
   cancelled: 'Cancelado',
 }
 
 const STATUS_BADGE = {
+  pendiente_validacion: 'badge-pending',
+  aprobado: 'badge-warning',
+  pagado: 'badge-approved',
+  produccion: 'badge-active',
+  enviado: 'badge-active',
+  entregado: 'badge-active',
+  cancelado: 'badge-inactive',
+  // Compatibilidad
   pending: 'badge-pending',
+  approved: 'badge-warning',
   paid: 'badge-approved',
   processing: 'badge-active',
   completed: 'badge-active',
@@ -127,6 +145,12 @@ export default function AdminOrderDetail() {
           <InfoRow label="Total" value={formatCOP(order.total)} />
           <InfoRow label="Creada" value={order.created_at ? new Date(order.created_at).toLocaleString() : '—'} />
           <InfoRow label="Actualizada" value={order.updated_at ? new Date(order.updated_at).toLocaleString() : '—'} />
+          {order.admin_approved_at && (
+            <>
+              <InfoRow label="Aprobada por Admin" value={order.admin_approved_at ? new Date(order.admin_approved_at).toLocaleString() : '—'} />
+              <InfoRow label="Admin que Aprobó" value={order.admin_approved_by_name || (order.admin_approved_by ? `Admin #${order.admin_approved_by}` : '—')} />
+            </>
+          )}
         </DetailCard>
 
         <DetailCard title="Cliente">

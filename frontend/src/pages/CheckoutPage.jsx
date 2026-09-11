@@ -242,27 +242,51 @@ async function handleDownloadPdf() {
                 ✓
               </div>
 
-              <form onSubmit={handleSandboxPayment} style={{ ...cardStyle, textAlign: 'left', marginBottom: 24 }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Pago de prueba Wompi Sandbox</h2>
-                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
-                  Usa 4242 4242 4242 4242 para aprobar o 4111 1111 1111 1111 para declinar. Los datos se tokenizan directamente en Wompi.
-                </p>
-                <div style={{ display: 'grid', gap: 12 }}>
-                  <input className="checkout-input" inputMode="numeric" placeholder="Número de tarjeta" value={paymentForm.number} onChange={e => setPaymentForm({ ...paymentForm, number: e.target.value })} required />
-                  <input className="checkout-input" placeholder="Nombre del titular" value={paymentForm.cardHolder} onChange={e => setPaymentForm({ ...paymentForm, cardHolder: e.target.value })} required />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                    <input className="checkout-input" inputMode="numeric" placeholder="MM" maxLength={2} value={paymentForm.expMonth} onChange={e => setPaymentForm({ ...paymentForm, expMonth: e.target.value })} required />
-                    <input className="checkout-input" inputMode="numeric" placeholder="AAAA" maxLength={4} value={paymentForm.expYear} onChange={e => setPaymentForm({ ...paymentForm, expYear: e.target.value })} required />
-                    <input className="checkout-input" inputMode="numeric" placeholder="CVC" maxLength={4} value={paymentForm.cvc} onChange={e => setPaymentForm({ ...paymentForm, cvc: e.target.value })} required />
-                  </div>
-                  <button type="submit" className="btn btn-primary" disabled={paymentLoading}>
-                    {paymentLoading ? 'Validando pago...' : 'Pagar en Sandbox'}
-                  </button>
-                  {paymentResult && <p style={{ margin: 0, color: paymentResult.status === 'APPROVED' ? '#059669' : '#b91c1c' }}>
-                    Estado Wompi: <strong>{paymentResult.status}</strong>{paymentResult.status_message ? ` · ${paymentResult.status_message}` : ''}
-                  </p>}
+              {completedOrder.status === 'pendiente_validacion' && (
+                <div style={{ ...cardStyle, textAlign: 'left', marginBottom: 24, background: 'rgba(79, 70, 229, 0.05)', borderLeft: '4px solid #4F46E5' }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 12, color: '#4F46E5', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    Tu pedido está en validación
+                  </h2>
+                  <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 14, lineHeight: 1.6 }}>
+                    Nuestro equipo de administración y diseño está revisando la viabilidad técnica de tu estampación. Este proceso generalmente toma 24-48 horas. <br/><br/>
+                    <strong>Una vez sea validado y aprobado, recibirás un email con la confirmación para proceder con el pago.</strong>
+                  </p>
                 </div>
-              </form>
+              )}
+
+              {completedOrder.status === 'aprobado' && (
+                <form onSubmit={handleSandboxPayment} style={{ ...cardStyle, textAlign: 'left', marginBottom: 24 }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6, color: '#10B981', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    ¡Diseño Aprobado! Procede con el Pago
+                  </h2>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>
+                    Tu diseño ha sido validado y aprobado. Usa 4242 4242 4242 4242 para aprobar o 4111 1111 1111 1111 para declinar. Los datos se tokenizan directamente en Wompi (nunca llegan a nuestro servidor).
+                  </p>
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    <input className="checkout-input" inputMode="numeric" placeholder="Número de tarjeta" value={paymentForm.number} onChange={e => setPaymentForm({ ...paymentForm, number: e.target.value })} required />
+                    <input className="checkout-input" placeholder="Nombre del titular" value={paymentForm.cardHolder} onChange={e => setPaymentForm({ ...paymentForm, cardHolder: e.target.value })} required />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                      <input className="checkout-input" inputMode="numeric" placeholder="MM" maxLength={2} value={paymentForm.expMonth} onChange={e => setPaymentForm({ ...paymentForm, expMonth: e.target.value })} required />
+                      <input className="checkout-input" inputMode="numeric" placeholder="AAAA" maxLength={4} value={paymentForm.expYear} onChange={e => setPaymentForm({ ...paymentForm, expYear: e.target.value })} required />
+                      <input className="checkout-input" inputMode="numeric" placeholder="CVC" maxLength={4} value={paymentForm.cvc} onChange={e => setPaymentForm({ ...paymentForm, cvc: e.target.value })} required />
+                    </div>
+                    <button type="submit" className="btn btn-primary" disabled={paymentLoading}>
+                      {paymentLoading ? 'Validando pago...' : 'Pagar en Sandbox'}
+                    </button>
+                    {paymentResult && <p style={{ margin: 0, color: paymentResult.status === 'APPROVED' ? '#059669' : '#b91c1c' }}>
+                      Estado Wompi: <strong>{paymentResult.status}</strong>{paymentResult.status_message ? ` · ${paymentResult.status_message}` : ''}
+                    </p>}
+                  </div>
+                </form>
+              )}
 
               <span className="badge badge-pending" style={{ marginBottom: 12, display: 'inline-block', backgroundColor: 'var(--color-warning-bg, #FEF3C7)', color: 'var(--color-warning-text, #92400E)', border: '1px solid var(--color-warning-border, #FDE68A)', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: '600' }}>
                 Estado: Pendiente de Validación
