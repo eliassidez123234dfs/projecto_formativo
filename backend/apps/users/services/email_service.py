@@ -135,6 +135,7 @@ class EmailService:
             f'Si no solicitaste este registro, ignora este mensaje.\n\n'
             f'— Equipo Red Estampación'
         )
+        logger.warning("VERIFICATION URL: %s", enlace)
         return EmailService._send(subject, message, [usuario.correo])
 
     # ── Correo de recuperación de contraseña (RF-009) ──
