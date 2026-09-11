@@ -37,11 +37,11 @@ const ProductCarousel = ({ products }) => {
   const name = products.find(p => p.main_image === src)?.name || ''
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center p-8">
+    <div className="relative flex h-full w-full items-center justify-center p-4 sm:p-6">
       <img
         src={src}
         alt={name || 'Camiseta blanca personalizada'}
-        className="w-[min(80%,380px)] h-auto object-contain drop-shadow-[0_0_10px_rgba(45,45,45,0.5)] drop-shadow-[0_22px_24px_rgba(120,20,30,0.22)] transition-opacity duration-300"
+        className="w-[min(96%,560px)] h-auto object-contain drop-shadow-[0_0_10px_rgba(45,45,45,0.5)] drop-shadow-[0_22px_24px_rgba(120,20,30,0.22)] transition-opacity duration-300"
         style={{ opacity: fade ? 1 : 0 }}
       />
       {total > 1 && (
