@@ -1,21 +1,22 @@
 # Estructura de Carpetas
 
+> **Última actualización:** 2026-09-11 — Sincronizado con código fuente real
+
 ## 1. Estructura General del Repositorio
 
 ```
 proyecto_formativo/
 ├── backend/                          # API Django REST
-│   ├── apps/                         # Aplicaciones del negocio
-│   │   ├── users/                    # Gestion de usuarios y autenticacion
+│   ├── apps/                         # 9 Aplicaciones del negocio
+│   │   ├── users/                    # Autenticacion JWT, usuarios, auditoria
 │   │   ├── products/                 # CRUD de productos, variantes, imagenes, reseñas
-│   │   ├── catalog/                  # Catalogo publico y busqueda
-│   │   ├── carts/                    # Carrito de compras
+│   │   ├── catalog/                  # Catalogo publico, busqueda, filtros, categorias
+│   │   ├── carts/                    # Carrito de compras (sesion + usuario)
 │   │   ├── checkout/                 # Proceso de compra (Wompi)
-│   │   ├── orders/                   # Ordenes y pedidos
-│   │   ├── landing/                  # Landing page y contacto
-│   │   ├── models3d/                 # Modelos 3D
-│   │   ├── monitoring/               # Logging y monitoreo de errores
-│   │   └── management/               # Comandos personalizados de Django
+│   │   ├── orders/                   # Ordenes, pedidos y facturacion
+│   │   ├── landing/                  # Formulario de contacto
+│   │   ├── models3d/                 # Modelos 3D y gestion Cloudinary
+│   │   └── monitoring/               # Logs de errores del frontend
 │   ├── config/                       # Configuracion de Django
 │   │   ├── settings.py               # Configuracion general
 │   │   ├── urls.py                   # Rutas principales
@@ -24,40 +25,94 @@ proyecto_formativo/
 │   ├── media/                        # Archivos multimedia subidos
 │   ├── logs/                         # Archivos de log
 │   ├── manage.py                     # CLI de Django
-│   ├── requirements.txt              # Dependencias Python
-│   ├── Dockerfile                    # Imagen Docker del backend
+│   ├── requirements.txt              # Dependencias Python (53 paquetes)
+│   ├── Dockerfile                    # Imagen Docker desarrollo
+│   ├── Dockerfile.prod               # Imagen Docker produccion (multi-stage)
 │   ├── entrypoint.sh                 # Script de inicio del contenedor
 │   └── db.sqlite3                    # Base de datos SQLite (desarrollo)
 │
-├── frontend/                         # Aplicacion React (SPA)
+├── frontend/                         # Aplicacion React 19 (SPA)
 │   ├── public/                       # Archivos publicos estaticos
 │   ├── src/                          # Codigo fuente
 │   │   ├── assets/                   # Imagenes y recursos estaticos
-│   │   ├── components/               # Componentes reutilizables
-│   │   │   └── ui/                   # Componentes UI base (Button, Card, Input, Modal)
-│   │   ├── pages/                    # Paginas / vistas (30)
-│   │   ├── context/                  # Contextos de React (Theme, Cart)
-│   │   ├── hooks/                    # Hooks personalizados (useConnection)
-│   │   ├── services/                 # Servicios API (api.js, authService.js)
-│   │   ├── store/                    # Estado global (appStore.js)
-│   │   ├── styles/                   # Hojas de estilo (CSS + SCSS)
-│   │   ├── utils/                    # Utilidades
-│   │   ├── constants.js              # Constantes globales
-│   │   ├── App.jsx                   # Componente raiz con rutas
+│   │   ├── components/               # 22 Componentes reutilizables
+│   │   │   ├── catalog/              # Componentes del catalogo
+│   │   │   │   ├── FilterSidebar.jsx
+│   │   │   │   ├── TShirtSVG.jsx
+│   │   │   │   ├── PriceRange.jsx
+│   │   │   │   └── AddToCartModal.jsx
+│   │   │   ├── contact/              # Componentes de contacto
+│   │   │   │   └── ConfirmModal.jsx
+│   │   │   ├── Header.jsx
+│   │   │   ├── AdminLayout.jsx
+│   │   │   ├── ProtectedRoute.jsx
+│   │   │   ├── ProductCard.jsx
+│   │   │   ├── ProductList.jsx
+│   │   │   ├── ProductForm.jsx
+│   │   │   ├── UserList.jsx
+│   │   │   ├── UserFilters.jsx
+│   │   │   ├── UserEditModal.jsx
+│   │   │   ├── Button.jsx
+│   │   │   ├── Pagination.jsx
+│   │   │   ├── FormModal.jsx
+│   │   │   ├── InfoModal.jsx
+│   │   │   ├── ThemeToggle.jsx
+│   │   │   ├── ScrollTopButton.jsx
+│   │   │   ├── VariantPickerModal.jsx
+│   │   │   ├── ErrorBoundary.jsx
+│   │   │   ├── ErrorState.jsx
+│   │   │   └── Spinner.jsx
+│   │   ├── pages/                    # 25 Paginas / vistas
+│   │   │   ├── Landing.jsx
+│   │   │   ├── AuthPage.jsx
+│   │   │   ├── Catalog.jsx
+│   │   │   ├── Category.jsx
+│   │   │   ├── ProductDetail.jsx
+│   │   │   ├── Cart.jsx
+│   │   │   ├── CheckoutPage.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── UserProfile.jsx
+│   │   │   ├── Email.jsx
+│   │   │   ├── Password.jsx
+│   │   │   ├── AdminDashboard.jsx
+│   │   │   ├── AdminProducts.jsx
+│   │   │   ├── AdminProductDetail.jsx
+│   │   │   ├── AdminProductApproval.jsx
+│   │   │   ├── AdminUsers.jsx
+│   │   │   ├── AdminCart.jsx
+│   │   │   ├── AdminCartDetail.jsx
+│   │   │   ├── AdminContact.jsx
+│   │   │   ├── AdminOrders.jsx
+│   │   │   ├── AdminOrderDetail.jsx
+│   │   │   ├── AdminAudit.jsx
+│   │   │   └── AdminCloudinary.jsx
+│   │   ├── context/                  # Contextos de React
+│   │   │   ├── ThemeContext.jsx       # Tema claro/oscuro
+│   │   │   └── CartContext.jsx        # Estado global del carrito
+│   │   ├── hooks/                    # Hooks personalizados
+│   │   │   └── useMediaQuery.js      # Deteccion de breakpoints responsive
+│   │   ├── services/                 # Servicios API
+│   │   │   ├── api.js                # Cliente Axios con interceptors y refresh queue
+│   │   │   └── authService.js        # Gestion de JWT y sesion
+│   │   ├── utils/                    # Utilidades (6 modulos)
+│   │   ├── styles/                   # 18 Hojas de estilo (CSS + SCSS)
+│   │   ├── data/                     # Datos estaticos
+│   │   ├── App.jsx                   # Componente raiz con 30+ rutas
 │   │   └── main.jsx                  # Punto de entrada
 │   ├── index.html                    # HTML base
 │   ├── vite.config.js                # Configuracion de Vite
 │   ├── eslint.config.js              # Configuracion de ESLint
 │   ├── package.json                  # Dependencias Node
-│   └── Dockerfile                    # Imagen Docker del frontend
+│   ├── Dockerfile                    # Imagen Docker desarrollo
+│   └── Dockerfile.prod               # Imagen Docker produccion (multi-stage)
 │
 ├── microservices/                    # Microservicios independientes
-│   └── Tshirt3D/                     # Editor 3D (React + Three.js)
+│   └── Tshirt3D/                     # Editor 3D (React 18 + Three.js)
 │       ├── src/                      # Codigo del editor 3D
 │       ├── vite.config.js            # Configuracion de Vite
 │       ├── tailwind.config.js        # Configuracion de Tailwind CSS
 │       ├── package.json              # Dependencias
-│       └── README.md                 # README del microservicio 3D
+│       └── Dockerfile                # Imagen Docker
 │
 ├── docs/                             # Documentacion del proyecto
 │   ├── 01-introduccion/              # Introduccion, justificacion, objetivos
@@ -78,12 +133,16 @@ proyecto_formativo/
 │   ├── diagrams/                     # Diagramas PlantUML
 │   └── README.md                     # Indice general de documentacion
 │
-├── docker-compose.yml                # Orquestacion de contenedores
+├── docker-compose.yml                # Orquestacion de contenedores (desarrollo)
 ├── docker-compose.prod.yml           # Orquestacion de contenedores (produccion)
+├── render.yaml                       # Blueprint para Render (CI/CD)
 ├── .env                              # Variables de entorno (root)
 ├── .env.example                      # Plantilla de variables de entorno
 ├── .gitignore                        # Exclusiones de Git
-└── README.md                         # README principal del proyecto
+├── CONTRIBUTING.md                   # Guia de contribucion
+├── README.md                         # README principal del proyecto
+├── start.sh                          # Script de inicio para Render
+└── requirements.txt                  # Dependencias Python (raiz, duplicado)
 ```
 
 ## 2. Estructura Interna de una App Django
@@ -114,84 +173,125 @@ apps/<nombre_app>/
 
 ```
 src/
-├── components/            # Componentes reutilizables
-│   ├── Header.jsx        # Encabezado con navegacion y carrito
-│   ├── AdminLayout.jsx   # Layout del panel admin con sidebar
-│   ├── PublicLayout.jsx  # Layout para paginas publicas
-│   ├── ProductCard.jsx   # Card de producto en catalogo
-│   ├── ProductList.jsx   # Tabla de productos (admin)
-│   ├── ProductForm.jsx   # Formulario de producto (admin)
-│   ├── Product3DViewer.jsx # Visor 3D con React Three Fiber
-│   ├── Breadcrumbs.jsx   # Migas de pan
-│   ├── Button.jsx        # Boton reutilizable
-│   ├── FormModal.jsx     # Modal generico para formularios
-│   ├── InfoModal.jsx     # Modal informativo
-│   ├── Pagination.jsx    # Paginacion
-│   ├── Spinner.jsx       # Indicador de carga
-│   ├── ErrorBoundary.jsx # Captura de errores de React
-│   ├── ErrorState.jsx    # Estado de error
-│   ├── ScrollToTop.jsx   # Scroll al inicio de pagina
-│   ├── ProtectedRoute.jsx# Guard de rutas protegidas
-│   ├── UserFilters.jsx   # Filtros de usuarios (admin)
-│   ├── UserList.jsx      # Tabla de usuarios (admin)
-│   ├── UserEditModal.jsx # Modal de edicion de usuario
-│   ├── admin.css         # Estilos del panel admin
-│   └── ui/               # Componentes UI base
-│       ├── Button.jsx    # Boton UI base
-│       ├── Card.jsx      # Tarjeta UI base
-│       ├── Input.jsx     # Input UI base
-│       ├── Modal.jsx     # Modal UI base
-│       └── index.js      # Exportaciones
+├── components/            # 22 Componentes reutilizables
+│   ├── catalog/           # Componentes del catalogo
+│   │   ├── FilterSidebar.jsx    # Barra lateral de filtros
+│   │   ├── TShirtSVG.jsx        # SVG de playera para preview
+│   │   ├── PriceRange.jsx       # Selector de rango de precios
+│   │   └── AddToCartModal.jsx   # Modal para agregar al carrito
+│   ├── contact/           # Componentes de contacto
+│   │   └── ConfirmModal.jsx     # Modal de confirmacion
+│   ├── Header.jsx         # Encabezado con navegacion y carrito
+│   ├── AdminLayout.jsx    # Layout del panel admin con sidebar
+│   ├── ProtectedRoute.jsx # Guard de rutas protegidas (rol admin)
+│   ├── ProductCard.jsx    # Card de producto en catalogo
+│   ├── ProductList.jsx    # Lista de productos (admin)
+│   ├── ProductForm.jsx    # Formulario de producto (admin)
+│   ├── UserList.jsx       # Tabla de usuarios (admin)
+│   ├── UserFilters.jsx    # Filtros de usuarios (admin)
+│   ├── UserEditModal.jsx  # Modal de edicion de usuario
+│   ├── Button.jsx         # Boton reutilizable
+│   ├── Pagination.jsx     # Paginacion
+│   ├── FormModal.jsx      # Modal generico para formularios
+│   ├── InfoModal.jsx      # Modal informativo
+│   ├── ThemeToggle.jsx    # Toggle de tema (claro/oscuro)
+│   ├── ScrollTopButton.jsx # Boton para subir al inicio
+│   ├── VariantPickerModal.jsx # Modal de seleccion de variante
+│   ├── ErrorBoundary.jsx  # Captura de errores de React
+│   ├── ErrorState.jsx     # Estado de error
+│   └── Spinner.jsx        # Indicador de carga
 │
-├── pages/                # Paginas de la aplicacion
-│   ├── Landing.jsx       # Pagina de inicio
-│   ├── AuthPage.jsx      # Login / Registro
-│   ├── Catalog.jsx       # Catalogo de productos
-│   ├── Category.jsx      # Productos por categoria
-│   ├── ProductDetail.jsx # Detalle de producto
-│   ├── Product3D.jsx     # Punto de entrada al editor 3D
-│   ├── Cart.jsx          # Carrito de compras
-│   ├── CheckoutPage.jsx  # Proceso de checkout
-│   ├── OrderConfirmation.jsx # Confirmacion de orden
-│   ├── Dashboard.jsx     # Panel de administracion
-│   ├── UserProfile.jsx   # Perfil de usuario
-│   ├── UserDesigns.jsx   # Disenos guardados del usuario
-│   ├── Email.jsx         # Verificacion de email
-│   ├── Password.jsx      # Recuperacion de contrasena
-│   ├── NotFound.jsx      # Pagina 404
-│   ├── UIShowcase.jsx    # Muestra de componentes UI
-│   ├── AdminDashboard.jsx# Admin: dashboard
-│   ├── AdminProducts.jsx # Admin: gestion de productos
-│   ├── AdminProductDetail.jsx # Admin: detalle de producto
-│   ├── AdminProductApproval.jsx # Admin: aprobacion de productos
-│   ├── AdminUsers.jsx    # Admin: gestion de usuarios
-│   ├── AdminCart.jsx     # Admin: carritos
-│   ├── AdminCartDetail.jsx # Admin: detalle carrito
-│   ├── AdminContact.jsx  # Admin: mensajes de contacto
-│   ├── AdminAudit.jsx    # Admin: auditoria
-│   ├── AdminCategories.jsx # Admin: categorias
-│   ├── AdminDesigns.jsx  # Admin: disenos
-│   ├── AdminImages.jsx   # Admin: imagenes
-│   ├── AdminOrders.jsx   # Admin: ordenes
-│   └── AdminOrderDetail.jsx # Admin: detalle de orden
+├── pages/                # 25 Paginas de la aplicacion
+│   ├── Landing.jsx            # Pagina de inicio (/)
+│   ├── AuthPage.jsx           # Login / Registro (/login, /register)
+│   ├── Catalog.jsx            # Catalogo de productos (/catalog, /catalogo)
+│   ├── Category.jsx           # Productos por categoria (/category/:id)
+│   ├── ProductDetail.jsx      # Detalle de producto (/product/:id)
+│   ├── Cart.jsx               # Carrito de compras (/cart)
+│   ├── CheckoutPage.jsx       # Proceso de checkout (/checkout)
+│   ├── Dashboard.jsx          # Panel del usuario (/dashboard)
+│   ├── UserProfile.jsx        # Perfil de usuario (/perfil)
+│   ├── Email.jsx              # Verificacion de email (/email, /verificar-email)
+│   ├── Password.jsx           # Recuperacion de password (/password, /nueva-password)
+│   ├── AdminDashboard.jsx     # Admin: dashboard principal (/admin)
+│   ├── AdminProducts.jsx      # Admin: gestion de productos (/admin-products)
+│   ├── AdminProductDetail.jsx # Admin: detalle de producto (/admin-products/detail/:id)
+│   ├── AdminProductApproval.jsx # Admin: aprobacion (/admin-products/approval)
+│   ├── AdminUsers.jsx         # Admin: gestion de usuarios (/admin-users)
+│   ├── AdminCart.jsx          # Admin: carritos (/admin-cart)
+│   ├── AdminCartDetail.jsx    # Admin: detalle carrito (/admin-cart/:id)
+│   ├── AdminContact.jsx       # Admin: mensajes de contacto (/admin-contact)
+│   ├── AdminOrders.jsx        # Admin: ordenes (/admin-orders)
+│   ├── AdminOrderDetail.jsx   # Admin: detalle de orden (/admin-orders/:id)
+│   ├── AdminAudit.jsx         # Admin: auditoria (/admin-audit)
+│   └── AdminCloudinary.jsx    # Admin: gestor Cloudinary (/admin-cloudinary)
 │
 ├── context/              # Contextos de React
-│   ├── ThemeContext.jsx  # Tema claro/oscuro
-│   └── CartContext.jsx   # Estado global del carrito
+│   ├── ThemeContext.jsx   # Tema claro/oscuro
+│   └── CartContext.jsx    # Estado global del carrito
 │
 ├── hooks/                # Hooks personalizados
-│   └── useConnection.js  # Estado de conexion
+│   └── useMediaQuery.js   # Deteccion de breakpoints responsive
 │
-├── services/             # Servicios API
-│   ├── api.js            # Cliente Axios con interceptors y refresh queue
-│   └── authService.js    # Gestion de JWT y sesion
+├── services/             # Servicios API (3 clientes)
+│   ├── api.js             # Cliente Axios con interceptors JWT y refresh queue
+│   └── authService.js     # Gestion de JWT y sesion
 │
-├── store/                # Estado global
-│   └── appStore.js       # Estado global (sidebar, tema, toasts)
+├── utils/                # Utilidades (6 modulos)
 │
-└── styles/               # Hojas de estilo
-    ├── theme.css         # Variables CSS del sistema de diseno
-    ├── globals.css       # Clases utilitarias
-    ├── main-layout.css   # Layout del panel admin
-    └── ...               # Estilos especificos por pagina
+├── styles/               # 18 Hojas de estilo (CSS + SCSS)
+│
+├── data/                 # Datos estaticos
+│
+└── assets/               # Assets estaticos
 ```
+
+## 4. Rutas Frontend (App.jsx)
+
+```
+/                                          -> Landing
+/catalog                                   -> Catalog
+/catalogo                                  -> Catalog (alias)
+/category/:id                              -> Category
+/product/:id                               -> ProductDetail
+/cart                                      -> Cart
+/checkout                                  -> CheckoutPage
+/login                                     -> AuthPage (login)
+/register                                  -> AuthPage (register)
+/dashboard                                 -> Dashboard
+/perfil                                    -> UserProfile
+/email                                     -> Email
+/verificar-email                           -> Email
+/verificar-email-pendiente                 -> Email
+/password                                  -> Password
+/nueva-password                            -> Password
+
+── PROTEGIDAS (requieren rol Admin) ──
+/admin                                     -> AdminDashboard
+/admin-products                            -> AdminProducts
+/admin-products/detail/:id                 -> AdminProductDetail
+/admin-products/approval                   -> AdminProductApproval
+/admin-users                               -> AdminUsers
+/admin-cart                                -> AdminCart
+/admin-cart/:id                            -> AdminCartDetail
+/admin-contact                             -> AdminContact
+/admin-orders                              -> AdminOrders
+/admin-orders/:id                          -> AdminOrderDetail
+/admin-audit                               -> AdminAudit
+/admin-cloudinary                          -> AdminCloudinary
+```
+
+## 5. Resumen de Estadisticas
+
+| Aspecto | Cantidad |
+|---------|----------|
+| Apps Django (backend) | 9 |
+| Modelos / Tablas DB | 21 tablas en 8 modulos |
+| Endpoints API REST | 40+ endpoints |
+| Paginas Frontend | 25 paginas |
+| Componentes Frontend | 22 componentes reutilizables |
+| Rutas Frontend | 30+ rutas (incluye aliases y protegidas) |
+| Contextos React | 2 (Theme, Cart) |
+| Hooks personalizados | 1 (useMediaQuery) |
+| Servicios API | 3 clientes (api, publicApi, sessionApi) |
+| Estilos CSS/SCSS | 18 archivos |

@@ -14,6 +14,9 @@ class ProductCategoryInline(admin.TabularInline):
     model = ProductCategory
     extra = 1
 
+admin.site.register(ProductCategory)
+
+
 
 @admin.register(CatalogFilter)
 class CatalogFilterAdmin(admin.ModelAdmin):

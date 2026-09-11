@@ -86,7 +86,7 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.
 - Refactorización de la estructura de carpetas backend a apps modulares
 
 ### Security
-- Implementación inicial de hashing de contraseñas con Argon2
+- Implementación inicial de hashing de contraseñas con PBKDF2 (Django default)
 - Validación de entrada en modelos con `full_clean()`
 
 ## [0.8.0-prealpha] - 2026-05-20

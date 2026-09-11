@@ -86,6 +86,7 @@
 
 ### 13. Administracion
 - [13.1 Panel Admin: Estado y Pendientes](13-admin/panel-admin-estado-y-pendientes.md) - Funcionalidades existentes, faltantes y deuda tecnica del panel
+- [13.2 Guía de Django Admin](13-admin/django-admin-guia.md) - Verificación, configuración y uso de Django Admin como panel de gestión de base de datos
 
 ### Archivados
 - [Archivo de documentacion](archive/) - Documentos historicos y reportes de auditoria
@@ -100,15 +101,15 @@
 | **Tipo** | Plataforma web de comercio electronico |
 | **Backend** | Python 3.12 / Django 5.2 / DRF 3.16 |
 | **Frontend** | React 19 / Vite 8 / Axios |
-| **Base de Datos** | SQLite (dev) / PostgreSQL (prod) |
-| **App Modulos** | 8 apps Django (users, products, catalog, carts, checkout, orders, landing, models3d) |
-| **Modelos** | 18 tablas en base de datos |
+| **Base de Datos** | SQLite (dev) / PostgreSQL (prod) + MongoDB 7 (NoSQL) |
+| **App Modulos** | 9 apps Django (users, products, catalog, carts, checkout, orders, landing, models3d, monitoring) |
+| **Modelos** | 21 tablas en base de datos |
 | **Endpoints API** | 40+ endpoints REST |
-| **Paginas Frontend** | 22 paginas / 15 componentes reutilizables |
+| **Paginas Frontend** | 25 paginas / 22 componentes reutilizables |
 | **Autenticacion** | JWT (access 15min + refresh 7dias) + Sesion |
 | **Contenedores** | Docker Compose (backend + frontend) |
 | **Documentos** | 40+ archivos organizados en 13 secciones numeradas + archive |
 
 ---
 
-*Documentacion reorganizada y unificada el 09/08/2026*
+*Documentacion reorganizada y unificada el 11/09/2026*

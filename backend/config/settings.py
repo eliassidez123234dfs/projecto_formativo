@@ -128,7 +128,9 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'cloudinary_storage',
     'cloudinary',
+    'django_extensions',
 ]
+
 
 # ── CKEditor (Editor de texto enriquecido) ──
 # Configuración del editor WYSIWYG para descripciones de productos

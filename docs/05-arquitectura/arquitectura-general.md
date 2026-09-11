@@ -4,7 +4,7 @@
 > Describe el estilo arquitectónico, capas, patrones, módulos, flujos de datos, integraciones,
 > seguridad y despliegue. Es la fuente central de referencia de arquitectura.
 
-**Última actualización:** Agosto 2026
+**Última actualización:** 2026-09-11 — Sincronizado con código fuente real
 **Mantenido por:** Equipo RED Estampación
 
 ---
@@ -159,7 +159,7 @@ graph TB
 
 | Componente | Tecnología | Responsabilidad |
 |------------|-----------|-----------------|
-| **Landing Page** | React + Tailwind | Página principal con productos destacados, formulario de contacto |
+| **Landing Page** | React + CSS/SCSS | Página principal con productos destacados, formulario de contacto |
 | **Catálogo** | React + Axios | Listado, filtrado, búsqueda y detalle de productos |
 | **Editor 3D** | Three.js + R3F + Drei | Visualización y personalización de modelos 3D |
 | **Carrito** | React + Context API | Gestión del carrito de compras (añadir, eliminar, actualizar) |
@@ -195,13 +195,12 @@ graph TB
 | **models3d** | `backend/apps/models3d/` | `Model3D`, `Model3DImage` | Modelos y assets 3D |
 | **landing** | `backend/apps/landing/` | `Contacto` | Landing page y contacto |
 | **monitoring** | `backend/apps/monitoring/` | — | Logging y monitoreo de errores del cliente |
-| **management** | `backend/apps/management/` | — (comandos personalizados) | Tareas de administración |
 
 #### Servicios transversales
 
 - **WompiService** (`backend/apps/checkout/wompi.py`): Adaptador para la API de Wompi (crear transacción, verificar, procesar webhook).
 - **EmailService** (`backend/apps/users/services/email_service.py`): Servicio centralizado de correos (verificación, reset, notificaciones).
-- **CloudinaryService** (`backend/apps/products/services/cloudinary.py`): Adaptador para subir/eliminar imágenes y modelos 3D en Cloudinary.
+- **CloudinaryService** (`backend/apps/models3d/cloudinary_service.py`): Adaptador para subir/eliminar imágenes y modelos 3D en Cloudinary.
 - **MongoService** (`backend/apps/users/mongo_service.py`): Abstracción CRUD sobre MongoDB para diseños, logs, carritos y plantillas.
 
 ### 2.4 Capa de Datos
@@ -421,45 +420,82 @@ Logging y monitoreo de errores del frontend.
 | `authService.js` | Gestión de JWT en memoria, restauración de sesión |
 | `api.js` | Cliente Axios con interceptors, refresh queue, endpoints |
 
-### 5.2 Store (`store/`)
+### 5.2 Servicios (`services/`)
 
 | Archivo | Responsabilidad |
 |---------|----------------|
-| `appStore.js` | Estado global (sidebar, tema, toasts) con persistencia |
+| `authService.js` | Gestión de JWT en memoria, restauración de sesión |
+| `api.js` | Cliente Axios con interceptors, refresh queue, 3 clientes (api, publicApi, sessionApi) |
 
-### 5.3 Componentes (`components/`)
+### 5.3 Contextos (`context/`)
+
+| Archivo | Responsabilidad |
+|---------|----------------|
+| `ThemeContext.jsx` | Tema claro/oscuro con persistencia |
+| `CartContext.jsx` | Estado global del carrito de compras |
+
+### 5.4 Hooks (`hooks/`)
+
+| Archivo | Responsabilidad |
+|---------|----------------|
+| `useMediaQuery.js` | Detección de breakpoints responsive |
+
+### 5.5 Componentes (`components/`)
 
 | Archivo | Responsabilidad |
 |---------|----------------|
 | `Header.jsx` | Barra superior con navegación pública y menú usuario |
 | `AdminLayout.jsx` | Layout del panel de administración con sidebar |
-| `PublicLayout.jsx` | Layout para páginas públicas |
-| `Product3DViewer.jsx` | Visor 3D con React Three Fiber |
+| `ProtectedRoute.jsx` | Guard de rutas protegidas (rol admin) |
 | `ProductCard.jsx` | Tarjeta de producto reutilizable |
+| `ProductList.jsx` | Listado de productos (admin) |
 | `ProductForm.jsx` | Formulario de producto para admin |
-| `ProductList.jsx` | Listado de productos |
-| `ui/Button.jsx` | Botón reutilizable con variantes |
-| `ui/Card.jsx` | Tarjeta reutilizable |
-| `ui/Modal.jsx` | Modal reutilizable |
-| `ui/Input.jsx` | Input reutilizable con validación |
-| `ProtectedRoute.jsx` | Guard de rutas protegidas |
+| `UserList.jsx` | Tabla de usuarios (admin) |
+| `UserFilters.jsx` | Filtros de usuarios (admin) |
+| `UserEditModal.jsx` | Modal de edición de usuario |
+| `Button.jsx` | Botón reutilizable con variantes |
+| `Pagination.jsx` | Paginación |
+| `FormModal.jsx` | Modal genérico para formularios |
+| `InfoModal.jsx` | Modal informativo |
+| `ThemeToggle.jsx` | Toggle de tema (claro/oscuro) |
+| `ScrollTopButton.jsx` | Botón para subir al inicio |
+| `VariantPickerModal.jsx` | Modal de selección de variante |
+| `ErrorBoundary.jsx` | Captura de errores de React |
+| `ErrorState.jsx` | Estado de error |
+| `Spinner.jsx` | Indicador de carga |
+| `catalog/FilterSidebar.jsx` | Barra lateral de filtros del catálogo |
+| `catalog/TShirtSVG.jsx` | SVG de playera para preview |
+| `catalog/PriceRange.jsx` | Selector de rango de precios |
+| `catalog/AddToCartModal.jsx` | Modal para agregar al carrito |
+| `contact/ConfirmModal.jsx` | Modal de confirmación de contacto |
 
-### 5.4 Páginas (`pages/`)
+### 5.6 Páginas (`pages/`)
 
 | Página | Ruta | Propósito |
 |--------|------|-----------|
 | `Landing.jsx` | `/` | Página principal con productos destacados |
 | `AuthPage.jsx` | `/login`, `/register` | Login/registro con validación |
-| `Catalog.jsx` | `/catalog` | Catálogo con búsqueda, filtros, paginación |
-| `ProductDetail.jsx` | `/product/:id` | Detalle con variantes, reseñas, imagen 3D |
+| `Catalog.jsx` | `/catalog`, `/catalogo` | Catálogo con búsqueda, filtros, paginación |
+| `Category.jsx` | `/category/:id` | Productos por categoría |
+| `ProductDetail.jsx` | `/product/:id` | Detalle con variantes y reseñas |
 | `Cart.jsx` | `/cart` | Carrito con cantidades y total |
 | `CheckoutPage.jsx` | `/checkout` | Formulario de envío + pago Wompi |
-| `Dashboard.jsx` | `/dashboard` | Perfil de usuario y pedidos |
-| `UserProfile.jsx` | `/profile` | Datos del usuario |
-| `UserDesigns.jsx` | `/designs` | Diseños personalizados del usuario |
-| `Product3D.jsx` | `/product-3d/:id` | Editor/visor 3D |
-| `Admin*.jsx` | `/admin-*` | Paneles de administración |
-| `NotFound.jsx` | `*` | Página 404 |
+| `Dashboard.jsx` | `/dashboard` | Panel del usuario |
+| `UserProfile.jsx` | `/perfil` | Datos del usuario |
+| `Email.jsx` | `/email`, `/verificar-email` | Verificación de email |
+| `Password.jsx` | `/password`, `/nueva-password` | Recuperación de contraseña |
+| `AdminDashboard.jsx` | `/admin` | Dashboard principal admin |
+| `AdminProducts.jsx` | `/admin-products` | Gestión de productos |
+| `AdminProductDetail.jsx` | `/admin-products/detail/:id` | Detalle producto admin |
+| `AdminProductApproval.jsx` | `/admin-products/approval` | Aprobación de productos |
+| `AdminUsers.jsx` | `/admin-users` | Gestión de usuarios |
+| `AdminCart.jsx` | `/admin-cart` | Carritos de usuarios |
+| `AdminCartDetail.jsx` | `/admin-cart/:id` | Detalle de carrito |
+| `AdminContact.jsx` | `/admin-contact` | Mensajes de contacto |
+| `AdminOrders.jsx` | `/admin-orders` | Órdenes |
+| `AdminOrderDetail.jsx` | `/admin-orders/:id` | Detalle de orden |
+| `AdminAudit.jsx` | `/admin-audit` | Auditoría |
+| `AdminCloudinary.jsx` | `/admin-cloudinary` | Gestor Cloudinary |
 
 ---
 

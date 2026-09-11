@@ -97,7 +97,7 @@ El frontend usa un enfoque **mobile-first** con breakpoints definidos en
 
 1. **CSS Grid** para el layout principal (sidebar + contenido)
 2. **Clases condicionales** para estados (`.sidebar-collapsed`, `.sidebar-open`)
-3. **Bootstrap 5.3** para componentes y sistema de rejilla
+3. **Sass/SCSS** para estilos avanzados con variables y mixins
 4. **CSS Variables** para temas claro/oscuro
 
 ### Breakpoints

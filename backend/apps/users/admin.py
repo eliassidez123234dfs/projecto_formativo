@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from .models import Usuario, Token_Verificacion, Historial_Estado_Usuario, Log_Auditoria
+from .models import Usuario, Token_Verificacion, Cambio_Email, Historial_Estado_Usuario, Log_Auditoria
+
 
 
 @admin.register(Usuario)
@@ -18,6 +19,15 @@ class TokenVerificacionAdmin(admin.ModelAdmin):
     list_filter = ('tipo', 'usado')
     search_fields = ('usuario__usuario', 'token')
     readonly_fields = ('token', 'fecha_creacion')
+
+
+@admin.register(Cambio_Email)
+class CambioEmailAdmin(admin.ModelAdmin):
+    list_display = ('id', 'usuario', 'email_anterior', 'email_nuevo', 'verificado', 'fecha_solicitud')
+    list_filter = ('verificado', 'fecha_solicitud')
+    search_fields = ('usuario__usuario', 'email_anterior', 'email_nuevo')
+    readonly_fields = ('fecha_solicitud', 'fecha_verificacion')
+
 
 
 @admin.register(Historial_Estado_Usuario)

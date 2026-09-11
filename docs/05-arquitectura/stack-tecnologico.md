@@ -22,7 +22,7 @@
 | **Lenguaje Frontend** | JavaScript (ES2024) | - | Logica del navegador |
 | **Framework Frontend** | React | 19.2 | Construccion de interfaz de usuario basada en componentes |
 | **Bundler** | Vite | 8.0 | Empaquetado y dev server con HMR |
-| **Ruteo** | React Router DOM | 7.14 | Enrutamiento del lado del cliente |
+| **Ruteo** | React Router DOM | 7.11 | Enrutamiento del lado del cliente |
 | **Cliente HTTP** | Axios | 1.16 | Peticiones HTTP con interceptors |
 | **Notificaciones** | react-hot-toast | 2.6 | Notificaciones toast no obstructivas |
 | **Preprocesador CSS** | Sass | 1.101 | Estilos avanzados con SCSS |
@@ -43,19 +43,26 @@
 
 | Paquete | Version | Uso |
 |---------|---------|-----|
-| Django | 5.2.13 | Framework principal |
-| djangorestframework | 3.16.1 | API REST |
-| djangorestframework_simplejwt | 5.5.1 | JWT authentication |
-| django-cors-headers | 4.9.0 | CORS headers |
-| django-environ | 0.13.0 | Variables de entorno |
-| django-ckeditor | 6.7.3 | Editor de texto enriquecido |
-| django-ratelimit | 4.1.0 | Rate limiting |
-| django-storages | 1.14.6 | Almacenamiento cloud |
-| gunicorn | 26.0.0 | Servidor WSGI |
-| pillow | 12.1.1 | Procesamiento de imagenes |
-| psycopg2-binary | 2.9.12 | Driver PostgreSQL |
-| celery | 5.4.0 | Tareas asincronas |
-| python-decouple | 3.8 | Configuracion simplificada |
+| **Django** | 5.2.13 | Framework principal |
+| **djangorestframework** | 3.16.1 | API REST |
+| **djangorestframework_simplejwt** | 5.5.1 | JWT authentication con token blacklist |
+| **django-cors-headers** | 4.9.0 | Headers CORS para frontend |
+| **django-environ** | 0.13.0 | Gestión de variables de entorno |
+| **django-ckeditor** | 6.7.3 | Editor de texto enriquecido |
+| **django-ratelimit** | 4.1.0 | Rate limiting de endpoints |
+| **django-cloudinary-storage** | 0.3.0 | Backend de almacenamiento Cloudinary |
+| **cloudinary** | 1.44.2 | Cliente CDN Cloudinary |
+| **gunicorn** | 26.0.0 | Servidor WSGI producción |
+| **whitenoise** | 6.6+ | Compresión static files |
+| **pillow** | 12.1.1 | Procesamiento de imágenes |
+| **reportlab** | 4.0.0+ | Generación de PDFs (invoices) |
+| **psycopg2-binary** | 2.9.12 | Driver PostgreSQL |
+| **pymongo** | 4.6+ | Cliente MongoDB |
+| **dnspython** | 2.6+ | Soporte MongoDB (DNS) |
+| **celery** | 5.4.0 | Tareas asincrónicas |
+| **redis** | 5.0.0+ | Broker Celery + Caché |
+| **PyJWT** | 2.12.1 | JWT utilities |
+| **python-dateutil** | 2.9.0 | Utilidades de fechas |
 
 ## 17.3 Dependencias Frontend (package.json)
 

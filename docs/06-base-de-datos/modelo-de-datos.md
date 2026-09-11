@@ -1,8 +1,10 @@
 # Modelo de Datos
 
+> **Última actualización:** 2026-09-11 — Sincronizado con código fuente real
+
 ## 19.1 Esquema General
 
-La base de datos del proyecto RED esta compuesta por **18 tablas** distribuidas en **8 modulos funcionales**. Se utiliza el ORM de Django, que abstrae las diferencias entre SQLite (desarrollo) y PostgreSQL (produccion).
+La base de datos del proyecto RED esta compuesta por **21 tablas** distribuidas en **8 modulos funcionales**. Se utiliza el ORM de Django, que abstrae las diferencias entre SQLite (desarrollo) y PostgreSQL (produccion).
 
 ### Mapa de Tablas por Modulo
 
@@ -12,7 +14,7 @@ La base de datos del proyecto RED esta compuesta por **18 tablas** distribuidas 
 | **products** (4 tablas) | `products`, `products_productimage`, `products_variant`, `products_productaudit` | Productos, imagenes, variantes, auditoria |
 | **catalog** (4 tablas) | `catalog_category`, `catalog_productcategory`, `catalog_searchhistory`, `catalog_popularsearch` | Categorias, busquedas |
 | **carts** (2 tablas) | `carts_cart`, `carts_cartitem` | Carrito de compras |
-| **orders** (2 tablas) | `orders_order`, `orders_orderitem` | Ordenes y pedidos |
+| **orders** (3 tablas) | `orders_order`, `orders_orderitem`, `orders_invoice` | Ordenes, pedidos y facturacion |
 | **landing** (1 tabla) | `contactos` | Formulario de contacto |
 | **models3d** (2 tablas) | `models3d_model3d`, `models3d_model3dimage` | Modelos 3D |
 
