@@ -168,6 +168,24 @@ const loadOrders = async () => {
     }
   }, [usuario])
 
+  // ─── AUTO-REFRESH: Recargar órdenes cada 30s si hay pendientes de validación ───
+  useEffect(() => {
+    // Solo activa polling si hay órdenes en pendiente_validacion
+    const hasPendingValidation = orders.some(o => o.status === 'pendiente_validacion')
+    if (!hasPendingValidation) return
+
+    const intervalId = setInterval(async () => {
+      try {
+        const data = await fetchMyOrders()
+        setOrders(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error('Error refrescando órdenes:', err)
+      }
+    }, 30000) // Cada 30 segundos
+
+    return () => clearInterval(intervalId)
+  }, [orders])
+
 // ─── HANDLERS: DESCARGA PDF Y PAGO WOMPI ───
 const handleDownloadPdf = async (orderId) => {
     setDownloadingId(orderId)
