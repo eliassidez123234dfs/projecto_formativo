@@ -260,7 +260,22 @@ export const downloadAdminOrderInvoicePdf = async (orderId, orderNumber = null) 
 };
 
 export const downloadInvoicePdf = async (orderId, accessToken = '') => {
-  const params = accessToken ? { access: accessToken } : undefined
+  // Intenta primero con JWT autenticado (para usuarios logueados)
+  const token = getAccessToken();
+  if (token) {
+    try {
+      const response = await api.get(`checkout/orders/${orderId}/invoice-pdf/`, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      // Si falla con JWT, continúa para intentar con token temporal
+      if (error.response?.status !== 403) throw error;
+    }
+  }
+  
+  // Fallback a token temporal para usuarios anónimos
+  const params = accessToken ? { access: accessToken } : undefined;
   const response = await publicApi.get(`checkout/orders/${orderId}/invoice-pdf/`, {
     params,
     responseType: 'blob',

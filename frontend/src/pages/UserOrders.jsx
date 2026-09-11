@@ -26,53 +26,67 @@ import '../styles/UserOrders.scss'
 // ─── CONFIGURACIÓN DE ESTADOS DE PEDIDO ───
 // Mapea cada estado del backend a su label, clase CSS, icono y descripción.
 const ORDER_STATUS_CONFIG = {
-  pendiente: {
-    label: 'En Validación de Estampación',
+  // Nuevos estados (post-aprobación de admin)
+  pendiente_validacion: {
+    label: 'Pendiente de Validación',
     badgeClass: 'status-pending',
     icon: '⏳',
-    desc: 'Tu pedido y diseño están en cola de revisión por nuestro equipo técnico.',
+    desc: 'Tu pedido está siendo revisado por nuestro equipo. Validaremos la calidad y viabilidad de tu diseño.',
+  },
+  aprobado: {
+    label: 'Aprobado - Listo para Pago',
+    badgeClass: 'status-approved',
+    icon: '✓',
+    desc: '¡Tu diseño fue aprobado! Procede a pagarlo para iniciar la confección de tu prenda.',
+  },
+  // Estados anteriores (compatibilidad)
+  pendiente: {
+    label: 'Pendiente de Validación',
+    badgeClass: 'status-pending',
+    icon: '⏳',
+    desc: 'Tu pedido está siendo revisado por nuestro equipo.',
   },
   pending: {
-    label: 'En Validación de Estampación',
+    label: 'Pendiente de Validación',
     badgeClass: 'status-pending',
     icon: '⏳',
-    desc: 'Tu pedido y diseño están en cola de revisión por nuestro equipo técnico.',
+    desc: 'Tu pedido está siendo revisado por nuestro equipo.',
   },
   produccion: {
-    label: 'Diseño Aprobado / Listo para Pago',
-    badgeClass: 'status-approved',
-    icon: '✓',
-    desc: '¡Tu diseño fue aceptado! Procede a pagarlo para iniciar la confección.',
+    label: 'En Fabricación',
+    badgeClass: 'status-production',
+    icon: '🏭',
+    desc: 'Tu prenda está siendo estampada y empacada en nuestros talleres.',
   },
   processing: {
-    label: 'Diseño Aprobado / Listo para Pago',
-    badgeClass: 'status-approved',
-    icon: '✓',
-    desc: '¡Tu diseño fue aceptado! Procede a pagarlo para iniciar la confección.',
+    label: 'En Fabricación',
+    badgeClass: 'status-production',
+    icon: '🏭',
+    desc: 'Tu prenda está siendo estampada y empacada en nuestros talleres.',
   },
   pagado: {
-    label: 'Pagado / En Confección',
+    label: 'Pagado - En Confección',
     badgeClass: 'status-paid',
     icon: '💳',
     desc: 'Pago confirmado exitosamente. Tu prenda está siendo estampada y empacada.',
   },
   paid: {
-    label: 'Pagado / En Confección',
+    label: 'Pagado - En Confección',
     badgeClass: 'status-paid',
     icon: '💳',
     desc: 'Pago confirmado exitosamente. Tu prenda está siendo estampada y empacada.',
   },
   enviado: {
-    label: 'En Camino / Despachado',
+    label: 'Enviado - En Camino',
     badgeClass: 'status-shipping',
     icon: '🚚',
-    desc: 'El paquete va rumbo a tu dirección de entrega.',
+    desc: 'El paquete va rumbo a tu dirección de entrega. Llegará en 3-5 días hábiles.',
   },
   entregado: {
     label: 'Entregado',
     badgeClass: 'status-delivered',
     icon: '📦',
-    desc: 'Pedido recibido con éxito.',
+    desc: 'Pedido recibido con éxito. ¡Esperamos que disfrutes tu camiseta!',
   },
   completed: {
     label: 'Entregado',
@@ -84,7 +98,7 @@ const ORDER_STATUS_CONFIG = {
     label: 'Cancelado',
     badgeClass: 'status-cancelled',
     icon: '✕',
-    desc: 'El pedido fue cancelado o el diseño no cumplió los requisitos.',
+    desc: 'El pedido fue cancelado o el diseño no cumplió los requisitos técnicos.',
   },
 }
 
