@@ -72,7 +72,30 @@ class EmailService:
         Returns:
             True si el envío fue exitoso, False en caso contrario.
         """
-        if settings.RESEND_API_KEY:
+        if getattr(settings, 'BREVO_API_KEY', ''):
+            try:
+                payload = json.dumps({
+                    'sender': {'email': settings.DEFAULT_FROM_EMAIL},
+                    'to': [{'email': r} for r in recipient_list],
+                    'subject': subject,
+                    'textContent': message,
+                }).encode('utf-8')
+                request = Request(
+                    'https://api.brevo.com/v3/smtp/email',
+                    data=payload,
+                    headers={
+                        'apikey': settings.BREVO_API_KEY,
+                        'Content-Type': 'application/json',
+                    },
+                    method='POST',
+                )
+                with urlopen(request, timeout=15) as response:
+                    if response.status not in (200, 201):
+                        raise RuntimeError(f'Brevo respondió HTTP {response.status}')
+                return True
+            except Exception as exc:
+                logger.warning('Brevo API falló (%s), intentando SMTP como fallback...', exc)
+        elif settings.RESEND_API_KEY:
             try:
                 payload = json.dumps({
                     'from': settings.DEFAULT_FROM_EMAIL,

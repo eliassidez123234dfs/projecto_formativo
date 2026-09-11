@@ -562,6 +562,7 @@ BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8000')
 # =============================================================================
 _email_backend_env = env('EMAIL_BACKEND', default='').strip()
 RESEND_API_KEY = env('RESEND_API_KEY', default='')
+BREVO_API_KEY = env('BREVO_API_KEY', default='')
 if _email_backend_env.lower() == 'console':
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 elif _email_backend_env.lower() == 'smtp':
