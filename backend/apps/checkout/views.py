@@ -196,7 +196,7 @@ def checkout_confirm(request):
 			shipping_zipcode=shipping_zipcode,
 			image_url=custom_image_url,
 			design_color=custom_design_color,
-			status=Order.STATUS_PENDING,
+			status=Order.STATUS_PENDING_VALIDATION,
 			total=Decimal('0.00'),
 			notes=reference if reference else 'Tipo: Orden de demostración',
 		)
@@ -246,12 +246,12 @@ def checkout_confirm(request):
 			'order_id': order.id,
 			'order_number': order.order_number or f'ORD-{order.id:06d}',
 			'status': order.status,
-			'status_display': 'Pendiente',
+			'status_display': 'Pendiente de Validación',
 			'total': str(order.total),
 			'customer_name': order.customer_name,
 			'customer_email': order.customer_email,
 			'download_pdf_url': f'/api/checkout/orders/{order.id}/invoice-pdf/?access={invoice_signer.sign(order.id)}',
-			'detail': '¡Pedido confirmado con éxito! Se ha registrado en estado pendiente y el stock fue actualizado.',
+			'detail': '¡Pedido registrado con éxito para validación! Nuestro equipo de administración revisará la viabilidad del diseño. Una vez aprobado, podrás proceder con el pago.',
 		},
 		status=status.HTTP_201_CREATED,
 	)
@@ -262,15 +262,16 @@ def checkout_confirm(request):
 @permission_classes([AllowAny])
 def create_wompi_payment(request, order_id):
 	"""Tokeniza una tarjeta en Wompi y crea su transacción sandbox.
-
+	
+	Solo permite pago si la orden ha sido aprobada por un administrador.
 	El backend recibe únicamente el token de tarjeta; nunca recibe PAN, CVC
 	ni fecha de vencimiento.
 	"""
 	order = get_object_or_404(Order, pk=order_id)
 	if request.user.is_authenticated and order.user_id not in (None, request.user.id):
 		return Response({'detail': 'No tienes permiso para pagar esta orden.'}, status=status.HTTP_403_FORBIDDEN)
-	if order.status != Order.STATUS_PENDING:
-		return Response({'detail': 'La orden ya no está pendiente de pago.'}, status=status.HTTP_400_BAD_REQUEST)
+	if order.status != Order.STATUS_APPROVED:
+		return Response({'detail': f'El pago solo está disponible después de aprobación. Estado actual: {order.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
 	card_token = (request.data.get('card_token') or '').strip()
 	if not card_token:

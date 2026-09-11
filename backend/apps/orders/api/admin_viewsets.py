@@ -35,7 +35,10 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         STATUS_MAP = dict(Order.STATUS_CHOICES)
         # Soportar también alias en inglés por compatibilidad con clientes frontend viejos
         ALIAS_MAP = {
-            'pending': Order.STATUS_PENDING,
+            'pending': Order.STATUS_PENDING_VALIDATION,
+            'pending_validation': Order.STATUS_PENDING_VALIDATION,
+            'approved': Order.STATUS_APPROVED,
+            'pending_payment': Order.STATUS_PENDING_PAYMENT,
             'paid': Order.STATUS_PAID,
             'processing': Order.STATUS_PRODUCTION,
             'completed': Order.STATUS_DELIVERED,
@@ -57,14 +60,25 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        """Acepta/Valida la estampación de un pedido de diseño y envía notificación por correo al cliente."""
+        """Aprueba un pedido de diseño, permitiendo que el cliente proceda con el pago."""
         order = self.get_object()
-        order.status = Order.STATUS_PRODUCTION
-        order.save(update_fields=['status', 'updated_at'])
+        
+        if order.status != Order.STATUS_PENDING_VALIDATION:
+            return Response(
+                {'error': f'La orden debe estar en estado "{Order.STATUS_PENDING_VALIDATION}" para ser aprobada. Estado actual: {order.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        from django.utils import timezone
+        order.status = Order.STATUS_APPROVED
+        order.admin_approved_at = timezone.now()
+        order.admin_approved_by = request.user
+        order.save(update_fields=['status', 'admin_approved_at', 'admin_approved_by', 'updated_at'])
 
+        # Enviar notificación al cliente indicando que puede proceder con el pago
         EmailService.send_design_approval_email(order)
         return Response({
-            'message': f'La estampación de la orden #{order.order_number or order.id} ha sido aceptada y se notificó al cliente.',
+            'message': f'La orden #{order.order_number or order.id} ha sido aprobada. El cliente puede proceder con el pago.',
             'order': AdminOrderSerializer(order).data
         })
 
@@ -75,7 +89,7 @@ class AdminOrderViewSet(viewsets.ReadOnlyModelViewSet):
         if order.status != Order.STATUS_CANCELLED:
             return Response({'error': 'Solo se puede reprocesar pedidos cancelados.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        order.status = Order.STATUS_PENDING
+        order.status = Order.STATUS_PENDING_VALIDATION
         order.save(update_fields=['status', 'updated_at'])
         return Response(AdminOrderSerializer(order).data)
 

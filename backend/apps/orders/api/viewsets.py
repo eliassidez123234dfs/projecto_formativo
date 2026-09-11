@@ -80,13 +80,54 @@ class OrderViewSet(viewsets.ModelViewSet):
             orders = Order.objects.filter(user=user).order_by('-created_at')[:50]
         return Response(MyOrderSerializer(orders, many=True).data)
 
-    # ── Integración con Wompi — Parámetros de pago ──
-    @action(detail=True, methods=['get', 'post'])
+    # ── Aprobación de orden por admin ──
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def approve(self, request, pk=None):
+        """Admin aprueba el diseño de la orden. Cambia de pendiente_validacion a aprobado.
+        Solo accesible para administradores."""
+        from django.utils import timezone
+        
+        # Verificar permiso admin
+        if getattr(request.user, 'rol', None) != 'Administrador':
+            return Response(
+                {'detail': 'Solo administradores pueden aprobar órdenes.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        order = self.get_object()
+        if order.status != Order.STATUS_PENDING_VALIDATION:
+            return Response(
+                {'detail': f'La orden debe estar en estado "{Order.STATUS_PENDING_VALIDATION}" para ser aprobada. Estado actual: {order.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        order.status = Order.STATUS_APPROVED
+        order.admin_approved_at = timezone.now()
+        order.admin_approved_by = request.user
+        order.save(update_fields=['status', 'admin_approved_at', 'admin_approved_by', 'updated_at'])
+        
+        return Response({
+            'status': 'success',
+            'message': f'Orden #{order.order_number} aprobada exitosamente. Procede con el pago.',
+            'order': MyOrderSerializer(order).data,
+        })
+
+    # ── Integración con Wompi — Parámetros de pago (solo órdenes aprobadas) ──
+    @action(detail=True, methods=['get', 'post'], permission_classes=[IsAuthenticated])
     def wompi_checkout_data(self, request, pk=None):
         """Genera firma de integridad y parámetros para el checkout de Wompi.
+        Solo disponible si la orden ha sido aprobada por un administrador.
         Retorna publicKey, reference, amountInCents, currency y signature."""
         from apps.checkout.wompi import generate_signature, get_public_key
         order = self.get_object()
+        
+        # Validar que la orden esté aprobada
+        if order.status != Order.STATUS_APPROVED:
+            return Response(
+                {'detail': f'El pago solo está disponible después de que un administrador apruebe la orden. Estado actual: {order.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         amount_in_cents = int(order.total * 100)
         ref = order.order_number or f"ORD-{order.id:06d}"
         sig = generate_signature(ref, amount_in_cents, 'COP')
@@ -100,13 +141,22 @@ class OrderViewSet(viewsets.ModelViewSet):
             'customerName': order.customer_name or '',
         })
 
-    # ── Simulación de pago en sandbox ──
-    @action(detail=True, methods=['post'])
+    # ── Simulación de pago en sandbox (solo órdenes aprobadas) ──
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def pay_wompi_sandbox(self, request, pk=None):
-        """Simula un pago exitoso en sandbox. Cambia estado a 'paid' y
-        registra datos de transacción ficticios para pruebas."""
+        """Simula un pago exitoso en sandbox. Cambia estado de 'aprobado' a 'pagado' y
+        registra datos de transacción ficticios para pruebas.
+        Solo disponible si la orden ha sido previamente aprobada por admin."""
         from django.utils import timezone
         order = self.get_object()
+        
+        # Validar que la orden esté aprobada
+        if order.status != Order.STATUS_APPROVED:
+            return Response(
+                {'detail': f'El pago solo es posible si la orden está aprobada. Estado actual: {order.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         order.status = Order.STATUS_PAID
         order.payment_transaction_id = f"wompi-test-{order.id}-{int(timezone.now().timestamp())}"
         order.payment_reference = order.order_number or f"ORD-{order.id:06d}"
@@ -115,7 +165,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save(update_fields=['status', 'payment_transaction_id', 'payment_reference', 'payment_wompi_status', 'payment_confirmed_at', 'updated_at'])
         return Response({
             'status': 'success',
-            'message': f'¡Pago de la orden #{order.id} procesado con éxito vía Wompi Sandbox!',
+            'message': f'¡Pago de la orden #{order.order_number} procesado con éxito vía Wompi Sandbox!',
             'order': MyOrderSerializer(order).data,
         })
 

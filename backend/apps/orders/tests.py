@@ -156,12 +156,12 @@ class OrderAdminTests(TestCase):
         order = Order.objects.create(
             customer_name='Test',
             customer_email='test@test.com',
-            status='pending',
+            status=Order.STATUS_APPROVED,
             total='10000.00',
         )
         response = self.client.patch(
             f'/api/admin/orders/{order.id}/',
-            data=json.dumps({'status': 'paid'}),
+            data=json.dumps({'status': Order.STATUS_PAID}),
             content_type='application/json',
             **self.auth_headers,
         )
@@ -173,7 +173,7 @@ class OrderAdminTests(TestCase):
         order = Order.objects.create(
             customer_name='Test',
             customer_email='test@test.com',
-            status='pending',
+            status=Order.STATUS_APPROVED,
             total='10000.00',
         )
         response = self.client.patch(

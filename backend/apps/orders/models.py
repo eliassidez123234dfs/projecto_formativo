@@ -26,15 +26,19 @@ class Order(models.Model):
 	Ciclo de vida: pendiente → pagado → producción → enviado → entregado o cancelado."""
 
 	# ── Estados del pedido ──
-	STATUS_PENDING = 'pendiente'      # Recién creado, esperando confirmación de pago.
-	STATUS_PAID = 'pagado'            # Pago confirmado vía Wompi.
-	STATUS_PRODUCTION = 'produccion'  # En proceso de fabricación/estampación.
-	STATUS_SHIPPED = 'enviado'        # Despachado al cliente.
-	STATUS_DELIVERED = 'entregado'    # Recibido por el cliente (estado final exitoso).
-	STATUS_CANCELLED = 'cancelado'    # Anulado antes de completarse.
+	STATUS_PENDING_VALIDATION = 'pendiente_validacion'  # Recién creado, diseño en validación admin.
+	STATUS_APPROVED = 'aprobado'                         # Admin validó el diseño, listo para pago.
+	STATUS_PENDING_PAYMENT = 'pendiente_pago'           # Aprobado pero aún sin pago confirmado.
+	STATUS_PAID = 'pagado'                              # Pago confirmado vía Wompi.
+	STATUS_PRODUCTION = 'produccion'                    # En proceso de fabricación/estampación.
+	STATUS_SHIPPED = 'enviado'                          # Despachado al cliente.
+	STATUS_DELIVERED = 'entregado'                      # Recibido por el cliente (estado final exitoso).
+	STATUS_CANCELLED = 'cancelado'                      # Anulado antes de completarse.
 
 	STATUS_CHOICES = [
-		(STATUS_PENDING, 'Pendiente'),
+		(STATUS_PENDING_VALIDATION, 'Pendiente de Validación'),
+		(STATUS_APPROVED, 'Aprobado'),
+		(STATUS_PENDING_PAYMENT, 'Pendiente de Pago'),
 		(STATUS_PAID, 'Pagado'),
 		(STATUS_PRODUCTION, 'Producción'),
 		(STATUS_SHIPPED, 'Enviado'),
@@ -54,8 +58,10 @@ class Order(models.Model):
 	)
 	customer_name = models.CharField(max_length=150, blank=True, null=True)
 	customer_email = models.EmailField(blank=True)
-	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+	status = models.CharField(max_length=30, choices=STATUS_CHOICES, default=STATUS_PENDING_VALIDATION)
 	total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+	admin_approved_at = models.DateTimeField(blank=True, null=True, help_text='Timestamp cuando admin aprobó el diseño')
+	admin_approved_by = models.ForeignKey('users.Usuario', blank=True, null=True, on_delete=models.SET_NULL, related_name='approved_orders')
 
 	# ── Dirección de envío ──
 	shipping_name = models.CharField(max_length=150, blank=True, null=True)
