@@ -1,0 +1,103 @@
+direction: right
+
+Client: Cliente (Navegador Web) {
+  shape: person
+  style.fill: "#e0f2fe"
+}
+
+Frontend: Capa de Presentación (React SPA :5173) {
+  style.fill: "#f0f9ff"
+  style.stroke: "#0284c7"
+  
+  Router: React Router DOM
+  State: Context API (Cart / Theme)
+  Axios: Axios HTTP Client (Interceptors)
+  UI: Components & Pages
+}
+
+Micro3D: Microservicio 3D (Tshirt3D :5174) {
+  style.fill: "#fdf4ff"
+  style.stroke: "#c026d3"
+  Editor: Three.js / React Three Fiber
+}
+
+Backend: Capa API & Negocio (Django REST :8000) {
+  style.fill: "#f0fdf4"
+  style.stroke: "#16a34a"
+
+  Security: Seguridad & Gateway {
+    Auth: JWT Auth (httpOnly Cookie)
+    CSP: Content Security Policy
+    ViewSets: DRF Routers & Viewsets
+    Serializers: DRF Serializers (DTO)
+  }
+
+  Modules: Módulos de Negocio {
+    Users: App Users (Auth/Perfil)
+    Products: App Products (Catálogo/Variantes)
+    Carts: App Carts (Carrito)
+    Orders: App Orders (Pedidos/Invoice)
+    Checkout: App Checkout (Wompi Adapter)
+    Catalog: App Catalog (Búsquedas)
+    Models3D: App Models3D (Assets 3D)
+    Landing: App Landing (Contacto)
+  }
+
+  Services: Servicios Transversales {
+    WompiSvc: Wompi Payment Adapter
+    CloudinarySvc: Cloudinary Media Adapter
+    EmailSvc: SMTP Email Adapter
+  }
+}
+
+Data: Persistencia & Servicios Cloud {
+  style.fill: "#fff7ed"
+  style.stroke: "#ea580c"
+
+  PrimaryDB: PostgreSQL / SQLite {
+    shape: cylinder
+  }
+  MongoDB: MongoDB (Diseños & Logs) {
+    shape: cylinder
+  }
+  CloudinaryCDN: Cloudinary CDN {
+    shape: cloud
+  }
+  WompiAPI: Wompi Payment Gateway {
+    shape: cloud
+  }
+}
+
+# Flujos de comunicación
+Client -> Frontend.UI: Navegación (:5173)
+Client -> Micro3D.Editor: Personalización 3D (:5174)
+Frontend.UI -> Frontend.Axios
+Frontend.Axios -> Backend.Security.Auth: REST API / JSON (:8000/api/)
+
+Backend.Security.Auth -> Backend.Security.CSP
+Backend.Security.CSP -> Backend.Security.ViewSets
+Backend.Security.ViewSets -> Backend.Security.Serializers
+
+Backend.Security.Serializers -> Backend.Modules.Users
+Backend.Security.Serializers -> Backend.Modules.Products
+Backend.Security.Serializers -> Backend.Modules.Carts
+Backend.Security.Serializers -> Backend.Modules.Orders
+Backend.Security.Serializers -> Backend.Modules.Checkout
+
+Backend.Modules.Checkout -> Backend.Services.WompiSvc
+Backend.Modules.Orders -> Backend.Services.WompiSvc
+Backend.Modules.Products -> Backend.Services.CloudinarySvc
+Backend.Modules.Models3D -> Backend.Services.CloudinarySvc
+Backend.Modules.Users -> Backend.Services.EmailSvc
+
+Backend.Modules.Users -> Data.PrimaryDB
+Backend.Modules.Products -> Data.PrimaryDB
+Backend.Modules.Orders -> Data.PrimaryDB
+Backend.Modules.Carts -> Data.PrimaryDB
+
+Backend.Modules.Users -> Data.MongoDB
+Backend.Modules.Carts -> Data.MongoDB
+
+Backend.Services.CloudinarySvc -> Data.CloudinaryCDN: Upload / Fetch
+Backend.Services.WompiSvc -> Data.WompiAPI: Transacciones
+Data.WompiAPI -> Backend.Modules.Checkout: Webhook HMAC-SHA256

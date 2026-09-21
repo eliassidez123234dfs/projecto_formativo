@@ -1,0 +1,100 @@
+@startuml arquitectura_proyecto_red
+!theme carbon-gray
+skinparam componentStyle uml2
+skinparam backgroundColor #FFFFFF
+skinparam packageStyle rectangle
+
+title Arquitectura General del Proyecto - RED (Ropa con Estampados Digitales)
+
+package "Cliente (Navegador Web)" {
+  [Navegador / SPA Client] as Browser
+}
+
+package "Capa de Presentación (Frontend SPA - React)" {
+  package "React Application (Puerto :5173)" {
+    [React Router DOM] as Router
+    [Context API (Cart / Theme)] as State
+    [Axios Client (Interceptors + Refresh Queue)] as Axios
+    [Componentes UI & Páginas React] as UI
+  }
+  
+  package "Microservicio 3D (Puerto :5174)" {
+    [Editor 3D (Three.js / React Three Fiber)] as Editor3D
+  }
+}
+
+package "Capa API & Servicios (Backend - Django REST Framework :8000)" {
+  package "Seguridad & Gateway" {
+    [JWT Auth (httpOnly Cookie + Bearer)] as Auth
+    [Content Security Policy (CSP Middleware)] as CSP
+    [DRF Routers & ViewSets] as ViewSets
+    [Serializers (DTO Layer)] as Serializers
+  }
+  
+  package "Módulos de Negocio (Monolito Modular)" {
+    [App: Users (Auth, Perfiles, Auditoría)] as ModUsers
+    [App: Products (Catálogo, Variantes, Reviews)] as ModProducts
+    [App: Carts (Carrito Sesión ↔ Usuario)] as ModCarts
+    [App: Orders (Pedidos, Facturación Invoice)] as ModOrders
+    [App: Checkout (Wompi Adapter)] as ModCheckout
+    [App: Catalog (Búsquedas, Filtros)] as ModCatalog
+    [App: Models3D (GLB Assets)] as ModModels3D
+    [App: Landing (Contacto)] as ModLanding
+  }
+
+  package "Servicios de Inserción & Transversales" {
+    [WompiService (Pagos)] as WompiSvc
+    [CloudinaryService (CDN)] as CloudinarySvc
+    [EmailService (SMTP)] as EmailSvc
+  }
+}
+
+package "Capa de Persistencia & Almacenamiento" {
+  database "PostgreSQL / SQLite (ORM Django)" as PrimaryDB
+  database "MongoDB (NoSQL - Diseños / Logs)" as MongoBD
+  node "Cloudinary CDN (Imágenes / GLB)" as CloudinaryStorage
+  node "Pasarela Wompi (Wompi API & Webhook)" as WompiAPI
+}
+
+' Relaciones de comunicación
+Browser --> UI : HTTPS (:5173)
+Browser --> Editor3D : HTTPS (:5174)
+
+UI --> Router
+UI --> State
+State --> Axios
+Axios --> Auth : REST API / JSON (:8000/api/)
+
+Auth --> CSP
+CSP --> ViewSets
+ViewSets --> Serializers
+
+Serializers --> ModUsers
+Serializers --> ModProducts
+Serializers --> ModCarts
+Serializers --> ModOrders
+Serializers --> ModCheckout
+Serializers --> ModCatalog
+Serializers --> ModModels3D
+Serializers --> ModLanding
+
+ModCheckout --> WompiSvc
+ModOrders --> WompiSvc
+ModProducts --> CloudinarySvc
+ModModels3D --> CloudinarySvc
+ModUsers --> EmailSvc
+
+ModUsers --> PrimaryDB
+ModProducts --> PrimaryDB
+ModCarts --> PrimaryDB
+ModOrders --> PrimaryDB
+ModCatalog --> PrimaryDB
+
+ModUsers --> MongoBD
+ModCarts --> MongoBD
+
+CloudinarySvc --> CloudinaryStorage : API REST / Upload
+WompiSvc --> WompiAPI : API REST / Transacciones
+WompiAPI --> ModCheckout : Webhook HMAC-SHA256
+
+@enduml

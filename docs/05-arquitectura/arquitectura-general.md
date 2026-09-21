@@ -28,7 +28,7 @@ serializadores y vistas, pero comparten una misma base de datos y despliegue.
 | Consistencia transaccional | El flujo checkout → pago → orden requiere ACID, más fácil en una BD compartida |
 | Flexibilidad futura | La separación en módulos permite extraer microservicios si es necesario |
 
-### Diagrama de Capas
+### Diagrama de Capas (Mermaid)
 
 ```mermaid
 graph TB
@@ -74,6 +74,216 @@ graph TB
     BN4 --> CD2
     BN4 --> CD3
 ```
+
+### Diagrama de Arquitectura de Componentes (PlantUML)
+
+El archivo fuente oficial de PlantUML se encuentra en [`docs/04-diseno-uml/arquitectura-proyecto.puml`](file:///home/South_Knight/Documentos/projecto_final/projecto_formativo/docs/04-diseno-uml/arquitectura-proyecto.puml) y la imagen renderizada en [`docs/04-diseno-uml/arquitectura_proyecto_red.png`](file:///home/South_Knight/Documentos/projecto_final/projecto_formativo/docs/04-diseno-uml/arquitectura_proyecto_red.png):
+
+```plantuml
+@startuml arquitectura_proyecto_red
+!theme carbon-gray
+skinparam componentStyle uml2
+skinparam backgroundColor #FFFFFF
+
+package "Cliente (Navegador Web)" {
+  [Navegador / SPA Client] as Browser
+}
+
+package "Capa de Presentación (Frontend SPA - React)" {
+  package "React Application (Puerto :5173)" {
+    [React Router DOM] as Router
+    [Context API (Cart / Theme)] as State
+    [Axios Client (Interceptors)] as Axios
+    [Componentes UI & Páginas] as UI
+  }
+  
+  package "Microservicio 3D (Puerto :5174)" {
+    [Editor 3D (Three.js / R3F)] as Editor3D
+  }
+}
+
+package "Capa API & Servicios (Backend - Django REST :8000)" {
+  package "Seguridad & Gateway" {
+    [JWT Auth (httpOnly Cookie)] as Auth
+    [Content Security Policy (CSP)] as CSP
+    [DRF Routers & ViewSets] as ViewSets
+    [Serializers (DTO Layer)] as Serializers
+  }
+  
+  package "Módulos de Negocio" {
+    [App: Users] as ModUsers
+    [App: Products] as ModProducts
+    [App: Carts] as ModCarts
+    [App: Orders] as ModOrders
+    [App: Checkout] as ModCheckout
+    [App: Catalog] as ModCatalog
+    [App: Models3D] as ModModels3D
+    [App: Landing] as ModLanding
+  }
+
+  package "Servicios Transversales" {
+    [WompiService] as WompiSvc
+    [CloudinaryService] as CloudinarySvc
+    [EmailService] as EmailSvc
+  }
+}
+
+package "Persistencia & Servicios Externos" {
+  database "PostgreSQL / SQLite" as PrimaryDB
+  database "MongoDB (Designs/Logs)" as MongoBD
+  node "Cloudinary CDN" as CloudinaryStorage
+  node "Pasarela Wompi API" as WompiAPI
+}
+
+Browser --> UI : HTTPS (:5173)
+Browser --> Editor3D : HTTPS (:5174)
+UI --> Axios
+Axios --> Auth : REST API / JSON (:8000/api/)
+Auth --> ViewSets
+ViewSets --> Serializers
+Serializers --> ModUsers
+Serializers --> ModProducts
+Serializers --> ModCarts
+Serializers --> ModOrders
+Serializers --> ModCheckout
+
+ModCheckout --> WompiSvc
+ModOrders --> WompiSvc
+ModProducts --> CloudinarySvc
+ModUsers --> EmailSvc
+
+ModUsers --> PrimaryDB
+ModProducts --> PrimaryDB
+ModOrders --> PrimaryDB
+ModUsers --> MongoBD
+
+CloudinarySvc --> CloudinaryStorage
+WompiSvc --> WompiAPI
+WompiAPI --> ModCheckout : Webhook HMAC-SHA256
+@enduml
+```
+
+### Diagrama de Arquitectura Declarativa Moderna (D2)
+
+El archivo fuente de **D2** se encuentra en [`docs/04-diseno-uml/arquitectura-proyecto.d2`](file:///home/South_Knight/Documentos/projecto_final/projecto_formativo/docs/04-diseno-uml/arquitectura-proyecto.d2) y la imagen generada en alta resolución en [`docs/04-diseno-uml/arquitectura_proyecto_d2.png`](file:///home/South_Knight/Documentos/projecto_final/projecto_formativo/docs/04-diseno-uml/arquitectura_proyecto_d2.png):
+
+```d2
+direction: right
+
+Client: Cliente (Navegador Web) {
+  shape: person
+}
+
+Frontend: Capa de Presentación (React SPA :5173) {
+  Router: React Router DOM
+  State: Context API (Cart / Theme)
+  Axios: Axios HTTP Client (Interceptors)
+  UI: Components & Pages
+}
+
+Micro3D: Microservicio 3D (Tshirt3D :5174) {
+  Editor: Three.js / React Three Fiber
+}
+
+Backend: Capa API & Negocio (Django REST :8000) {
+  Security: Seguridad & Gateway {
+    Auth: JWT Auth (httpOnly Cookie)
+    CSP: Content Security Policy
+    ViewSets: DRF Routers & Viewsets
+    Serializers: DRF Serializers (DTO)
+  }
+
+  Modules: Módulos de Negocio {
+    Users: App Users
+    Products: App Products
+    Carts: App Carts
+    Orders: App Orders
+    Checkout: App Checkout
+    Catalog: App Catalog
+    Models3D: App Models3D
+    Landing: App Landing
+  }
+
+  Services: Servicios Transversales {
+    WompiSvc: Wompi Payment Adapter
+    CloudinarySvc: Cloudinary Media Adapter
+    EmailSvc: SMTP Email Adapter
+  }
+}
+
+Data: Persistencia & Servicios Cloud {
+  PrimaryDB: PostgreSQL / SQLite { shape: cylinder }
+  MongoDB: MongoDB (Diseños & Logs) { shape: cylinder }
+  CloudinaryCDN: Cloudinary CDN { shape: cloud }
+  WompiAPI: Wompi Payment Gateway { shape: cloud }
+}
+
+Client -> Frontend.UI: Navegación (:5173)
+Client -> Micro3D.Editor: Personalización 3D (:5174)
+Frontend.UI -> Frontend.Axios
+Frontend.Axios -> Backend.Security.Auth: REST API / JSON (:8000/api/)
+Backend.Security.Auth -> Backend.Security.ViewSets
+Backend.Security.ViewSets -> Backend.Security.Serializers
+Backend.Security.Serializers -> Backend.Modules.Users
+Backend.Security.Serializers -> Backend.Modules.Products
+Backend.Security.Serializers -> Backend.Modules.Orders
+Backend.Modules.Checkout -> Backend.Services.WompiSvc
+Backend.Services.CloudinarySvc -> Data.CloudinaryCDN
+Backend.Services.WompiSvc -> Data.WompiAPI
+```
+
+### Modelo C4 con Structurizr DSL
+
+El archivo de especificación **Structurizr DSL** para el modelo C4 se encuentra en [`docs/04-diseno-uml/workspace.dsl`](file:///home/South_Knight/Documentos/projecto_final/projecto_formativo/docs/04-diseno-uml/workspace.dsl):
+
+```structurizr
+workspace "RED Estampacion" "Arquitectura del Sistema" {
+    model {
+        user = person "Cliente Final"
+        admin = person "Administrador"
+        redSystem = softwareSystem "RED Estampación System" {
+            frontend = container "Frontend SPA" "React 19 + Vite"
+            micro3d = container "Microservicio 3D" "Three.js + R3F"
+            backend = container "Backend REST API" "Django 5.2 + DRF"
+            primaryDb = container "Base de Datos Relacional" "PostgreSQL / SQLite"
+            mongoDb = container "Base de Datos NoSQL" "MongoDB"
+        }
+        cloudinary = softwareSystem "Cloudinary CDN"
+        wompi = softwareSystem "Pasarela Wompi"
+        
+        user -> redSystem.frontend "Navega y compra"
+        user -> redSystem.micro3d "Diseña en 3D"
+        redSystem.frontend -> redSystem.backend "REST API / JSON"
+        redSystem.backend -> redSystem.primaryDb "ORM"
+        redSystem.backend -> redSystem.mongoDb "PyMongo"
+        redSystem.backend -> cloudinary "Upload Assets"
+        redSystem.backend -> wompi "Pagos / Webhook"
+    }
+}
+```
+
+### Topología de Infraestructura con Diagrams (Python)
+
+El script generador en código Python puro se encuentra en [`docs/04-diseno-uml/generate_diagram.py`](file:///home/South_Knight/Documentos/projecto_final/projecto_formativo/docs/04-diseno-uml/generate_diagram.py) y la imagen generada en [`docs/04-diseno-uml/arquitectura_diagrams_python.png`](file:///home/South_Knight/Documentos/projecto_final/projecto_formativo/docs/04-diseno-uml/arquitectura_diagrams_python.png):
+
+```python
+from diagrams import Diagram, Cluster, Edge
+from diagrams.onprem.client import User
+from diagrams.onprem.database import PostgreSQL, MongoDB
+from diagrams.programming.framework import React, Django
+from diagrams.saas.media import Cloudinary
+
+with Diagram("Arquitectura RED Estampacion", show=False, direction="LR"):
+    client = User("Cliente Web")
+    react_app = React("React 19 SPA")
+    backend = Django("Django REST API")
+    postgres = PostgreSQL("PostgreSQL 16")
+    
+    client >> react_app >> backend >> postgres
+```
+
+
+
 
 ### Diagrama de Arquitectura (ASCII)
 

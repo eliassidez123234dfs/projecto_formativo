@@ -1,0 +1,66 @@
+@startuml arquitectura_despliegue_red
+!theme carbon-gray
+skinparam componentStyle uml2
+skinparam backgroundColor #FFFFFF
+
+title Diagrama de Despliegue en Producción / Infraestructura - RED Estampación
+
+node "Dispositivo Cliente" {
+  [Navegador Web (Chrome/Firefox/Safari)] as Browser
+}
+
+node "Plataforma PaaS / Cloud (Render / VPS)" {
+  
+  package "Frontend Container / Static Host" {
+    node "Nginx / Node Web Server" {
+      [React 19 Bundle (:5173 / HTTP)] as WebApp
+    }
+  }
+
+  package "3D Microservice Container" {
+    node "Vite Node Server" {
+      [Tshirt3D App (:5174 / HTTP)] as App3D
+    }
+  }
+
+  package "Backend Container (Docker)" {
+    node "Gunicorn WSGI Application Server (:8000)" {
+      [Django REST Framework Engine] as BackendEngine
+      [Django ORM] as ORM
+      [WSGI Middleware / Security] as SecurityMW
+    }
+  }
+
+  package "Database Node" {
+    database "PostgreSQL 16 Engine (:5432)" as PostgresDB {
+      folder "Tablas Relacionales (21 tablas)"
+    }
+  }
+
+  package "NoSQL Cache & Store" {
+    database "MongoDB Cluster / Instance" as Mongo
+  }
+}
+
+cloud "Servicios SaaS / Cloud Externos" {
+  node "Cloudinary (Media CDN)" as Cloudinary
+  node "Pasarela Wompi API" as Wompi
+  node "Servidor SMTP (Gmail/SendGrid)" as SMTP
+}
+
+' Relaciones de red y despliegue
+Browser --> WebApp : HTTPS / Port 443 (:5173)
+Browser --> App3D : HTTPS / Port 443 (:5174)
+Browser --> BackendEngine : HTTPS API Requests (:8000/api/)
+
+BackendEngine --> SecurityMW
+SecurityMW --> ORM
+ORM --> PostgresDB : TCP/IP SQL Protocol (:5432)
+BackendEngine --> Mongo : PyMongo Driver (NoSQL)
+
+BackendEngine --> Cloudinary : HTTPS REST Upload
+BackendEngine --> Wompi : HTTPS REST Transactions
+BackendEngine --> SMTP : TLS / SMTP Protocol (:587)
+Wompi --> BackendEngine : Webhook Notification (HTTPS POST)
+
+@enduml
