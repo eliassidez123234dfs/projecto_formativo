@@ -176,6 +176,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
   const [name, setName] = useState(() => product?.name || '')
   const [description, setDescription] = useState(() => product?.description || '')
   const [price, setPrice] = useState(() => product?.base_price ?? '')
+  const [referencia, setReferencia] = useState(() => product?.sku || '')
   const [isActive, setIsActive] = useState(() => product?.is_active ?? true)
   const [mainImage, setMainImageFile] = useState(null)
   const [extraImages, setExtraImages] = useState([])
@@ -231,6 +232,9 @@ export default function ProductForm({ product, onClose, onSaved }) {
     if (!description.trim()) return 'La descripción es requerida.'
     if (description.trim().length > 500) return 'La descripción no puede superar 500 caracteres.'
     if (!isValidCopPrice(price)) return 'El precio base debe ser un múltiplo de 50 COP (mínimo $50).'
+    if (!referencia.trim()) return 'La referencia (SKU) es requerida.'
+    if (referencia.trim().length < 3 || referencia.trim().length > 20) return 'La referencia debe tener entre 3 y 20 caracteres.'
+    if (!/^[A-Z0-9\-]{3,20}$/.test(referencia.trim())) return 'La referencia solo puede contener letras mayúsculas, números y guiones.'
 
     // --- Imágenes (crear) ---
     if (!isEditing && !mainImage) return 'La imagen principal es requerida.'
@@ -314,6 +318,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
         name: name.trim(),
         description: description.trim(),
         base_price: Number(price),
+        referencia: referencia.trim(),
         is_active: isActive,
         category_ids: categoryIds,
       }
@@ -437,7 +442,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
         {/* ─── CUERPO DEL FORMULARIO ─── */}
         <form onSubmit={handleSubmit} className="form-modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
             <div className="form-group">
               <label style={labelStyle}>Nombre</label>
               <input style={{ ...inputStyle, fontSize: 14 }} value={name} onChange={e => setName(e.target.value)} maxLength={100} placeholder="Nombre del producto" />
@@ -447,6 +452,11 @@ export default function ProductForm({ product, onClose, onSaved }) {
               <label style={labelStyle}>Precio base (COP)</label>
               <input style={{ ...inputStyle, fontSize: 14 }} type="number" value={price} onChange={e => setPrice(e.target.value)} min="50" step="50" placeholder="Múltiplo de 50" />
               <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Mínimo $50 COP, múltiplo de 50.</small>
+            </div>
+            <div className="form-group">
+              <label style={labelStyle}>Referencia (SKU)</label>
+              <input style={{ ...inputStyle, fontSize: 14 }} value={referencia} onChange={e => setReferencia(e.target.value.toUpperCase())} maxLength={20} placeholder="Ej: RED-CAM-01" />
+              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>3-20 caracteres, alfanumérico mayúsculas.</small>
             </div>
           </div>
 
