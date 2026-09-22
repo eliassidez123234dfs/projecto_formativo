@@ -18,8 +18,6 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
   fetchCategories,
-  createProduct,
-  updateProduct,
   createProductImage,
   updateProductImage,
   deleteProductImage,
@@ -28,6 +26,7 @@ import {
   updateProductVariant,
   deleteProductVariant,
 } from '../services/api'
+import { createMicroProduct, updateMicroProduct } from '../services/productService'
 import { formatError as errMsg } from '../utils/formatError'
 
 // ─── CONSTANTES: TALLAS Y COLORES ───
@@ -174,12 +173,12 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
   // ─── FUNCIONES DE PERSISTENCIA (CRUD) ───
   async function patchProduct(payload) {
-    return updateProduct(product.id, payload)
+    return updateMicroProduct(product.id, payload)
   }
 
   async function createProductRecord() {
-    return createProduct({
-      name, description, base_price: Number(price), is_active: isActive, category_ids: categoryIds,
+    return createMicroProduct({
+      name, description, precioBase: Number(price), is_active: isActive,
     })
   }
 
