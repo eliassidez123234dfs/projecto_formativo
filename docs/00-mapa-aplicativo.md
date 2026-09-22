@@ -4,23 +4,28 @@
 
 ## 1. Vista general
 
-RED es una plataforma de comercio electrónico para prendas personalizables. Está organizada en tres aplicaciones ejecutables:
+RED es una plataforma de comercio electrónico para prendas personalizables. Está organizada en cuatro aplicaciones ejecutables:
 
 ```text
 Frontend React/Vite :5173
         |
         | REST + JWT + cookie de sesión
-        v
-Backend Django/DRF :8000 ---- PostgreSQL/SQLite
-        |                     MongoDB Atlas
-        |                     Cloudinary
-        |                     Wompi Sandbox
+        |
+        +---> Backend Django/DRF :8000 ---- PostgreSQL/SQLite
+        |         |                     MongoDB Atlas
+        |         |                     Cloudinary
+        |         |                     Wompi Sandbox
+        |
+        +---> Microservicio Spring Boot :8082 (PostgreSQL) / :8083 (MongoDB)
+                |                     CRUD productos
+                |
         v
 Editor 3D React/Three.js :5174
 ```
 
 - `frontend/`: catálogo, autenticación, carrito, checkout y panel administrativo.
 - `backend/`: reglas de negocio, API, autenticación, stock, órdenes y facturas.
+- `Proyecto2_JPA/servicio/`: microservicio Spring Boot para CRUD de productos.
 - `microservices/Tshirt3D/`: editor 3D independiente que recibe un handoff firmado del backend.
 - `docs/`: documentación funcional, técnica, pruebas y despliegue.
 

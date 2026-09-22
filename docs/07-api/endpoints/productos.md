@@ -1,112 +1,104 @@
 # Endpoints de Productos
 
-## Base: `/api/products/`
+## Arquitectura Dual: Django + Microservicio Spring Boot
 
-### GET /api/products/
-Lista todos los productos.
+Los productos se gestionan mediante **dos backends**:
 
-**Autenticacion:** Ninguna (publico)
+| Operación | Backend | Endpoint |
+|-----------|---------|----------|
+| Crear producto | Spring Boot | `POST /api/v1/productos` |
+| Listar productos (admin) | Spring Boot | `GET /api/v1/productos` |
+| Ver producto (admin) | Spring Boot | `GET /api/v1/productos/{id}` |
+| Editar producto | Spring Boot | `PUT /api/v1/productos/{id}` |
+| Eliminar producto (soft delete) | Spring Boot | `DELETE /api/v1/productos/{id}` |
+| Imágenes | Django | `/api/products/{id}/images/` |
+| Variantes | Django | `/api/products/{id}/variants/` |
+| Categorías | Django | `/api/catalog/categories/` |
+| Checklist/Publicar | Django | `/api/products/{id}/checklist/`, `/publish/` |
+| Toggle active | Django | `/api/products/{id}/toggle-active/` |
+| Catálogo público | Django | `/api/catalog/` |
+
+**Adaptador:** `frontend/src/services/productService.js` traduce las respuestas del microservicio al formato DRF.
+
+---
+
+## Base: `/api/v1/productos` (Microservicio Spring Boot)
+
+### GET /api/v1/productos
+Lista productos paginados (excluye BORRADO).
 
 **Parametros Query:**
-| Parametro | Tipo | Descripcion |
-|-----------|------|-------------|
-| `search` | string | Busqueda por nombre y descripcion |
-| `is_active` | bool | Filtrar por estado activo |
-| `is_approved` | bool | Filtrar por estado aprobado |
-| `min_price` | decimal | Precio minimo |
-| `max_price` | decimal | Precio maximo |
-| `ordering` | string | Campo de ordenamiento (name, -name, base_price, -base_price, created_at) |
-| `page` | int | Numero de pagina |
-| `page_size` | int | Elementos por pagina |
+| Parametro | Tipo | Default | Descripcion |
+|-----------|------|---------|-------------|
+| `page` | int | 0 | Numero de pagina (base 0) |
+| `size` | int | 10 | Elementos por pagina |
+| `sortBy` | string | id | Campo de ordenamiento |
+| `sortDir` | string | asc | Direccion (asc/desc) |
+| `nombre` | string | - | Busqueda AND con estado |
+| `estado` | enum | - | ACTIVO, INACTIVO, BORRADO |
+| `search` | string | - | Busqueda OR en nombre/descripcion/referencia |
 
 **Response (200):**
 ```json
 {
-    "count": 30,
-    "next": "http://localhost:8000/api/products/?page=2",
-    "previous": null,
-    "results": [
+    "content": [
         {
             "id": 1,
-            "name": "Camiseta Algodon",
-            "description": "Camiseta de algodon 100%",
-            "base_price": "29.99",
-            "is_active": true,
-            "is_approved": true,
-            "main_image": "http://localhost:8000/media/products/2026/07/camiseta.jpg",
-            "images_count": 3,
-            "variants_count": 4,
-            "checklist": {
-                "name": true,
-                "description": true,
-                "main_image": true,
-                "variant_with_stock": true,
-                "ready_to_publish": true
-            },
-            "ready_to_publish": true,
-            "created_at": "2026-07-01T12:00:00Z",
-            "updated_at": "2026-07-01T13:00:00Z"
+            "nombre": "Camiseta Algodon",
+            "descripcion": "Camiseta de algodon 100%",
+            "precioBase": 50000.00,
+            "referencia": "RED-CAM-01",
+            "stock": 100,
+            "estado": "ACTIVO",
+            "aprobado": true,
+            "createdAt": "2026-09-22T10:00:00",
+            "updatedAt": "2026-09-22T10:00:00"
         }
-    ]
+    ],
+    "totalElements": 30,
+    "totalPages": 3,
+    "pageNumber": 0,
+    "pageSize": 10,
+    "last": false
 }
 ```
 
-### GET /api/products/{id}/
-Obtiene el detalle completo de un producto.
-
-**Autenticacion:** Ninguna (publico)
-
-**Response (200):**
-```json
-{
-    "id": 1,
-    "name": "Camiseta Algodon",
-    "description": "Camiseta de algodon 100%",
-    "base_price": "29.99",
-    "is_active": true,
-    "is_approved": true,
-    "main_image": "http://localhost:8000/media/products/2026/07/camiseta.jpg",
-    "images": [
-        {
-            "id": 1,
-            "image": "/media/products/2026/07/camiseta.jpg",
-            "image_url": "http://localhost:8000/media/products/2026/07/camiseta.jpg",
-            "is_main": true,
-            "order": 1,
-            "created_at": "2026-07-01T12:00:00Z"
-        }
-    ],
-    "variants": [
-        {
-            "id": 1,
-            "size": "M",
-            "color": "Rojo",
-            "stock": 50,
-            "display_label": "Talla M -- Rojo"
-        }
-    ],
-    "created_at": "2026-07-01T12:00:00Z",
-    "updated_at": "2026-07-01T13:00:00Z",
-    "ready_to_publish": true,
-    "publication_message": "Listo para publicar"
-}
-```
-
-### POST /api/products/
-Crea un nuevo producto (solo admin/autenticado).
-
-**Autenticacion:** JWT Requerido
+### POST /api/v1/productos
+Crea un nuevo producto.
 
 **Request:**
 ```json
 {
-    "name": "Camiseta Algodon",
-    "description": "Camiseta de algodon 100% de alta calidad",
-    "base_price": 29.99,
-    "is_active": false,
-    "is_approved": false
+    "nombre": "Camiseta Algodon",
+    "descripcion": "Camiseta de algodon 100% de alta calidad",
+    "precioBase": 50000.00,
+    "referencia": "RED-CAM-01",
+    "stock": 100
 }
 ```
+
+**Validaciones Jakarta:**
+- `nombre`: @NotBlank, @Size(3-100), @Pattern(sin caracteres de control)
+- `precioBase`: @NotNull, @DecimalMin("50.0")
+- `referencia`: @NotBlank, @Pattern(^[A-Z0-9\-]{3,20}$)
+
+**Response (201):** Producto creado con ID asignado.
+
+### PUT /api/v1/productos/{id}
+Actualiza completamente un producto (reemplaza todos los campos).
+
+### DELETE /api/v1/productos/{id}
+Eliminación lógica — cambia estado a BORRADO. Response: 204 No Content.
+
+---
+
+## Base: `/api/products/` (Django — Imágenes, Variantes, Checklist)
+
+### GET /api/products/
+Lista todos los productos.
+
+### POST /api/products/
+Crea un nuevo producto (solo admin/autenticado).
 
 ### PATCH /api/products/{id}/
 Actualiza parcialmente un producto.
@@ -118,20 +110,13 @@ Elimina un producto. No permite eliminar si tiene ordenes activas.
 Obtiene el checklist de requisitos para publicar un producto.
 
 ### POST /api/products/{id}/publish/
-Publica un producto (lo activa y aprueba). Valida `can_be_published`.
+Publica un producto (lo activa y aprueba).
 
 ### PATCH /api/products/{id}/toggle-active/
 Invierte el estado `is_active` del producto.
 
 ### POST /api/products/{id}/images/
-Agrega una imagen al producto.
-
-**Request (multipart/form-data):**
-| Campo | Tipo | Descripcion |
-|-------|------|-------------|
-| `image` | file | Archivo de imagen (JPG/PNG, max 2MB) |
-| `is_main` | bool | Marcar como imagen principal (opcional) |
-| `order` | int | Orden de visualizacion (opcional) |
+Agrega una imagen al producto (multipart/form-data).
 
 ### PATCH /api/products/{id}/images/{image_id}/
 Actualiza orden y/o imagen principal.
@@ -142,104 +127,21 @@ Elimina una imagen del producto.
 ### PATCH /api/products/{id}/images/reorder/
 Reordena las imagenes del producto.
 
-**Request:**
-```json
-{
-    "order": [3, 1, 2]
-}
-```
-
 ### POST /api/products/{id}/variants/
 Agrega una variante al producto.
-
-**Request:**
-```json
-{
-    "size": "L",
-    "color": "Azul",
-    "stock": 30
-}
-```
 
 ### GET /api/products/{id}/audits/
 Obtiene el historial de auditoria del producto.
 
-### GET /api/products/search/
-Busqueda avanzada de productos con filtros combinables.
-
-**Parametros Query adicionales:**
-| Parametro | Tipo | Descripcion |
-|-----------|------|-------------|
-| `has_images` | bool | Productos con imagenes |
-| `has_stock` | bool | Productos con stock disponible |
-
-### POST /api/products/{id}/add-to-cart/
-Agrega el producto al carrito de la sesion actual.
-
-**Request:**
-```json
-{
-    "product_id": 1,
-    "variant_id": 2,
-    "quantity": 2
-}
-```
-
 ---
 
-## Base: `/api/catalog/`
+## Base: `/api/catalog/` (Django — Catálogo Público)
 
 ### GET /api/catalog/
 Catalogo publico de productos activos y aprobados.
 
-**Parametros Query:**
-| Parametro | Tipo | Descripcion |
-|-----------|------|-------------|
-| `q` | string | Busqueda textual |
-| `category` | int | ID de categoria |
-| `min_price` | decimal | Precio minimo |
-| `max_price` | decimal | Precio maximo |
-| `size` | string | Talla a filtrar |
-| `color` | string | Color a filtrar |
-| `has_stock` | bool | Solo con stock |
-| `ordering` | string | Ordenamiento (name, -name, base_price, -base_price, popularity) |
-| `page` | int | Pagina |
-
-**Response (200):**
-```json
-{
-    "count": 25,
-    "next": "http://localhost:8000/api/catalog/?page=2",
-    "previous": null,
-    "results": [...],
-    "filters": {
-        "categories": [{"id": 1, "name": "Camisetas", "count": 10}],
-        "price_range": {"min": 9.99, "max": 99.99}
-    },
-    "popular_searches": ["camiseta algodon", "polera negra"]
-}
-```
-
 ### GET /api/catalog/{id}/
 Detalle de producto en el catalogo.
 
-### GET /api/catalog/filters/
-Obtiene los filtros disponibles sin paginacion.
-
-### GET /api/catalog/featured/
-Productos destacados (top 12 con stock e imagenes).
-
-### GET /api/catalog/deals/
-Ofertas (top 8 productos recientes con stock).
-
-### GET /api/catalog/popular-searches/
-Top 20 busquedas populares.
-
-### GET /api/catalog/search-history/
-Historial de busqueda de la sesion actual.
-
 ### GET /api/catalog/categories/
 Lista de categorias activas.
-
-### GET /api/catalog/categories/{id}/products/
-Productos de una categoria especifica.

@@ -11,12 +11,37 @@
 
 ## 1. Estilo Arquitectónico
 
-El sistema RED implementa un **Monolito Modular con APIs REST**, complementado con el patrón
-**MVC (Modelo-Vista-Serializador)** en el backend Django REST y **Componentes (SPA)** en el frontend React.
+El sistema RED implementa una **Arquitectura de Microservicios Ligera** compuesta por:
 
-El backend Django se organiza en aplicaciones independientes (módulos) que se comunican a través de
-APIs REST. Cada módulo tiene una responsabilidad específica y mantiene su propia lógica de negocio,
-serializadores y vistas, pero comparten una misma base de datos y despliegue.
+1. **Backend Django** (`:8000`) — Monolito modular con APIs REST que maneja la lógica de negocio completa: auth, carrito, órdenes, pagos, imágenes, variantes, categorías, catálogo público.
+2. **Microservicio Spring Boot** (`:8082` PostgreSQL / `:8083` MongoDB) — CRUD especializado de productos con Arquitectura Orientada al Dominio (ODD/DDD), validaciones Jakarta, rate limiting y soft delete.
+3. **Frontend React** (`:5173`) — SPA que consume ambos backends mediante proxy de Vite.
+4. **Microservicio 3D** (`:5174`) — Editor Three.js independiente.
+
+
+### Comunicación entre Servicios
+
+```text
+Frontend React (:5173)
+    │
+    ├── /api/v1/*  ──► Spring Boot (:8082/:8083)
+    │   Producto CRUD: crear, listar, editar, eliminar
+    │   Adaptador: productService.js traduce respuesta
+    │
+    └── /api/*     ──► Django (:8000)
+        Imágenes, variantes, categorías, carrito,
+        órdenes, auth, catálogo, checklist, aprobación
+```
+
+El **patrón Adaptador** (`frontend/src/services/productService.js`) traduce las respuestas del microservicio Spring Boot al formato DRF que los componentes React ya esperan:
+
+```text
+Spring Boot: { content: [{nombre, precioBase, stock, estado}], totalElements: N }
+                          │
+                   productService.js (adaptProduct + adaptPageResponse)
+                          │
+React recibe:  { results: [{name, base_price, total_stock, is_active}], count: N }
+```
 
 ### ¿Por qué Monolito Modular y no Microservicios?
 
@@ -283,8 +308,6 @@ with Diagram("Arquitectura RED Estampacion", show=False, direction="LR"):
 ```
 
 
-
-
 ### Diagrama de Arquitectura (ASCII)
 
 ```
@@ -433,7 +456,8 @@ with Diagram("Arquitectura RED Estampacion", show=False, direction="LR"):
 | **MVC (Modelo-Vista-Controlador)** | Django Models (M), DRF Views/Viewsets (C), Serializers (V) | Todo el backend |
 | **Repository** | Querysets de Django ORM | Models, Viewsets |
 | **Singleton** | Context API de React (ThemeContext, CartContext) | Frontend |
-| **Proxy** | Proxy de Vite para /api/ y /media/ | `vite.config.js` |
+| **Proxy** | Proxy de Vite para /api/, /api/v1/ y /media/ | `vite.config.js` |
+| **Adapter** | `productService.js` traduce respuestas Spring Boot a formato DRF | `services/productService.js` |
 | **Observer** | Django Signals (validaciones en models.clean/save) | Models |
 | **Strategy** | Permisos por ViewSet (AllowAny, IsAuthenticated, AdminPermission) | Viewsets |
 | **Chain of Responsibility** | Middleware de Django (CORS, Session, Auth, CSRF, CSP) | `settings.py` |
@@ -628,14 +652,9 @@ Logging y monitoreo de errores del frontend.
 | Archivo | Responsabilidad |
 |---------|----------------|
 | `authService.js` | Gestión de JWT en memoria, restauración de sesión |
-| `api.js` | Cliente Axios con interceptors, refresh queue, endpoints |
-
-### 5.2 Servicios (`services/`)
-
-| Archivo | Responsabilidad |
-|---------|----------------|
-| `authService.js` | Gestión de JWT en memoria, restauración de sesión |
 | `api.js` | Cliente Axios con interceptors, refresh queue, 3 clientes (api, publicApi, sessionApi) |
+| `microservice.js` | Cliente Axios para Spring Boot (`/api/v1`) con JWT |
+| `productService.js` | Adaptador: traduce respuestas Spring Boot al formato DRF del frontend |
 
 ### 5.3 Contextos (`context/`)
 
@@ -988,3 +1007,4 @@ apps/<nombre_app>/
 | **JWT + Sesion** | Solo JWT | El carrito necesita sesion para usuarios anonimos; JWT para autenticacion de API |
 | **SQLite en desarrollo** | PostgreSQL desde inicio | SQLite no requiere instalacion de servidor, agiliza el setup inicial; migracion a PG es directa con Django ORM |
 | **Microservicio 3D separado** | Integrado en frontend | El editor 3D tiene requisitos tecnicos especificos (Three.js, Tailwind) que justifican su aislamiento |
+| **Microservicio Spring Boot para productos** | Todo en Django | Spring Boot ofrece JPA/MongoDB intercambiable, validaciones Jakarta, rate limiting, y soft delete con estado BORRADO — demuestra integración de tecnologías heterogéneas |

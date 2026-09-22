@@ -10,6 +10,14 @@
 
 - npm 10 o superior
 
+- Java 21 o superior (para microservicio Spring Boot)
+
+- Maven o Maven Wrapper incluido (para microservicio Spring Boot)
+
+- PostgreSQL 15+ (opcional, para microservicio JPA)
+
+- MongoDB 6+ (opcional, para microservicio MongoDB)
+
 - Docker y Docker Compose (opcional)
 
 ## Clonar el repositorio
@@ -119,6 +127,40 @@ python manage.py runserver
 
 El backend estara disponible en: `http://localhost:8000/`
 
+### Microservicio Spring Boot (CRUD Productos)
+
+El microservicio maneja el CRUD de productos con arquitectura ODD/DDD.
+Disponible en dos versiones: PostgreSQL (`:8082`) y MongoDB (`:8083`).
+
+```
+# PostgreSQL (rama main de Proyecto2_JPA)
+cd ../Proyecto2_JPA/servicio
+
+# Verificar que PostgreSQL corra en :5432 (via Docker o local)
+# cp src/main/resources/application.properties.example src/main/resources/application.properties
+# Editar DB_URL si es necesario
+
+# MongoDB (rama java/mongoDB de Proyecto2_JPA)
+cd ../Proyecto2_JPA/servicio
+# cp src/main/resources/application-mongo.properties.example src/main/resources/application.properties
+# Editar MONGO_URL si es necesario
+
+# Ejecutar (PostgreSQL - puerto 8082)
+./mvnw spring-boot:run -Dspring.profiles.active=default
+
+# Ejecutar (MongoDB - puerto 8083)
+./mvnw spring-boot:run -Dspring.profiles.active=mongo
+
+# Verificar: http://localhost:8082/api/v1/productos (o :8083 para MongoDB)
+```
+
+**Variables de entorno del microservicio** (en `application.properties`):
+| Variable | Descripción |
+| - | - |
+| `server.port` | Puerto (`8082` PostgreSQL, `8083` MongoDB) |
+| `spring.datasource.url` | URL PostgreSQL (default: `postgresql://localhost:5432/productos_db`) |
+| `spring.data.mongodb.uri` | URL MongoDB (default: `mongodb://localhost:27017/productos_db`) |
+
 ### Frontend (React + Vite)
 
 ```
@@ -175,10 +217,10 @@ docker compose up --build
 Esto iniciara:
 
 - Backend en `http://127.0.0.1:8000/`
-
 - Frontend en `http://127.0.0.1:5173/`
-
 - Microservicio Editor 3D en `http://127.0.0.1:5174/`
+
+**Nota:** El microservicio Spring Boot (`Proyecto2_JPA`) se ejecuta por separado, ya que está en un repositorio independiente.
 
 ### Comandos utiles de Docker
 
