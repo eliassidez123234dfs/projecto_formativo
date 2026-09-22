@@ -6,8 +6,9 @@
  * - Las imágenes existentes se pueden reordenar, marcar como principal o eliminar.
  * - Los precios deben ser múltiplos de 50 COP (regla de negocio).
  * - Las variantes nuevas y existentes se gestionan por separado para simplificar el PATCH.
- * - Las operaciones de imagen (eliminar, reordenar, marcar principal) se difieren al submit
- *   para garantizar que si hay error, nada se guarde parcialmente.
+ * - Las operaciones de imagen (eliminar, reordenar, marcar principal) se difieren al submit.
+ * - VALIDACIÓN COMPLETA client-side antes de cualquier llamada API (refleja reglas del backend).
+ * - ROLLBACK automático: si falla cualquier paso después de guardar el producto, se revierte.
  */
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -21,7 +22,7 @@ import {
   updateProductVariant,
   deleteProductVariant,
 } from '../services/api'
-import { createProduct, updateProduct } from '../services/api'
+import { createProduct, updateProduct, deleteProduct } from '../services/api'
 import { formatError as errMsg } from '../utils/formatError'
 
 // ─── CONSTANTES: TALLAS Y COLORES ───
@@ -74,6 +75,9 @@ function colorFor(value) {
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png']
 const MAX_FILE_SIZE = 2 * 1024 * 1024
 const MIN_RESOLUTION = 400
+const MAX_IMAGES = 5
+const MAX_SIZES_PER_PRODUCT = 4
+const MAX_COLORS_PER_PRODUCT = 10
 
 async function validateImageFile(file) {
   const ext = '.' + file.name.split('.').pop().toLowerCase()
@@ -219,22 +223,67 @@ export default function ProductForm({ product, onClose, onSaved }) {
     setImageItems(next)
   }
 
-  // ─── VALIDACION ───
+  // ─── VALIDACIÓN COMPLETA (refleja TODAS las reglas del backend) ───
   function validate() {
-    if (!name.trim()) return 'Nombre requerido'
-    if (!description.trim()) return 'Descripción requerida'
-    if (!isValidCopPrice(price)) return 'El precio base en COP debe ser >= 50 y múltiplo de 50'
-    for (const v of [...existingVariants, ...variants]) {
-      if (v.price_variant != null && v.price_variant !== '' && !isValidCopPrice(v.price_variant)) {
-        return `El precio de la variante "${v.size || '?'}/${v.color || '?'}" debe ser >= 50 y múltiplo de 50, o dejarse vacío`
+    // --- Producto ---
+    if (!name.trim()) return 'El nombre es requerido.'
+    if (name.trim().length > 100) return 'El nombre no puede superar 100 caracteres.'
+    if (!description.trim()) return 'La descripción es requerida.'
+    if (description.trim().length > 500) return 'La descripción no puede superar 500 caracteres.'
+    if (!isValidCopPrice(price)) return 'El precio base debe ser un múltiplo de 50 COP (mínimo $50).'
+
+    // --- Imágenes (crear) ---
+    if (!isEditing && !mainImage) return 'La imagen principal es requerida.'
+
+    // --- Imágenes (editar): max 5 total ---
+    if (isEditing) {
+      const totalImages = imageItems.length + extraImages.length
+      if (totalImages > MAX_IMAGES) return `Máximo ${MAX_IMAGES} imágenes por producto (actualmente ${totalImages}).`
+      if (imageItems.length === 0 && !mainImage && extraImages.length === 0) {
+        return 'El producto debe tener al menos una imagen.'
       }
     }
-    if (!isEditing && !mainImage) return 'Imagen principal requerida'
-    if (!isEditing && variants.length === 0) return 'Agregar al menos una variante'
-    const remainingImages = imageItems.length
-    if (isEditing && remainingImages === 0 && !mainImage && extraImages.length === 0) {
-      return 'El producto debe tener al menos una imagen'
+
+    // --- Variantes (crear) ---
+    if (!isEditing && variants.length === 0) return 'Agregar al menos una variante.'
+
+    // --- Validar todas las variantes (existentes + nuevas) ---
+    const allVariants = [...existingVariants, ...variants]
+    const sizes = new Set()
+    const colors = new Set()
+    const combos = new Set()
+
+    for (const v of allVariants) {
+      const label = `Variante "${v.size || '?'}/${v.color || '?'}"`
+
+      if (!v.size || !v.size.trim()) return `${label}: La talla es requerida.`
+      if (v.size.trim().length > 20) return `${label}: La talla no puede superar 20 caracteres.`
+
+      if (!v.color || !v.color.trim()) return `${label}: El color es requerido.`
+      if (v.color.trim().length > 20) return `${label}: El color no puede superar 20 caracteres.`
+
+      if (v.stock < 0) return `${label}: El stock no puede ser negativo.`
+
+      if (v.price_variant != null && v.price_variant !== '' && !isValidCopPrice(v.price_variant)) {
+        return `${label}: El precio de variante debe ser múltiplo de 50 COP (mínimo $50).`
+      }
+
+      // color_hex validation
+      const hex = v.color_hex || (colorFor(v.color)?.hex || '')
+      if (hex && !/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+        return `${label}: El color HEX debe tener formato #RRGGBB.`
+      }
+
+      sizes.add(v.size.trim().toLowerCase())
+      colors.add(v.color.trim().toLowerCase())
+      const combo = `${v.size.trim().toLowerCase()}|${v.color.trim().toLowerCase()}`
+      if (combos.has(combo)) return `Cada combinación talla/color debe ser única por producto.`
+      combos.add(combo)
     }
+
+    if (sizes.size > MAX_SIZES_PER_PRODUCT) return `Máximo ${MAX_SIZES_PER_PRODUCT} tallas diferentes por producto.`
+    if (colors.size > MAX_COLORS_PER_PRODUCT) return `Máximo ${MAX_COLORS_PER_PRODUCT} colores diferentes por producto.`
+
     return null
   }
 
@@ -245,23 +294,32 @@ export default function ProductForm({ product, onClose, onSaved }) {
     }
   }
 
-  // ─── HANDLER DE ENVÍO (Transaccional: valida todo primero, luego ejecuta) ───
+  // ─── HANDLER DE ENVÍO (Validación completa + Rollback) ───
   async function handleSubmit(e) {
     e.preventDefault()
 
+    // Paso 0: Validación client-side completa
     const error = validate()
     if (error) return toast.error(error)
 
     setSaving(true)
+    const createdIds = { productId: null, imageIds: [], variantIds: [] }
+
     try {
+      // Paso 1: Validar imágenes client-side
       await validateAllImages()
 
       let savedProduct = product
       const basePayload = {
-        name, description, base_price: Number(price), is_active: isActive, category_ids: categoryIds,
+        name: name.trim(),
+        description: description.trim(),
+        base_price: Number(price),
+        is_active: isActive,
+        category_ids: categoryIds,
       }
 
       if (isEditing) {
+        // ─── FLUJO EDITAR ───
         // Paso 1: Eliminar imágenes marcadas
         for (const imageId of deletedImageIds) {
           await deleteProductImage(product.id, imageId)
@@ -273,8 +331,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
         // Paso 3: Guardar variantes existentes
         for (const variant of existingVariants) {
           await updateProductVariant(savedProduct.id, variant.id, {
-            size: variant.size,
-            color: variant.color,
+            size: variant.size.trim(),
+            color: variant.color.trim(),
             color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
             color_nombre: variant.color_nombre || variant.color,
             stock: variant.stock,
@@ -290,14 +348,15 @@ export default function ProductForm({ product, onClose, onSaved }) {
         // Paso 5: Crear variantes nuevas
         for (const variant of variants) {
           if (!variant.size || !variant.color) continue
-          await createProductVariant(savedProduct.id, {
-            size: variant.size,
-            color: variant.color,
-            color_hex: variant.color_hex,
+          const created = await createProductVariant(savedProduct.id, {
+            size: variant.size.trim(),
+            color: variant.color.trim(),
+            color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
             color_nombre: variant.color_nombre || variant.color,
             stock: variant.stock,
             price_variant: variant.price_variant,
           })
+          createdIds.variantIds.push(created.id)
         }
 
         // Paso 6: Subir imágenes nuevas
@@ -305,7 +364,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
           const form = new FormData()
           form.append('image', file)
           form.append('is_main', 'false')
-          await createProductImage(savedProduct.id, form)
+          const createdImg = await createProductImage(savedProduct.id, form)
+          createdIds.imageIds.push(createdImg.id)
         }
 
         // Paso 7: Marcar imagen principal si cambió
@@ -319,33 +379,43 @@ export default function ProductForm({ product, onClose, onSaved }) {
           await reorderProductImages(savedProduct.id, nextImages.map((img, i) => ({ id: img.id, order: i + 1 })))
         }
       } else {
-        // Crear producto
+        // ─── FLUJO CREAR ───
+        // Paso 1: Crear producto
         savedProduct = await createProduct(basePayload)
+        createdIds.productId = savedProduct.id
 
-        // Subir imagen principal
+        // Paso 2: Subir imagen principal
         const mainForm = new FormData()
         mainForm.append('image', mainImage)
         mainForm.append('is_main', 'true')
-        await createProductImage(savedProduct.id, mainForm)
+        const createdMainImg = await createProductImage(savedProduct.id, mainForm)
+        createdIds.imageIds.push(createdMainImg.id)
 
-        // Crear variantes
+        // Paso 3: Crear variantes
         for (const variant of variants) {
           if (!variant.size || !variant.color) continue
-          await createProductVariant(savedProduct.id, {
-            size: variant.size,
-            color: variant.color,
-            color_hex: variant.color_hex,
+          const created = await createProductVariant(savedProduct.id, {
+            size: variant.size.trim(),
+            color: variant.color.trim(),
+            color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
             color_nombre: variant.color_nombre || variant.color,
             stock: variant.stock,
             price_variant: variant.price_variant,
           })
+          createdIds.variantIds.push(created.id)
         }
       }
 
       toast.success(isEditing ? 'Producto actualizado' : 'Producto creado')
       onSaved && onSaved()
     } catch (err) {
-      toast.error(errMsg(err, 'Error'))
+      // ─── ROLLBACK: Si se creó algo, eliminarlo ───
+      if (createdIds.productId) {
+        try {
+          await deleteProduct(createdIds.productId)
+        } catch (_) { /* ignorar error de rollback */ }
+      }
+      toast.error(errMsg(err, 'Error al guardar'))
     } finally {
       setSaving(false)
     }
@@ -371,6 +441,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
             <div className="form-group">
               <label style={labelStyle}>Nombre</label>
               <input style={{ ...inputStyle, fontSize: 14 }} value={name} onChange={e => setName(e.target.value)} maxLength={100} placeholder="Nombre del producto" />
+              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{name.length}/100 caracteres</small>
             </div>
             <div className="form-group">
               <label style={labelStyle}>Precio base (COP)</label>
@@ -382,6 +453,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
           <div className="form-group">
             <label style={labelStyle}>Descripción</label>
             <textarea style={{ ...inputStyle, fontSize: 14, minHeight: 80, resize: 'vertical' }} value={description} onChange={e => setDescription(e.target.value)} maxLength={500} placeholder="Descripción del producto" />
+            <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{description.length}/500 caracteres</small>
           </div>
 
           <div className="form-group">
@@ -420,7 +492,9 @@ export default function ProductForm({ product, onClose, onSaved }) {
             <div className="form-group">
               <label style={labelStyle}>Agregar imágenes adicionales</label>
               <input type="file" multiple accept="image/png, image/jpeg" onChange={e => setExtraImages(Array.from(e.target.files || []))} style={inputStyle} />
-              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Max 5 imagenes, JPG/PNG, max 2MB, min 400x400px.</small>
+              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                Max {MAX_IMAGES} imagenes, JPG/PNG, max 2MB, min 400x400px. ({imageItems.length + extraImages.length}/{MAX_IMAGES})
+              </small>
             </div>
           )}
 
@@ -472,7 +546,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
               </button>
             </div>
             <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-              Cada combinación de talla y color es una variante con su propio stock y precio opcional (COP).
+              Cada combinación de talla y color es una variante con su propio stock y precio opcional (COP). Max {MAX_SIZES_PER_PRODUCT} tallas, {MAX_COLORS_PER_PRODUCT} colores.
             </p>
 
             {existingVariants.length > 0 && (
