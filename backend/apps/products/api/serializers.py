@@ -83,7 +83,8 @@ class ProductWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'description', 'base_price', 'is_active', 'is_approved',
+            'id', 'name', 'description', 'base_price', 'referencia', 'stock',
+            'is_active', 'is_approved',
             'category_ids', 'categories', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'categories', 'created_at', 'updated_at']
@@ -150,7 +151,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'description', 'base_price', 'is_active', 'is_approved',
+            'id', 'name', 'description', 'base_price', 'referencia', 'stock',
+            'is_active', 'is_approved',
             'main_image', 'images_count', 'variants_count', 'total_stock',
             'checklist', 'ready_to_publish', 'categories',
             'created_at', 'updated_at',
