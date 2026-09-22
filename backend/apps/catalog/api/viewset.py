@@ -42,8 +42,8 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
     """Catálogo público de productos. Solo muestra productos activos y aprobados.
     Soporta búsqueda textual, filtros combinables, ordenación, paginación,
     registro de sesión, historial y búsquedas populares."""
-    queryset = Product.objects.filter(is_active=True, is_approved=True).prefetch_related(
-        'images', 'variants', 'categories', 'categories__category'
+    queryset = Product.objects.filter(is_active=True, is_approved=True).select_related().prefetch_related(
+        'images', 'variants'
     )
     pagination_class = CatalogPagination
 
@@ -111,49 +111,49 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        """Lista productos del catálogo aplicando filtros y paginación (RF-052).
-        Efectos secundarios:
-          - Crea CatalogSession para registrar la navegación.
-          - Si hay búsqueda (q), guarda SearchHistory y actualiza PopularSearch.
-        Retorna: productos paginados + filtros disponibles + búsquedas populares."""
+        """Lista productos del catálogo aplicando filtros y paginación (RF-052)."""
         queryset = self.get_queryset()
-        
-        # ── Registrar sesión de catálogo (RF-052) ──
-        session_key = request.session.session_key
-        CatalogSession.objects.create(
-            user=request.user if request.user.is_authenticated else None,
-            session_key=session_key,
-            products_viewed=queryset.count(),
-        )
-        
-        # ── Guardar historial de búsqueda ──
-        session_key = request.session.session_key
-        if session_key and request.query_params.get('q'):
-            SearchHistory.objects.create(
-                session_key=session_key,
-                query=request.query_params.get('q', ''),
-                filters=dict(request.query_params),
-                results_count=queryset.count()
-            )
-            
-            # Registrar/actualizar búsqueda popular
-            PopularSearch.record_search(request.query_params.get('q', ''))
 
         # ── Paginación ──
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = CatalogProductSerializer(page, many=True, context={'request': request})
             
-            # Obtener filtros disponibles para el conjunto actual
-            filters_data = self.get_available_filters()
+            # Filtros y búsquedas populares (consultas simples, no bloqueantes)
+            try:
+                filters_data = self.get_available_filters()
+            except Exception:
+                filters_data = {'categories': [], 'sizes': [], 'colors': [], 'price_range': {'min': 0, 'max': 0}}
             
-            # Búsquedas populares (top 10)
-            popular_searches = PopularSearch.objects.filter(is_active=True)[:10]
-            popular_serializer = PopularSearchSerializer(popular_searches, many=True)
+            try:
+                popular_searches = PopularSearch.objects.filter(is_active=True)[:10]
+                popular_serializer = PopularSearchSerializer(popular_searches, many=True)
+            except Exception:
+                popular_serializer = PopularSearchSerializer([], many=True)
             
             response_data = self.get_paginated_response(serializer.data).data
             response_data['filters'] = filters_data
             response_data['popular_searches'] = popular_serializer.data
+            
+            # Registrar sesión de catálogo (RF-052) — no bloquea la respuesta
+            try:
+                session_key = request.session.session_key
+                if session_key:
+                    CatalogSession.objects.create(
+                        user=request.user if request.user.is_authenticated else None,
+                        session_key=session_key,
+                        products_viewed=queryset.count(),
+                    )
+                    if request.query_params.get('q'):
+                        SearchHistory.objects.create(
+                            session_key=session_key,
+                            query=request.query_params.get('q', ''),
+                            filters=dict(request.query_params),
+                            results_count=queryset.count()
+                        )
+                        PopularSearch.record_search(request.query_params.get('q', ''))
+            except Exception:
+                pass  # Logging no bloquea la respuesta
             
             return Response(response_data)
 
@@ -168,43 +168,35 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
     def get_available_filters(self):
-        """Calcula los filtros disponibles dinámicamente basados en el
-        conjunto actual de productos (queryset filtrado). Retorna:
-        - categories: categorías activas con productos en el conjunto.
-        - sizes: tallas disponibles (con stock).
-        - colors: colores disponibles (con stock).
-        - price_range: precio mínimo y máximo del conjunto."""
-        queryset = self.get_queryset()
+        """Calcula los filtros disponibles. Optimizado para Neon (minimizar queries)."""
+        base_qs = Product.objects.filter(is_active=True, is_approved=True)
         
-        # IDs de productos actualmente en el queryset
-        product_ids = queryset.values_list('id', flat=True)
-        
-        # Categorías disponibles a través del modelo intermedio ProductCategory
-        categories = Category.objects.filter(
-            is_active=True,
-            products__product__in=product_ids
-        ).distinct()
-        
-        # Tallas disponibles (solo con stock)
-        sizes = queryset.filter(
-            variants__stock__gt=0
-        ).values_list('variants__size', flat=True).distinct()
-        
-        # Colores disponibles (solo con stock)
-        colors = queryset.filter(
-            variants__stock__gt=0
-        ).values_list('variants__color', flat=True).distinct()
-        
-        # Rango de precios del conjunto actual
-        price_range = queryset.aggregate(
+        # Una sola query para price range
+        price_range = base_qs.aggregate(
             min_price=Min('base_price'),
             max_price=Max('base_price')
         )
         
+        # Categorías (query simple)
+        categories = Category.objects.filter(is_active=True)[:20]
+        
+        # Sizes y colors en una sola query
+        variant_data = base_qs.filter(
+            variants__stock__gt=0
+        ).values('variants__size', 'variants__color').distinct()[:50]
+        
+        sizes = set()
+        colors = set()
+        for v in variant_data:
+            if v['variants__size']:
+                sizes.add(v['variants__size'])
+            if v['variants__color']:
+                colors.add(v['variants__color'])
+        
         return {
-            'categories': CategorySerializer(categories, many=True).data,
-            'sizes': list(set(sizes)),
-            'colors': list(set(colors)),
+            'categories': [{'id': c.id, 'name': c.name} for c in categories],
+            'sizes': list(sizes),
+            'colors': list(colors),
             'price_range': {
                 'min': float(price_range['min_price'] or 0),
                 'max': float(price_range['max_price'] or 0)
