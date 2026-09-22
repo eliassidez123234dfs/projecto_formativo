@@ -105,7 +105,7 @@ export default function AdminProducts() {
 
       <div className="card">
         <div className="card-body">
-          <ProductList key={refreshKey} refreshKey={refreshKey} onEdit={openEdit} onToggle={toggleActive} />
+          <ProductList key={refreshKey} refreshKey={refreshKey} onEdit={openEdit} onToggle={toggleActive} onRefresh={() => setRefreshKey(k => k + 1)} />
         </div>
       </div>
 
