@@ -35,6 +35,8 @@ class Product(models.Model):
 		decimal_places=2,
 		validators=[MinValueValidator(Decimal('0.01'))],
 	)
+	referencia = models.CharField(max_length=20, blank=True, default='')
+	stock = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])
 	# stock = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])
 	is_active = models.BooleanField(default=False)
 	is_approved = models.BooleanField(default=False)
