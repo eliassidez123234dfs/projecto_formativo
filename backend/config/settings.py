@@ -381,7 +381,7 @@ AUTH_USER_MODEL = 'users.Usuario'
 #  PATRÓN DE DISEÑO: Repository (acceso a DB via ORM Django).
 # =============================================================================
 
-DB_TYPE = env('DB_TYPE', default='neon' if ENVIRONMENT == 'production' else 'sqlite')
+DB_TYPE = env('DB_TYPE', default='neon')
 
 if DB_TYPE == 'sqlite':
     DATABASES = {
