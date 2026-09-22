@@ -125,9 +125,9 @@ export const createMicroProduct = async (data) => {
   const springData = {
     nombre: data.name || data.nombre,
     descripcion: data.description || data.descripcion || '',
-    precioBase: data.price || data.precioBase,
-    referencia: data.sku || data.referencia,
-    stock: data.stock_quantity || data.stock || 0,
+    precioBase: data.base_price || data.precioBase,
+    referencia: data.referencia || data.sku || 'SIN-REF',
+    stock: data.stock || 0,
   };
   const response = await msApi.post('productos', springData);
   return adaptProduct(response.data);
@@ -142,9 +142,9 @@ export const updateMicroProduct = async (id, data) => {
   const springData = {
     nombre: data.name || data.nombre || existing.nombre,
     descripcion: data.description ?? data.descripcion ?? existing.descripcion ?? '',
-    precioBase: data.price ?? data.precioBase ?? existing.precioBase,
-    referencia: data.sku || data.referencia || existing.referencia,
-    stock: data.stock_quantity ?? data.stock ?? existing.stock,
+    precioBase: data.base_price ?? data.precioBase ?? existing.precioBase,
+    referencia: data.referencia || data.sku || existing.referencia,
+    stock: data.stock ?? existing.stock,
   };
 
   const response = await msApi.put(`productos/${id}`, springData);
