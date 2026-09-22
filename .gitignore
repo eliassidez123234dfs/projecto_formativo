@@ -621,13 +621,11 @@ coverage/
 *.pid
 *.seed
 
->>>>>>> origin/main
 .ejemplos_codigo/
 .ejemplos_codigo/*
 ejemplos_codigo/
 ejemplos_codigo/*
 ejemplos_codigo
-<<<<<<< HEAD
 
 # =============================================================================
 # Notas adicionales (comentarios de la versión original)
@@ -636,4 +634,5 @@ ejemplos_codigo
 <django-project-name>/staticfiles/
 =======
 .aider*
->>>>>>> origin/main
+
+.~lock.*
