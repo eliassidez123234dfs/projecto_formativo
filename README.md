@@ -23,7 +23,7 @@ Toda la documentación del proyecto está en **[`docs/`](./docs/README.md)**, or
 | **Backend** | Python 3.12+, Django 5.2, DRF, SimpleJWT |
 | **Microservicio** | Java 21, Spring Boot 4, JPA/MongoDB, Jakarta Validation |
 | **Frontend** | React 19, Vite 8, Axios, React Router DOM, React Three Fiber |
-| **SQL** | PostgreSQL 16 (Neon en producción, SQLite en desarrollo) |
+| **SQL** | PostgreSQL 16 (Neon cloud en producción) |
 | **NoSQL** | MongoDB (diseños 3D, logs de auditoría, microservicio productos) |
 | **Imágenes / 3D** | Cloudinary |
 | **Emails** | Resend API + Fallback Brevo/Gmail SMTP |
@@ -86,7 +86,6 @@ projecto_formativo/
 Proyecto2_JPA/
 ├── servicio/           # Microservicio Spring Boot
 │   ├── src/            # Código fuente Java
-│   ├── compose.yaml    # Docker PostgreSQL/MongoDB
 │   └── pom.xml         # Dependencias Maven
 └── README.md           # Documentación del microservicio
 ```
