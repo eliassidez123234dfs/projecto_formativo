@@ -113,6 +113,7 @@ class Usuario(models.Model):
     # ── Control de sesión ──
     fecha_registro = models.DateTimeField(auto_now_add=True)
     fecha_ultima_sesion = models.DateTimeField(null=True, blank=True)
+    last_login = models.DateTimeField(null=True, blank=True)
     
     # ── Verificación de correo ──
     email_verificado = models.BooleanField(default=False)
