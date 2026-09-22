@@ -1,18 +1,13 @@
 /**
  * ProductForm.jsx — Formulario modal para crear o editar productos (admin).
  *
- * Secciones:
- * 1. Constantes: tallas disponibles y opciones de color con hex.
- * 2. Subcomponente VariantRow: fila editable de variante (talla/color/precio/stock).
- * 3. Componente principal: formulario con campos de producto, imágenes y variantes.
- * 4. Funciones de persistencia: CRUD de producto, imágenes y variantes.
- * 5. Validación en cliente con reglas de precio COP (múltiplo de 50).
- *
  * Decisiones de diseño:
  * - Se usa un solo modal tanto para crear como para editar (prop product determina el modo).
  * - Las imágenes existentes se pueden reordenar, marcar como principal o eliminar.
  * - Los precios deben ser múltiplos de 50 COP (regla de negocio).
  * - Las variantes nuevas y existentes se gestionan por separado para simplificar el PATCH.
+ * - Las operaciones de imagen (eliminar, reordenar, marcar principal) se difieren al submit
+ *   para garantizar que si hay error, nada se guarde parcialmente.
  */
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -26,7 +21,7 @@ import {
   updateProductVariant,
   deleteProductVariant,
 } from '../services/api'
-import { createMicroProduct, updateMicroProduct } from '../services/productService'
+import { createProduct, updateProduct } from '../services/api'
 import { formatError as errMsg } from '../utils/formatError'
 
 // ─── CONSTANTES: TALLAS Y COLORES ───
@@ -74,6 +69,37 @@ function isValidCopPrice(value) {
 
 function colorFor(value) {
   return COLOR_OPTIONS.find(c => c.value.toLowerCase() === String(value).toLowerCase())
+}
+
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png']
+const MAX_FILE_SIZE = 2 * 1024 * 1024
+const MIN_RESOLUTION = 400
+
+async function validateImageFile(file) {
+  const ext = '.' + file.name.split('.').pop().toLowerCase()
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new Error(`"${file.name}": Solo se permiten imagenes JPG o PNG.`)
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(`"${file.name}": La imagen no puede superar 2MB.`)
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        if (img.width < MIN_RESOLUTION || img.height < MIN_RESOLUTION) {
+          reject(new Error(`"${file.name}": La resolucion minima es ${MIN_RESOLUTION}x${MIN_RESOLUTION} pixeles.`))
+        } else {
+          resolve()
+        }
+      }
+      img.onerror = () => reject(new Error(`"${file.name}": No se pudo validar la imagen.`))
+      img.src = e.target.result
+    }
+    reader.onerror = () => reject(new Error(`"${file.name}": No se pudo leer el archivo.`))
+    reader.readAsDataURL(file)
+  })
 }
 
 // ─── SUBCOMPONENTE: FILA DE VARIANTE ───
@@ -150,6 +176,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
   const [mainImage, setMainImageFile] = useState(null)
   const [extraImages, setExtraImages] = useState([])
   const [imageItems, setImageItems] = useState(() => (product?.images || []).slice().sort((a, b) => a.order - b.order))
+  const [deletedImageIds, setDeletedImageIds] = useState([])
+  const [pendingMainImageId, setPendingMainImageId] = useState(null)
   const [existingVariants, setExistingVariants] = useState(() => (product?.variants || []).map(v => ({ ...v, _dirty: false })))
   const [removedVariantIds, setRemovedVariantIds] = useState([])
   const [variants, setVariants] = useState([])
@@ -164,92 +192,34 @@ export default function ProductForm({ product, onClose, onSaved }) {
   }, [])
 
   function toggleCategory(id) {
-    setCategoryIds(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
+    setCategoryIds(ids => ids.includes(id) ? ids.filter(x => x.id !== id) : [...ids, id])
   }
 
   function addVariant() {
     setVariants(vs => [...vs, { size: '', color: '', color_hex: '', color_nombre: '', stock: 0, price_variant: null }])
   }
 
-  // ─── FUNCIONES DE PERSISTENCIA (CRUD) ───
-  async function patchProduct(payload) {
-    return updateMicroProduct(product.id, payload)
-  }
+  // ─── OPERACIONES DE IMAGEN (Solo estado local, se ejecutan en submit) ───
 
-  async function createProductRecord() {
-    return createMicroProduct({
-      name, description, base_price: Number(price), is_active: isActive,
-    })
-  }
-
-  async function uploadMainImage(productId) {
-    const form = new FormData()
-    form.append('image', mainImage)
-    form.append('is_main', 'true')
-    return createProductImage(productId, form)
-  }
-
-  async function uploadExtraImages(productId) {
-    for (const file of extraImages) {
-      const form = new FormData()
-      form.append('image', file)
-      form.append('is_main', 'false')
-      await createProductImage(productId, form)
-    }
-  }
-
-  async function createVariants(productId) {
-    for (const variant of variants) {
-      if (!variant.size || !variant.color) continue
-      await createProductVariant(productId, {
-        size: variant.size,
-        color: variant.color,
-        color_hex: variant.color_hex,
-        color_nombre: variant.color_nombre || variant.color,
-        stock: variant.stock,
-        price_variant: variant.price_variant,
-      })
-    }
-  }
-
-  async function saveExistingVariants(productId) {
-    for (const variant of existingVariants) {
-      await updateProductVariant(productId, variant.id, {
-        size: variant.size,
-        color: variant.color,
-        color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
-        color_nombre: variant.color_nombre || variant.color,
-        stock: variant.stock,
-        price_variant: variant.price_variant,
-      })
-    }
-  }
-
-  async function deleteVariants(productId) {
-    for (const variantId of removedVariantIds) {
-      await deleteProductVariant(productId, variantId)
-    }
-  }
-
-  async function reorderImages(nextItems) {
-    setImageItems(nextItems)
-    if (!isEditing) return
-    await reorderProductImages(product.id, nextItems.map((img, i) => ({ id: img.id, order: i + 1 })))
-  }
-
-  async function markImageAsMain(imageId) {
-    if (!isEditing) return
-    await updateProductImage(product.id, imageId, { is_main: true })
-    setImageItems(items => items.map(img => ({ ...img, is_main: img.id === imageId })))
-  }
-
-  async function removeImage(imageId) {
-    if (!isEditing) return
-    await deleteProductImage(product.id, imageId)
+  function removeImage(imageId) {
+    setDeletedImageIds(ids => [...ids, imageId])
     setImageItems(items => items.filter(img => img.id !== imageId))
   }
 
-  // ─── VALIDACIÓN ───
+  function markImageAsMain(imageId) {
+    setPendingMainImageId(imageId)
+    setImageItems(items => items.map(img => ({ ...img, is_main: img.id === imageId })))
+  }
+
+  function moveImage(index, direction) {
+    const next = imageItems.slice()
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= next.length) return
+    ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
+    setImageItems(next)
+  }
+
+  // ─── VALIDACION ───
   function validate() {
     if (!name.trim()) return 'Nombre requerido'
     if (!description.trim()) return 'Descripción requerida'
@@ -261,10 +231,21 @@ export default function ProductForm({ product, onClose, onSaved }) {
     }
     if (!isEditing && !mainImage) return 'Imagen principal requerida'
     if (!isEditing && variants.length === 0) return 'Agregar al menos una variante'
+    const remainingImages = imageItems.length
+    if (isEditing && remainingImages === 0 && !mainImage && extraImages.length === 0) {
+      return 'El producto debe tener al menos una imagen'
+    }
     return null
   }
 
-  // ─── HANDLER DE ENVÍO ───
+  async function validateAllImages() {
+    if (mainImage) await validateImageFile(mainImage)
+    for (const file of extraImages) {
+      await validateImageFile(file)
+    }
+  }
+
+  // ─── HANDLER DE ENVÍO (Transaccional: valida todo primero, luego ejecuta) ───
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -273,26 +254,92 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
     setSaving(true)
     try {
+      await validateAllImages()
+
       let savedProduct = product
       const basePayload = {
         name, description, base_price: Number(price), is_active: isActive, category_ids: categoryIds,
       }
-      if (isEditing) {
-        savedProduct = await patchProduct(basePayload)
-        await saveExistingVariants(savedProduct.id)
-        await deleteVariants(savedProduct.id)
-      } else {
-        savedProduct = await createProductRecord()
-        await uploadMainImage(savedProduct.id)
-        await createVariants(savedProduct.id)
-      }
-
-      if (isEditing && variants.length > 0) await createVariants(savedProduct.id)
-      if (isEditing && extraImages.length > 0) await uploadExtraImages(savedProduct.id)
 
       if (isEditing) {
+        // Paso 1: Eliminar imágenes marcadas
+        for (const imageId of deletedImageIds) {
+          await deleteProductImage(product.id, imageId)
+        }
+
+        // Paso 2: Actualizar datos del producto
+        savedProduct = await updateProduct(product.id, basePayload)
+
+        // Paso 3: Guardar variantes existentes
+        for (const variant of existingVariants) {
+          await updateProductVariant(savedProduct.id, variant.id, {
+            size: variant.size,
+            color: variant.color,
+            color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
+            color_nombre: variant.color_nombre || variant.color,
+            stock: variant.stock,
+            price_variant: variant.price_variant,
+          })
+        }
+
+        // Paso 4: Eliminar variantes marcadas
+        for (const variantId of removedVariantIds) {
+          await deleteProductVariant(savedProduct.id, variantId)
+        }
+
+        // Paso 5: Crear variantes nuevas
+        for (const variant of variants) {
+          if (!variant.size || !variant.color) continue
+          await createProductVariant(savedProduct.id, {
+            size: variant.size,
+            color: variant.color,
+            color_hex: variant.color_hex,
+            color_nombre: variant.color_nombre || variant.color,
+            stock: variant.stock,
+            price_variant: variant.price_variant,
+          })
+        }
+
+        // Paso 6: Subir imágenes nuevas
+        for (const file of extraImages) {
+          const form = new FormData()
+          form.append('image', file)
+          form.append('is_main', 'false')
+          await createProductImage(savedProduct.id, form)
+        }
+
+        // Paso 7: Marcar imagen principal si cambió
+        if (pendingMainImageId) {
+          await updateProductImage(savedProduct.id, pendingMainImageId, { is_main: true })
+        }
+
+        // Paso 8: Reordenar imágenes
         const nextImages = imageItems.slice().sort((a, b) => a.order - b.order)
-        await reorderImages(nextImages)
+        if (nextImages.length > 0) {
+          await reorderProductImages(savedProduct.id, nextImages.map((img, i) => ({ id: img.id, order: i + 1 })))
+        }
+      } else {
+        // Crear producto
+        savedProduct = await createProduct(basePayload)
+
+        // Subir imagen principal
+        const mainForm = new FormData()
+        mainForm.append('image', mainImage)
+        mainForm.append('is_main', 'true')
+        await createProductImage(savedProduct.id, mainForm)
+
+        // Crear variantes
+        for (const variant of variants) {
+          if (!variant.size || !variant.color) continue
+          await createProductVariant(savedProduct.id, {
+            size: variant.size,
+            color: variant.color,
+            color_hex: variant.color_hex,
+            color_nombre: variant.color_nombre || variant.color,
+            stock: variant.stock,
+            price_variant: variant.price_variant,
+          })
+        }
       }
 
       toast.success(isEditing ? 'Producto actualizado' : 'Producto creado')
@@ -302,14 +349,6 @@ export default function ProductForm({ product, onClose, onSaved }) {
     } finally {
       setSaving(false)
     }
-  }
-
-  function moveImage(index, direction) {
-    const next = imageItems.slice()
-    const targetIndex = index + direction
-    if (targetIndex < 0 || targetIndex >= next.length) return
-    ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
-    reorderImages(next).catch(err => toast.error(err.message))
   }
 
   const labelStyle = {
@@ -381,12 +420,13 @@ export default function ProductForm({ product, onClose, onSaved }) {
             <div className="form-group">
               <label style={labelStyle}>Agregar imágenes adicionales</label>
               <input type="file" multiple accept="image/png, image/jpeg" onChange={e => setExtraImages(Array.from(e.target.files || []))} style={inputStyle} />
+              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Max 5 imagenes, JPG/PNG, max 2MB, min 400x400px.</small>
             </div>
           )}
 
           {isEditing && imageItems.length > 0 && (
             <div className="form-group">
-              <label style={labelStyle}>Gestión de imágenes</label>
+              <label style={labelStyle}>Gestión de imágenes ({imageItems.length} restante(s))</label>
               <div style={{ display: 'grid', gap: 10 }}>
                 {imageItems.map((image, index) => (
                   <div key={image.id} style={{
@@ -415,6 +455,11 @@ export default function ProductForm({ product, onClose, onSaved }) {
                   </div>
                 ))}
               </div>
+              {(deletedImageIds.length > 0 || pendingMainImageId) && (
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                  Los cambios de imagen se aplicarán al guardar.
+                </p>
+              )}
             </div>
           )}
 

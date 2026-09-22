@@ -6,8 +6,9 @@ import Spinner from './Spinner'
 import ErrorState from './ErrorState'
 import '../styles/form-modal.css'
 import { formatCOP } from '../utils/format'
-import { fetchMicroProducts } from '../services/productService'
+import { fetchProducts } from '../services/api'
 import { fetchProductChecklist, publishProduct } from '../services/api'
+import { deleteMicroProduct } from '../services/productService'
 
 function useProducts(refreshKey) {
   const [data, setData] = useState({ results: [], count: 0 })
@@ -24,7 +25,7 @@ function useProducts(refreshKey) {
       const params = { page, page_size: 20 }
       if (q) params.search = q
       try {
-        const json = await fetchMicroProducts(params)
+        const json = await fetchProducts(params)
         if (!mounted) return
         setData(json)
       } catch (err) {
@@ -51,10 +52,12 @@ async function safeChecklist(productId, onResult) {
   }
 }
 
-export default function ProductList({ refreshKey, onEdit, onToggle }) {
+export default function ProductList({ refreshKey, onEdit, onToggle, onRefresh }) {
   const { data, loading, page, setPage, q, setQ, error } = useProducts(refreshKey)
   const [publishing, setPublishing] = useState(null)
   const [publishConfirmation, setPublishConfirmation] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null)
   const [modal, setModal] = useState(null)
   const [checklistModal, setChecklistModal] = useState(null)
   const totalPages = Math.max(1, Math.ceil((data.count || 0) / 20))
@@ -84,8 +87,58 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
       .finally(() => setPublishing(null))
   }
 
+  function handleDelete(productId) {
+    setDeleteConfirmation(productId)
+  }
+
+  function confirmDelete() {
+    const productId = deleteConfirmation
+    setDeleteConfirmation(null)
+    setDeleting(productId)
+    deleteMicroProduct(productId)
+      .then(() => {
+        setModal({ type: 'success', title: '', message: 'Producto eliminado exitosamente' })
+        setTimeout(() => {
+          setModal(null)
+          onRefresh ? onRefresh() : window.location.reload()
+        }, 1200)
+      })
+      .catch(e => {
+        const d = e?.response?.data
+        setModal({
+          type: 'error',
+          title: 'No se pudo eliminar',
+          message: d?.detail || d?.message || 'Error al eliminar el producto',
+        })
+      })
+      .finally(() => setDeleting(null))
+  }
+
   return (
     <>
+      {deleteConfirmation && (
+        <div className="form-modal-backdrop" onClick={() => setDeleteConfirmation(null)}>
+          <div className="form-modal publish-confirm-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+            <div className="form-modal-header">
+              <h2 id="delete-confirm-title">Eliminar producto</h2>
+              <button className="form-modal-close" type="button" onClick={() => setDeleteConfirmation(null)} aria-label="Cerrar">✕</button>
+            </div>
+            <div className="form-modal-body">
+              <div className="publish-confirm-alert" style={{ borderColor: 'var(--color-error)' }}>
+                <span className="publish-confirm-icon" style={{ background: 'var(--color-error)' }} aria-hidden="true">!</span>
+                <div>
+                  <strong>¿Eliminar este producto?</strong>
+                  <p>El producto se ocultara del sistema pero permanecera en la base de datos como inactivo.</p>
+                </div>
+              </div>
+              <div className="form-modal-footer">
+                <button className="btn btn-secondary" type="button" onClick={() => setDeleteConfirmation(null)}>Cancelar</button>
+                <button className="btn btn-primary" type="button" style={{ background: 'var(--color-error)', borderColor: 'var(--color-error)' }} onClick={confirmDelete}>Eliminar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {publishConfirmation && (
         <div className="form-modal-backdrop" onClick={() => setPublishConfirmation(null)}>
           <div className="form-modal publish-confirm-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="publish-confirm-title">
@@ -204,6 +257,15 @@ export default function ProductList({ refreshKey, onEdit, onToggle }) {
                           {publishing === p.id ? '...' : 'Publicar'}
                         </button>
                       )}
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        type="button"
+                        disabled={deleting === p.id}
+                        onClick={() => handleDelete(p.id)}
+                        style={{ color: 'var(--color-error)' }}
+                      >
+                        {deleting === p.id ? '...' : 'Eliminar'}
+                      </button>
                     </div>
                   </td>
                 </tr>
