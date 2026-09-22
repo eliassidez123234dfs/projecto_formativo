@@ -6,9 +6,8 @@ import Spinner from './Spinner'
 import ErrorState from './ErrorState'
 import '../styles/form-modal.css'
 import { formatCOP } from '../utils/format'
-import { fetchProducts } from '../services/api'
 import { fetchProductChecklist, publishProduct } from '../services/api'
-import { deleteMicroProduct } from '../services/productService'
+import { fetchMicroProducts, deleteMicroProduct } from '../services/productService'
 
 function useProducts(refreshKey) {
   const [data, setData] = useState({ results: [], count: 0 })
@@ -25,7 +24,7 @@ function useProducts(refreshKey) {
       const params = { page, page_size: 20 }
       if (q) params.search = q
       try {
-        const json = await fetchProducts(params)
+        const json = await fetchMicroProducts(params)
         if (!mounted) return
         setData(json)
       } catch (err) {

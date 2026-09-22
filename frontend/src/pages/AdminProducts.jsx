@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchAdminStats, fetchProductAdmin, toggleProductActive } from '../services/api'
+import { fetchAdminStats, toggleProductActive } from '../services/api'
+import { fetchMicroProductAdmin } from '../services/productService'
 import AdminLayout from '../components/AdminLayout'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
@@ -38,7 +39,7 @@ export default function AdminProducts() {
   const { stats } = useAdminStats()
 
   async function openEdit(productId) {
-    const data = await fetchProductAdmin(productId)
+    const data = await fetchMicroProductAdmin(productId)
     setEditingProduct(data)
     setShowForm(true)
   }
