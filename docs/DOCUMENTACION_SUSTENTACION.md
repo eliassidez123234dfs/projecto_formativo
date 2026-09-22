@@ -112,15 +112,40 @@ Las tiendas de ropa tradicionales no ofrecen una experiencia de personalizacion 
 
 ### 2.2 Arquitectura de Microservicios
 
-El proyecto opera con **3 servicios independientes** orquestados via Docker Compose:
+El proyecto opera con **4 servicios independientes** orquestados via Docker Compose:
 
 | Servicio | Contenedor | Puerto | Tecnologia | Responsabilidad |
 |----------|-----------|--------|-----------|-----------------|
-| Backend | proyecto_backend | 8000 | Django + Gunicorn | API, logica de negocio, auth |
-| Frontend | proyecto_frontend | 5173 | React + Vite | UI principal, rutas, estado |
+| Backend | proyecto_backend | 8000 | Django + Gunicorn | API, logica de negocio, auth, imagenes, variantes |
+| Microservicio | Proyecto2_JPA | 8082/8083 | Spring Boot + Java 21 | CRUD productos (JPA/MongoDB), validaciones Jakarta, soft delete |
+| Frontend | proyecto_frontend | 5173 | React + Vite | UI principal, rutas, estado, adaptador microservicio |
 | Tshirt3D | proyecto_tshirt3d | 5174 | React + Three.js | Editor 3D, canvas, captura |
 
-**MongoDB** (contenedor `proyecto_mongo`, puerto 27017) funciona como base de datos complementaria para logs y auditoria.
+**Bases de datos:**
+- **PostgreSQL** (puerto 5432): Base de datos principal Django + microservicio JPA
+- **MongoDB** (puerto 27017): Microservicio MongoDB + logs de auditoría, sesiones
+
+**Ramas Git espejo:**
+- `Proyecto2_JPA/main` + `projecto_formativo/java/microservicio` → PostgreSQL
+- `Proyecto2_JPA/java/mongoDB` + `projecto_formativo/java/mongoDB` → MongoDB
+
+### 2.3 Comunicación Frontend → Microservicio
+
+```text
+Frontend React (:5173)
+    │
+    ├── /api/v1/*  ──► Spring Boot (:8082/:8083)
+    │   CRUD productos: crear, listar, editar, eliminar
+    │   Adaptador: productService.js
+    │
+    └── /api/*     ──► Django (:8000)
+        Imágenes, variantes, categorías, carrito,
+        órdenes, auth, catálogo, checklist
+```
+
+El **patrón Adaptador** (`productService.js`) traduce:
+- `nombre` → `name`, `precioBase` → `base_price`, `estado` → `is_active`
+- `{content, totalElements}` → `{results, count}`
 
 ---
 
