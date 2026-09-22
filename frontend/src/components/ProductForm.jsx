@@ -22,7 +22,7 @@ import {
   updateProductVariant,
   deleteProductVariant,
 } from '../services/api'
-import { createProduct, updateProduct, deleteProduct } from '../services/api'
+import { createMicroProduct, updateMicroProduct, deleteMicroProduct } from '../services/productService'
 import { formatError as errMsg } from '../utils/formatError'
 
 // ─── CONSTANTES: TALLAS Y COLORES ───
@@ -325,8 +325,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
           await deleteProductImage(product.id, imageId)
         }
 
-        // Paso 2: Actualizar datos del producto
-        savedProduct = await updateProduct(product.id, basePayload)
+        // Paso 2: Actualizar datos del producto (vía microservicio)
+        savedProduct = await updateMicroProduct(product.id, basePayload)
 
         // Paso 3: Guardar variantes existentes
         for (const variant of existingVariants) {
@@ -380,8 +380,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
         }
       } else {
         // ─── FLUJO CREAR ───
-        // Paso 1: Crear producto
-        savedProduct = await createProduct(basePayload)
+        // Paso 1: Crear producto (vía microservicio)
+        savedProduct = await createMicroProduct(basePayload)
         createdIds.productId = savedProduct.id
 
         // Paso 2: Subir imagen principal
@@ -412,7 +412,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
       // ─── ROLLBACK: Si se creó algo, eliminarlo ───
       if (createdIds.productId) {
         try {
-          await deleteProduct(createdIds.productId)
+          await deleteMicroProduct(createdIds.productId)
         } catch (_) { /* ignorar error de rollback */ }
       }
       toast.error(errMsg(err, 'Error al guardar'))
