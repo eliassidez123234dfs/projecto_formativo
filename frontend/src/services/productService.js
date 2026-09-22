@@ -99,15 +99,15 @@ export const createMicroProduct = async (data) => {
 };
 
 export const updateMicroProduct = async (id, data) => {
-  const springData = {};
-  if (data.name || data.nombre) springData.nombre = data.name || data.nombre;
-  if (data.description !== undefined || data.descripcion !== undefined)
-    springData.descripcion = data.description ?? data.descripcion;
-  if (data.base_price !== undefined || data.precioBase !== undefined)
-    springData.precioBase = data.base_price ?? data.precioBase;
-  if (data.sku || data.referencia) springData.referencia = data.sku || data.referencia;
-  if (data.total_stock !== undefined || data.stock !== undefined)
-    springData.stock = data.total_stock ?? data.stock;
+  const existing = (await msApi.get(`productos/${id}`)).data;
+
+  const springData = {
+    nombre: data.name || data.nombre || existing.nombre,
+    descripcion: data.description ?? data.descripcion ?? existing.descripcion ?? '',
+    precioBase: data.base_price ?? data.precioBase ?? existing.precioBase,
+    referencia: data.sku || data.referencia || existing.referencia,
+    stock: data.total_stock ?? data.stock ?? existing.stock,
+  };
 
   const response = await msApi.put(`productos/${id}`, springData);
   return adaptProduct(response.data);
