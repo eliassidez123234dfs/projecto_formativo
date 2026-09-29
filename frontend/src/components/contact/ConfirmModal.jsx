@@ -2,11 +2,8 @@ import { useEffect } from 'react';
 import '../../styles/contact/confirm-modal.css';
 
 export default function ConfirmModal({
-    title = '¿Estas segura?',
+    title = '¿Estas seguro?',
     message = 'Esta acción no se puede deshacer',
-    confirmText = 'Confirmar',
-    cancelText = 'Cancelar',
-    onConfirm,
     onCancel,
     loading = false,
 }) {

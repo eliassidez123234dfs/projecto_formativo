@@ -11,8 +11,6 @@ export default function UserList({ filters, onPageChange, onSaved }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [count, setCount] = useState(0)
-  const [next, setNext] = useState(null)
-  const [previous, setPrevious] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
   const [modal, setModal] = useState(null)
@@ -25,8 +23,6 @@ export default function UserList({ filters, onPageChange, onSaved }) {
       const list = data.results || data
       setUsers(list)
       setCount(data.count || list.length)
-      setNext(data.next || null)
-      setPrevious(data.previous || null)
     } catch (err) { setError(err) }
     finally { setLoading(false) }
   }, [filters])

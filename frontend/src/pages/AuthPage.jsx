@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 import { setTokens } from '../services/authService'
+import PasswordInput from '../components/PasswordInput'
 import '../styles/AuthPage.css'
 
 // ─── UTILIDAD: EVALUACIÓN DE FORTALEZA DE CONTRASEÑA ───
@@ -153,7 +154,7 @@ const handleLoginSubmit = async (e) => {
     setLoading(true)
     setErrors({})
     try {
-      const response = await api.post('auth/registro/', registerData)
+      await api.post('auth/registro/', registerData)
       setSuccess(true)
       setRegisterData({ usuario: '', correo: '', contrasena: '', confirmar_contrasena: '' })
       setTimeout(() => navigate('/verificar-email-pendiente'), 2000)
@@ -228,9 +229,10 @@ return (
                 </div>
                 <div className="auth-field">
                   <label>Contraseña</label>
-                  <input type="password" value={loginData.contrasena}
+                  <PasswordInput value={loginData.contrasena}
                     onChange={e => { setLoginData(p => ({ ...p, contrasena: e.target.value })); setFieldErrors(f => ({...f, contrasena: undefined})) }}
                     placeholder="Tu contraseña" required
+                    autoComplete="current-password"
                     className={fieldErrors.contrasena ? 'input-error' : ''}
                   />
                   {fieldErrors.contrasena && <span className="field-error">{fieldErrors.contrasena}</span>}
@@ -261,13 +263,14 @@ return (
                 </div>
                 <div className="auth-field">
                   <label>Contraseña</label>
-                  <input type="password" value={registerData.contrasena}
+                  <PasswordInput value={registerData.contrasena}
                     onChange={e => {
                       setRegisterData(p => ({ ...p, contrasena: e.target.value }))
                       setFieldErrors(f => ({...f, contrasena: undefined}))
                       if (!showConfirm && e.target.value.length > 0) setShowConfirm(true)
                     }}
                     placeholder="Mínimo 8 caracteres" required
+                    autoComplete="new-password"
                     onFocus={() => { setPwTouched(true); if (!showConfirm && registerData.contrasena.length > 0) setShowConfirm(true) }}
                     className={fieldErrors.contrasena ? 'input-error' : ''}
                   />
@@ -281,9 +284,10 @@ return (
                 </div>
                 <div className={`auth-field confirm-wrap ${showConfirm ? 'visible' : ''}`}>
                   <label>Confirmar contraseña</label>
-                  <input type="password" value={registerData.confirmar_contrasena}
+                  <PasswordInput value={registerData.confirmar_contrasena}
                     onChange={e => { setRegisterData(p => ({ ...p, confirmar_contrasena: e.target.value })); setFieldErrors(f => ({...f, confirmar_contrasena: undefined})) }}
                     placeholder="Repite tu contraseña" required
+                    autoComplete="new-password"
                     className={fieldErrors.confirmar_contrasena ? 'input-error' : ''}
                   />
                   {fieldErrors.confirmar_contrasena && <span className="field-error">{fieldErrors.confirmar_contrasena}</span>}

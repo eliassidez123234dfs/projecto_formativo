@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchAdminStats, fetchAuditLogs } from '../services/api'
 import { getCurrentUser } from '../services/authService'

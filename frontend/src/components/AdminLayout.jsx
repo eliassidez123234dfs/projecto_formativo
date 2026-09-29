@@ -127,6 +127,12 @@ const Icons = {
       <line x1="12" y1="22.08" x2="12" y2="12" />
     </svg>
   ),
+  Tags: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.59 13.41 12 22 2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </svg>
+  ),
   Cloud: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
@@ -147,7 +153,7 @@ export default function AdminLayout({ children, title, subtitle }) {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth > 768) {
-      try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch {}
+      try { localStorage.setItem('sidebarOpen', String(sidebarOpen)) } catch { /* almacenamiento no disponible */ }
     }
   }, [sidebarOpen])
 
@@ -157,6 +163,7 @@ export default function AdminLayout({ children, title, subtitle }) {
     { label: 'Inicio', href: '/', icon: Icons.Home },
     { label: 'Catálogo', href: '/catalog', icon: Icons.Store },
     { label: 'Productos', href: '/admin-products', icon: Icons.Products },
+    { label: 'Categorías', href: '/admin-categories', icon: Icons.Tags },
     { label: 'Usuarios', href: '/admin-users', icon: Icons.Users },
     { label: 'Órdenes', href: '/admin-orders', icon: Icons.Orders },
     { label: 'Carritos', href: '/admin-cart', icon: Icons.Cart },

@@ -23,8 +23,6 @@ import { DEFAULT_IMAGE } from '../constants';
 import { formatCOP } from '../utils/format';
 import { isAuthenticated } from '../services/authService';
 
-let _cartAuthRedirected = false;
-
 // ─── COMPONENTE PRINCIPAL ───
 export const Cart = () => {
   const navigate = useNavigate();
@@ -46,7 +44,6 @@ export const Cart = () => {
   // ─── EFFECTS: AUTENTICACIÓN Y DETECCIÓN DE CARRITO VACÍO ───
   useEffect(() => {
     if (!isAuthenticated()) {
-      _cartAuthRedirected = true;
       toast.error('Debes iniciar sesión para ver el carrito');
       navigate('/login', { replace: true });
       return;
@@ -85,7 +82,7 @@ export const Cart = () => {
     try {
       await clearCartItems();
       handleEmptyCartNotificationAndRedirect();
-    } catch (err) {
+    } catch {
       toast.error('Error al vaciar el carrito');
     }
   };
@@ -102,7 +99,7 @@ export const Cart = () => {
       if (willBeEmpty) {
         handleEmptyCartNotificationAndRedirect();
       }
-    } catch (err) {
+    } catch {
       toast.error('Error al eliminar el producto');
     }
   };

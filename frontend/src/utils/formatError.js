@@ -96,12 +96,21 @@ export function formatError(error, fallback = 'Ocurrió un error inesperado. Por
 
     if (typeof responseData === 'object') {
       const messages = []
-      for (const [key, value] of Object.entries(responseData)) {
+      for (const [, value] of Object.entries(responseData)) {
         if (Array.isArray(value)) {
           const valStr = value.map(v => (typeof v === 'object' ? v.string || JSON.stringify(v) : String(v))).join(', ')
           messages.push(translateMessage(valStr))
         } else if (typeof value === 'string') {
           messages.push(translateMessage(value))
+        } else if (value !== null && typeof value === 'object') {
+          // Spring devuelve errores de validación anidados en `details`:
+          // { message: 'Error de validacion...', details: { precioBase: 'El precio no puede superar...' } }
+          for (const fieldMsg of Object.values(value)) {
+            if (typeof fieldMsg === 'string') messages.push(translateMessage(fieldMsg))
+            else if (Array.isArray(fieldMsg)) {
+              messages.push(translateMessage(fieldMsg.map(m => (typeof m === 'object' ? m.string || JSON.stringify(m) : String(m))).join(', ')))
+            }
+          }
         }
       }
       if (messages.length > 0) {

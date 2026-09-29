@@ -14,7 +14,7 @@
  * - Al agregar al carrito se refresca el stock del producto ( actualizar disponibilidad).
  * - El editor 3D se abre en pestaña nueva tras guardar sesión en backend.
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchProductDetail } from '../services/api';

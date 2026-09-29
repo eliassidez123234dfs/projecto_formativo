@@ -77,6 +77,8 @@ export function usePromiseState(promiseFn, options = {}) {
     if (immediate && typeof promiseFn === 'function') {
       execute(...initialArgs).catch(() => {})
     }
+    // initialArgs/promiseFn are snapshots; reevaluating would re-run the request
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [immediate, execute])
 
   return {
