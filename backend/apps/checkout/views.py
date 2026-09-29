@@ -211,13 +211,15 @@ def checkout_confirm(request):
 					status=status.HTTP_400_BAD_REQUEST,
 				)
 
-			# Crear ítem de la orden
+			# Crear ítem de la orden (save() rellena snapshot product_name/price)
 			OrderItem.objects.create(
 				order=order,
 				product=item.product,
 				variant=variant,
 				quantity=item.quantity,
 				unit_price=item.unit_price,
+				product_name=item.product.name,
+				product_price=item.product.base_price,
 			)
 
 			# Disminuir el inventario del producto

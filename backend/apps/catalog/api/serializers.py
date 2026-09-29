@@ -64,26 +64,32 @@ class CatalogProductSerializer(serializers.ModelSerializer):
             'min_price', 'max_price', 'total_stock', 'categories', 'created_at', 'updated_at'
         ]
 
+    @staticmethod
+    def _variants_with_stock(obj):
+        """Variantes con stock usando el prefetch cache (sin queries adicionales)."""
+        return [v for v in obj.variants.all() if v.stock > 0]
+
     def get_main_image(self, obj):
-        image = obj.main_image
-        if not image:
+        images = list(obj.images.all())
+        if not images:
             return None
-        return image.image.url
+        main = next((img for img in images if img.is_main), images[0])
+        return main.image.url
 
     def get_available_sizes(self, obj):
         """Tallas disponibles (con stock > 0)."""
-        return list(obj.variants.filter(stock__gt=0).values_list('size', flat=True).distinct())
+        return list(dict.fromkeys(v.size for v in self._variants_with_stock(obj)))
 
     def get_available_colors(self, obj):
         """Colores disponibles (con stock > 0)."""
-        return list(obj.variants.filter(stock__gt=0).values_list('color', flat=True).distinct())
+        return list(dict.fromkeys(v.color for v in self._variants_with_stock(obj)))
 
     def get_color_hexes(self, obj):
         """Mapeo color → código hexadecimal."""
-        return dict(obj.variants.filter(stock__gt=0).values_list('color', 'color_hex').distinct())
+        return {v.color: v.color_hex for v in self._variants_with_stock(obj)}
 
     def get_variants(self, obj):
-        """Lista de variantes ordenadas por talla y color."""
+        """Lista de variantes (la query la ordena por talla y color en Meta.ordering)."""
         return [
             {
                 'id': variant.id,
@@ -92,25 +98,25 @@ class CatalogProductSerializer(serializers.ModelSerializer):
                 'color_hex': variant.color_hex,
                 'stock': variant.stock,
             }
-            for variant in obj.variants.all().order_by('size', 'color')
+            for variant in obj.variants.all()
         ]
 
     def get_min_price(self, obj):
         """Precio mínimo entre variantes con stock."""
-        variants = list(obj.variants.filter(stock__gt=0))
+        variants = self._variants_with_stock(obj)
         if not variants:
             return obj.base_price
         return min(variant.effective_price for variant in variants)
 
     def get_max_price(self, obj):
         """Precio máximo entre variantes con stock."""
-        variants = list(obj.variants.filter(stock__gt=0))
+        variants = self._variants_with_stock(obj)
         if not variants:
             return obj.base_price
         return max(variant.effective_price for variant in variants)
 
     def get_total_stock(self, obj):
-        return obj.total_stock
+        return sum(v.stock for v in obj.variants.all())
 
     def get_categories(self, obj):
         return [pc.category.name for pc in obj.categories.all()]
