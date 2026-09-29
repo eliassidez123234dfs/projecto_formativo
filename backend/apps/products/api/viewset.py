@@ -614,3 +614,43 @@ class ProductImageViewSet(viewsets.ModelViewSet):
             'image': nombre,
             'image_url': default_storage.url(nombre),
         }, status=201)
+
+    @action(detail=False, methods=['delete'], url_path='discard')
+    def discard(self, request):
+        """Borra un archivo recién subido que acabó sin usarse.
+
+        Es la contraparte de `upload`. El frontend sube el archivo y luego
+        registra la imagen en Spring; si ese segundo paso falla, el archivo
+        ya está en Cloudinary y no lo referencia nadie. Sin este endpoint esa
+        subida queda cobrada y huérfana para siempre.
+
+        DELETE /api/products/images/discard/?name=products/2026/09/<uuid>
+
+        Tiene su propia url_path y no comparte la de `upload` a propósito: el
+        router de DRF registra una ruta por par (url_path, detail) y dos
+        acciones con el mismo nombre se pisan, dejando solo una disponible.
+        """
+        nombre = (request.query_params.get('name') or '').strip()
+        if not nombre:
+            return Response({'name': ['Este parámetro es obligatorio.']}, status=400)
+
+        # Solo se permite borrar dentro de la carpeta de productos: sin esto,
+        # este endpoint sería un borrado arbitrario de cualquier clave del
+        # bucket con el nombre que le pase al atacante.
+        if not nombre.startswith('products/') or '..' in nombre:
+            return Response(
+                {'name': ['Solo se pueden borrar archivos de products/.']}, status=400)
+
+        if not default_storage.exists(nombre):
+            # Idempotente: que ya no exista significa que el objetivo (no dejar
+            # basura) ya se cumplió.
+            return Response({'image': nombre, 'borrada': False}, status=200)
+
+        try:
+            default_storage.delete(nombre)
+        except Exception as exc:
+            logger.exception('Fallo al borrar %s de Cloudinary: %s', nombre, exc)
+            return Response(
+                {'name': ['No se pudo borrar el archivo.']}, status=502)
+
+        return Response({'image': nombre, 'borrada': True}, status=200)

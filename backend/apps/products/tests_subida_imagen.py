@@ -15,6 +15,8 @@ import tempfile
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from urllib.parse import urlencode
+
 from django.urls import reverse
 from PIL import Image
 
@@ -46,6 +48,15 @@ class SubidaImagenTest(TestCase):
 
     def _url(self):
         return reverse('product-image-upload')
+
+    def _url_discard(self, nombre=''):
+        # El nombre va en la query string, no en el cuerpo: axios lo manda
+        # como params y un DELETE con cuerpo es ambiguo (proxy algunos lo
+        # ignoran). El test client de Django pone 'data' en el cuerpo, asi
+        # que hay que componer la URL a mano para probar lo mismo.
+        if not nombre:
+            return reverse('product-image-discard')
+        return f"{reverse('product-image-discard')}?{urlencode({'name': nombre})}"
 
     def _admin(self):
         from django.contrib.auth import get_user_model
@@ -126,3 +137,57 @@ class SubidaImagenTest(TestCase):
         respuesta = self.client.post(self._url(), {'image': imagen_valida()})
 
         self.assertIn(respuesta.status_code, (401, 403))
+
+    def test_descartar_borra_el_archivo_subido(self):
+        """La contraparte: lo que se sube y no se usa, se borra."""
+        from django.core.files.storage import default_storage
+        self.client.force_login(self._admin())
+        subido = self.client.post(self._url(), {'image': imagen_valida()}).json()
+
+        respuesta = self.client.delete(self._url_discard(subido['image']))
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertTrue(respuesta.json()['borrada'])
+        self.assertFalse(
+            default_storage.exists(subido['image']),
+            'el archivo debe desaparecer de Cloudinary',
+        )
+
+    def test_descartar_lo_que_no_existe_no_falla(self):
+        """Debe poder repetirse sin error: es la limpieza de un descuido."""
+        self.client.force_login(self._admin())
+
+        respuesta = self.client.delete(
+            self._url_discard('products/2020/01/nunca-existio'))
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(respuesta.json()['borrada'])
+
+    def test_descartar_exige_el_parametro(self):
+        self.client.force_login(self._admin())
+
+        self.assertEqual(self.client.delete(self._url_discard()).status_code, 400)
+
+    def test_descartar_no_sale_de_la_carpeta_de_productos(self):
+        """Sin esto, el endpoint seria un borrado arbitrario del bucket."""
+        from django.core.files.storage import default_storage
+        self.client.force_login(self._admin())
+        fuera = default_storage.save('facturacion/2026/09/factura.pdf', imagen_valida())
+
+        respuesta = self.client.delete(self._url_discard(fuera))
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertTrue(
+            default_storage.exists(fuera),
+            'un archivo fuera de products/ no debe poder borrarse por aqui',
+        )
+        default_storage.delete(fuera)
+
+    def test_un_visitante_no_puede_descartar(self):
+        from django.core.files.storage import default_storage
+        subido = default_storage.save('products/2026/09/ajena.png', imagen_valida())
+
+        respuesta = self.client.delete(self._url_discard(subido))
+
+        self.assertIn(respuesta.status_code, (401, 403))
+        default_storage.delete(subido)

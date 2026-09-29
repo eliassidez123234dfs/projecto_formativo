@@ -26,6 +26,15 @@ urlpatterns = [
         internal_views.products_categories_set,
         name='internal-products-categories-set',
     ),
+    # Archivo de imagen en Cloudinary. El public_id viaja como query param
+    # (?path=products/2026/09/<uuid>) y no como segmento de la ruta: lleva
+    # barras, y si se codificaran como %2F algunos proxies lo normalizan o lo
+    # rechazan. En la query sí se decodifica siempre y bien.
+    path(
+        'archivos/',
+        internal_views.products_archivos,
+        name='internal-products-archivos',
+    ),
     # Purga en cascada del lado Django: <str:> porque el producto se
     # identifica por su ObjectId de Mongo (24 hex), no por un entero.
     path(

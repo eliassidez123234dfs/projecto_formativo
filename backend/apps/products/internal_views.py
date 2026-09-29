@@ -20,6 +20,7 @@ la API que consume el frontend.
 | dependencies/   | Purga en cascada del lado Django de un producto|
 """
 import json
+import logging
 
 from django.db import transaction
 from django.db.models import Count, Q
@@ -32,6 +33,8 @@ from django.views.decorators.http import require_GET, require_http_methods
 from apps.carts.models import CartItem
 from apps.catalog.models import Category, ProductCategory
 from apps.orders.api.interservice import no_autorizado, token_interno_valido
+
+logger = logging.getLogger(__name__)
 from apps.products.models import Product, Review
 
 MAX_LIMIT = 500
@@ -278,7 +281,48 @@ def products_categories_set(request, product_ref):
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# 6. Purga en cascada del lado Django
+# 6. Archivos de imagen en Cloudinary
+# ────────────────────────────────────────────────────────────────────────────
+@csrf_exempt
+@require_http_methods(['DELETE'])
+def products_archivos(request):
+    """Borra un archivo de Cloudinary a partir de su public_id.
+
+    MongoDB guarda la referencia (`image`) y Cloudinary guarda el binario.
+    Cuando Spring elimina una imagen, su documento ya no existe pero el archivo
+    sigue ahí y se sigue pagando, así que avisa por aquí para limpiarlo.
+
+    DELETE /api/internal/products/archivos/?path=products/2026/09/<uuid>
+    """
+    if not token_interno_valido(request):
+        return no_autorizado()
+
+    nombre = (request.GET.get('path') or '').strip()
+    if not nombre:
+        return JsonResponse({'error': 'Falta el public_id del archivo'}, status=400)
+    if not nombre.startswith('products/') or '..' in nombre:
+        # Solo dentro de products/: sin esto, este endpoint permitiría borrar
+        # cualquier clave del bucket indicando su nombre.
+        return JsonResponse({'error': 'Solo se admiten rutas de products/'}, status=400)
+
+    from django.core.files.storage import default_storage
+
+    if not default_storage.exists(nombre):
+        # Idempotente: que no exista significa que el objetivo ya se cumplió.
+        return JsonResponse({'image': nombre, 'borrado': False})
+
+    try:
+        default_storage.delete(nombre)
+    except Exception as exc:  # pragma: no cover - depende de Cloudinary
+        logger.exception('No se pudo borrar %s de Cloudinary: %s', nombre, exc)
+        return JsonResponse({'error': 'No se pudo borrar el archivo'}, status=502)
+
+    return JsonResponse({'image': nombre, 'borrado': True})
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# 7. Purga en cascada del lado Django
+# ────────────────────────────────────────────────────────────────────────────
 # ────────────────────────────────────────────────────────────────────────────
 @require_http_methods(['DELETE'])
 def products_dependencies(request, product_ref: str):

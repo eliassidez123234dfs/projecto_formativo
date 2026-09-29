@@ -424,3 +424,54 @@ class PuenteObjectIdTest(TestCase):
 
 		self.assertEqual(respuesta.status_code, 401)
 		self.assertEqual(escritura.status_code, 401)
+
+
+	def _archivo(self, nombre):
+		"""Un archivo cualquiera en el storage de pruebas.
+
+		A diferencia de la subida, aqui no se valida la imagen con Pillow: este
+		endpoint solo necesita existencia y borrado en el storage.
+		"""
+		from django.core.files.base import ContentFile
+		from django.core.files.storage import default_storage
+		return default_storage.save(nombre, ContentFile(b'contenido-de-prueba'))
+
+	def test_borrar_archivo_requiere_token_interno(self):
+		"""Spring lo llama sin sesion de usuario, solo con X-Internal-Token."""
+		from django.core.files.storage import default_storage
+		nombre = self._archivo('products/2026/09/secreto.png')
+
+		sin_token = self.client.delete(f'/api/internal/products/archivos/?path={nombre}')
+		token_malo = self.client.delete(
+			f'/api/internal/products/archivos/?path={nombre}',
+			HTTP_X_INTERNAL_TOKEN='no-es-el-token',
+		)
+
+		self.assertEqual(sin_token.status_code, 401)
+		self.assertEqual(token_malo.status_code, 401)
+		self.assertTrue(default_storage.exists(nombre))
+		default_storage.delete(nombre)
+
+	def test_borrar_archivo_con_token_interno(self):
+		from django.core.files.storage import default_storage
+		nombre = self._archivo('products/2026/09/a-borrar.png')
+
+		respuesta = self.client.delete(
+			f'/api/internal/products/archivos/?path={nombre}', headers={'X-Internal-Token': TOKEN})
+
+		self.assertEqual(respuesta.status_code, 200)
+		self.assertTrue(respuesta.json()['borrado'])
+		self.assertFalse(default_storage.exists(nombre))
+
+	def test_borrar_archivo_no_sale_de_products(self):
+		"""Este endpoint lo consume Spring, no el usuario: aun asi no debe
+		poder borrar cualquier clave del bucket."""
+		from django.core.files.storage import default_storage
+		fuera = self._archivo('facturacion/2026/09/factura.pdf')
+
+		respuesta = self.client.delete(
+			f'/api/internal/products/archivos/?path={fuera}', headers={'X-Internal-Token': TOKEN})
+
+		self.assertEqual(respuesta.status_code, 400)
+		self.assertTrue(default_storage.exists(fuera))
+		default_storage.delete(fuera)
