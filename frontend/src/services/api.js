@@ -372,6 +372,18 @@ export const uploadProductImageFile = async (file) => {
   return response.data;
 };
 
+/**
+ * Descarta un archivo que se subió pero que acabó sin registrarse en Spring.
+ *
+ * El orden es subir primero y registrar después, porque el registro necesita la
+ * URL. Ese orden abre una ventana: si el registro falla, el archivo ya está en
+ * Cloudinary y lo único que lo referencia es esta respuesta. Si no se borra,
+ * queda ahí pagado y sin usar.
+ */
+export const discardUploadedImage = async (publicId) => {
+  await api.delete('products/images/discard/', { params: { name: publicId } });
+};
+
 export const createProductImage = async (id, formData) => {
   const response = await api.post(`products/${id}/images/`, formData);
   return response.data;

@@ -12,7 +12,7 @@
  *   wasDisapproved→was_disapproved, readyToPublish→ready_to_publish, etc.
  */
 import msApi from './microservice';
-import { fetchProductAdmin, uploadProductImageFile } from './api';
+import { fetchProductAdmin, uploadProductImageFile, discardUploadedImage } from './api';
 
 // ─────────── MAPEO DE RESPUESTAS ───────────
 
@@ -343,8 +343,16 @@ export const toggleMicroProductActive = async (id) => {
  */
 export const uploadMicroProductImage = async (id, file, { esPrincipal = false } = {}) => {
   const { image: publicId, image_url: url } = await uploadProductImageFile(file);
-  return addMicroProductImage(id, { image: publicId, esPrincipal })
-    .then((imagen) => ({ ...imagen, image_url: imagen.image_url || url }));
+  try {
+    const imagen = await addMicroProductImage(id, { image: publicId, esPrincipal });
+    return { ...imagen, image_url: imagen.image_url || url };
+  } catch (e) {
+    // El archivo ya está subido. Si además falló el registro, no hay ningún
+    // documento que lo referencie, así que se borra en Cloudinary: si no, cada
+    // fallo deja una imagen huérfana que alguien está pagando.
+    await discardUploadedImage(publicId).catch(() => {});
+    throw e;
+  }
 };
 
 export const addMicroProductImage = async (id, { image, esPrincipal = false } = {}) => {
