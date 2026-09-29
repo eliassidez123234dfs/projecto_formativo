@@ -10,7 +10,9 @@ router.register(r'', OrderViewSet, basename='order')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
 
 urlpatterns = [
-    # Inter-servicio (Spring → Django): consulta de órdenes por producto
-    path('check-product/<int:product_id>/', check_product_orders, name='check-product-orders'),
+    # Inter-servicio (Spring → Django): consulta de órdenes por producto.
+    # <str:> y no <int:> porque en la rama java/mongoDB el producto se
+    # identifica por su ObjectId de Mongo (24 hex), no por un entero.
+    path('check-product/<str:product_ref>/', check_product_orders, name='check-product-orders'),
     path('', include(router.urls)),
 ]

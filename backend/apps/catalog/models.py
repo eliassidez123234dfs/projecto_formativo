@@ -43,11 +43,23 @@ class ProductCategory(models.Model):
     Permite que un producto tenga múltiples categorías y viceversa.
     unique_together garantiza que un producto solo se asigne una vez por categoría."""
     product = models.ForeignKey('products.Product', related_name='categories', on_delete=models.CASCADE)
+    # ObjectId de MongoDB (rama java/mongoDB): la FK queda nula porque el
+    # producto vive en Mongo, no en products_product.
+    product_ref = models.CharField(max_length=24, blank=True, null=True, db_index=True)
     category = models.ForeignKey(Category, related_name='products', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ['product', 'category']
+        constraints = [
+            # En PostgreSQL NULL != NULL, así que unique_together no protege
+            # las filas de la rama java/mongoDB (product_id NULL). Esta
+            # restricción sí cubre el caso product_ref.
+            models.UniqueConstraint(
+                fields=['product_ref', 'category'],
+                name='unique_productref_category',
+            ),
+        ]
         verbose_name = 'Product Category'
         verbose_name_plural = 'Product Categories'
 

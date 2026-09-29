@@ -346,6 +346,9 @@ class ProductAudit(models.Model):
 
 class Review(models.Model):
 	product = models.ForeignKey(Product, related_name='reviews', on_delete=models.CASCADE)
+	# ObjectId de MongoDB (rama java/mongoDB): la FK queda nula porque el
+	# producto vive en Mongo, no en products_product.
+	product_ref = models.CharField(max_length=24, blank=True, null=True, db_index=True)
 	user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='reviews', on_delete=models.CASCADE)
 	rating = models.PositiveSmallIntegerField(choices=[(value, str(value)) for value in range(1, 6)])
 	comment = models.TextField(max_length=1000, blank=True)
@@ -356,6 +359,9 @@ class Review(models.Model):
 		ordering = ['-created_at']
 		constraints = [
 			models.UniqueConstraint(fields=['product', 'user'], name='unique_product_user_review'),
+			# Rama java/mongoDB: con product_id NULL la restricción anterior
+			# no protege nada (NULL != NULL). Esta sí, vía product_ref.
+			models.UniqueConstraint(fields=['product_ref', 'user'], name='unique_productref_user_review'),
 		]
 
 	def __str__(self) -> str:

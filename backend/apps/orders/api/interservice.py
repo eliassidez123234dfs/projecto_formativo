@@ -37,18 +37,37 @@ def no_autorizado() -> JsonResponse:
 
 
 @require_GET
-def check_product_orders(request, product_id: int):
+def check_product_orders(request, product_ref: str):
     """¿Existen líneas de orden que referencian este producto?
 
     Lo consume ProductoServiceImpl.purgarProducto antes de un hard delete.
-    Respuesta: {"has_orders": bool, "order_count": int, "product_id": int}
+
+    Rama java/mongoDB: el producto vive en MongoDB, así que su identificador
+    es un ObjectId (24 hex) y no el entero de products_product. Por eso el
+    parámetro es `product_ref` y la consulta va contra OrderItem.product_ref.
+
+    Se mantiene el fallback a product_id cuando el valor recibido es numérico:
+    las líneas escritas antes del puente siguen siendo contables, para que un
+    producto con historial en la rama PostgreSQL no se purgue por error.
+
+    Respuesta: {"has_orders": bool, "order_count": int, "product_ref": str}
     """
     if not token_interno_valido(request):
         return no_autorizado()
 
-    count = OrderItem.objects.filter(product_id=product_id).count()
+    ref = (product_ref or '').strip()
+    if not ref:
+        return JsonResponse(
+            {'error': 'Parametro "product_ref" es requerido'}, status=400,
+        )
+
+    items = OrderItem.objects.filter(product_ref=ref)
+    if ref.isdigit():
+        items = items | OrderItem.objects.filter(product_id=int(ref))
+
+    count = items.distinct().count()
     return JsonResponse({
         'has_orders': count > 0,
         'order_count': count,
-        'product_id': product_id,
+        'product_ref': ref,
     })

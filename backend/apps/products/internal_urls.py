@@ -13,4 +13,11 @@ urlpatterns = [
     path('stats/', internal_views.products_stats, name='internal-products-stats'),
     path('recent/', internal_views.products_recent, name='internal-products-recent'),
     path('exists/', internal_views.products_exists, name='internal-products-exists'),
+    # Purga en cascada del lado Django: <str:> porque el producto se
+    # identifica por su ObjectId de Mongo (24 hex), no por un entero.
+    path(
+        'dependencies/<str:product_ref>/',
+        internal_views.products_dependencies,
+        name='internal-products-dependencies',
+    ),
 ]

@@ -176,6 +176,11 @@ class OrderItem(models.Model):
 	# Snapshot del producto al momento de la compra (sobrevive al hard delete)
 	product_name = models.CharField(max_length=200, blank=True, default='')
 	product_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+	# ObjectId de MongoDB (24 hex). En la rama java/mongoDB el producto vive
+	# en Mongo, no en la tabla products_product, así que la FK de arriba queda
+	# nula y esta columna es la que permite al microservicio consultar y purgar
+	# por referencia real. 24 = longitud exacta de un ObjectId.
+	product_ref = models.CharField(max_length=24, blank=True, null=True, db_index=True)
 	quantity = models.PositiveIntegerField(default=1)
 	unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 

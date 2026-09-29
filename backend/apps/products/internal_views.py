@@ -16,15 +16,19 @@ la API que consume el frontend.
 | stats/          | Agregados por estado (dashboard de Spring)      |
 | recent/         | Sync incremental: qué cambió desde una fecha   |
 | exists/         | Detectar referencias duplicadas entre backends |
+| dependencies/   | Purga en cascada del lado Django de un producto|
 """
+from django.db import transaction
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 
+from apps.carts.models import CartItem
+from apps.catalog.models import ProductCategory
 from apps.orders.api.interservice import no_autorizado, token_interno_valido
-from apps.products.models import Product
+from apps.products.models import Product, Review
 
 MAX_LIMIT = 500
 DEFAULT_LIMIT = 100
@@ -164,4 +168,58 @@ def products_exists(request):
     return JsonResponse({
         'referencia': ref,
         'exists': Product.objects.filter(referencia=ref).exists(),
+    })
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# 5. Purga en cascada del lado Django
+# ────────────────────────────────────────────────────────────────────────────
+@require_http_methods(['DELETE'])
+def products_dependencies(request, product_ref: str):
+    """Borra las filas de Django que apuntan a un producto de MongoDB.
+
+    En la rama java/mongoDB el producto NO vive en products_product: vive en
+    la colección `productos` de MongoDB, y su _id es un ObjectId. Por eso
+    Spring no puede limpiar estas tablas por sí solo (están en el PostgreSQL
+    de Django) y le pide a Django que haga su propia parte de la cascada.
+
+    Cubre las referencias con on_delete=CASCADE, que de otro modo quedarían
+    huérfanas apuntando a un producto que ya no existe:
+        carts_cartitem           (carrito)
+        catalog_productcategory  (categorías)
+        products_review          (reseñas)
+
+    Las imágenes y variantes viven en MongoDB y las limpia Spring.
+    Los motivos de desaprobación viven en products_productaudit y se
+    conservan (SET_NULL), igual que en la rama PostgreSQL.
+
+    Idempotente: si no hay nada que borrar devuelve los contadores en 0 y
+    devuelve 200, para que Spring pueda reintentar sin tratarlo como error.
+    """
+    if not token_interno_valido(request):
+        return no_autorizado()
+
+    ref = (product_ref or '').strip()
+    if not ref:
+        return JsonResponse(
+            {'error': 'Parametro "product_ref" es requerido'}, status=400,
+        )
+
+    # Los tres borrados van en una sola transacción: si falla el segundo, el
+    # primero no debe quedar aplicado. ATOMIC_REQUESTS ya envuelve la vista,
+    # pero se explicita porque la cascada es la parte que no puede quedar a
+    # medias aunque alguien cambie esa configuración más adelante.
+    with transaction.atomic():
+        items_carrito, _ = CartItem.objects.filter(product_ref=ref).delete()
+        categorias, _ = ProductCategory.objects.filter(product_ref=ref).delete()
+        resenas, _ = Review.objects.filter(product_ref=ref).delete()
+
+    total = items_carrito + categorias + resenas
+
+    return JsonResponse({
+        'product_ref': ref,
+        'cart_items': items_carrito,
+        'categories': categorias,
+        'reviews': resenas,
+        'total': total,
     })

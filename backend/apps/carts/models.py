@@ -33,6 +33,10 @@ class Cart(models.Model):
 class CartItem(models.Model):
 	cart = models.ForeignKey(Cart, related_name='items', on_delete=models.CASCADE)
 	product = models.ForeignKey(Product, on_delete=models.CASCADE)
+	# ObjectId de MongoDB: en la rama java/mongoDB la FK de arriba no es
+	# resoluble (el producto no está en products_product), así que el carrito
+	# referencia al producto por su _id de Mongo.
+	product_ref = models.CharField(max_length=24, blank=True, null=True, db_index=True)
 	variant = models.ForeignKey(Variant, on_delete=models.CASCADE)
 	quantity = models.PositiveIntegerField(default=1)
 	unit_price = models.DecimalField(max_digits=10, decimal_places=2)
