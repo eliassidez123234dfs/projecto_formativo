@@ -12,13 +12,12 @@
  */
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-// fetchCategories y createProductImage siguen viniendo de Django: el catálogo de
-// categorías y la subida de archivos a Cloudinary viven en su PostgreSQL. Todo
-// lo demás que toca un producto pasa por Spring, que es quien tiene el
-// documento en MongoDB; Django no puede resolver un ObjectId y devolvía 404
-// sin mensaje, con lo que la edición de un producto existente no guardaba ni
-// variantes ni imágenes.
-import { fetchCategories, createProductImage } from '../services/api'
+// fetchCategories sigue viniendo de Django: el catálogo de categorías vive en su
+// PostgreSQL. La subida del archivo también pasa por Django, pero solo para
+// subir el binario a Cloudinary; el documento de la imagen lo registra Spring.
+// Todo lo demás va por Spring, que es quien tiene el producto en MongoDB:
+// Django no puede resolver un ObjectId y devolvía 404 sin mensaje.
+import { fetchCategories } from '../services/api'
 import {
   createMicroProduct,
   updateMicroProduct,
@@ -27,6 +26,7 @@ import {
   deleteMicroProductVariant,
   deleteMicroProductImage,
   setMicroProductMainImage,
+  uploadMicroProductImage,
 } from '../services/productService'
 import { formatError as errMsg } from '../utils/formatError'
 
@@ -251,10 +251,11 @@ export default function ProductForm({ product, onClose, onSaved }) {
         continue
       }
       try {
-        const form = new FormData()
-        form.append('image', file)
-        form.append('is_main', 'false')
-        const created = await createProductImage(product.id, form)
+        // Sube el archivo a Cloudinary (Django) y registra la imagen en
+        // MongoDB (Spring). Antes era un solo POST a Django con el ObjectId y
+        // fallaba al resolver la FK, con lo que no se podía añadir ninguna
+        // imagen a un producto de esta rama.
+        const created = await uploadMicroProductImage(product.id, file)
         setImageItems(items => [...items, created])
         setCreatedImageIds(ids => [...ids, created.id])
       } catch (e) {
@@ -436,11 +437,9 @@ export default function ProductForm({ product, onClose, onSaved }) {
         savedProduct = await createMicroProduct(basePayload)
         createdIds.productId = savedProduct.id
 
-        // Paso 2: Subir imagen principal
-        const mainForm = new FormData()
-        mainForm.append('image', mainImage)
-        mainForm.append('is_main', 'true')
-        const createdMainImg = await createProductImage(savedProduct.id, mainForm)
+        // Paso 2: Subir imagen principal. Es la primera del producto, así que
+        // se marca como portada al crearla.
+        const createdMainImg = await uploadMicroProductImage(savedProduct.id, mainImage, { esPrincipal: true })
         createdIds.imageIds.push(createdMainImg.id)
 
         // Paso 3: Crear variantes

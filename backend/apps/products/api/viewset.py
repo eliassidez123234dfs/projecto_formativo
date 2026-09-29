@@ -14,17 +14,29 @@ Lectura pública, escritura solo para administradores autenticados.
 """
 from __future__ import annotations
 
+import logging
+from uuid import uuid4
+
+from django.core.files.storage import default_storage
 from django.db.models import Exists, OuterRef, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils.timezone import now
 from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from PIL import Image
 
 from apps.users.api.admin_viewset import AdminPermission
 from apps.products.models import Product, ProductAudit, ProductImage, Review, Variant
+
+logger = logging.getLogger(__name__)
+
+# Tope de tamaño para la subida. Cloudinary acepta archivos mucho más grandes y
+# los cobraría, sin que el usuario llegue a enterarse al final.
+MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024
 
 from .serializers import (
     CartItemSerializer,
@@ -550,3 +562,55 @@ class ProductImageViewSet(viewsets.ModelViewSet):
         if self.action in {'list', 'retrieve'}:
             return [permissions.AllowAny()]
         return [AdminPermission()]
+
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser],
+            url_path='upload')
+    def upload(self, request):
+        """Sube el archivo a Cloudinary y devuelve su public_id, sin crear fila.
+
+        Existe porque en la rama java/mongoDB el producto vive en MongoDB y no
+        hay fila en products_product: el endpoint normal, que exige la FK,
+        respondería 400. Aquí solo se sube el binario, que es la parte que
+        Cloudinary y Django hacen bien, y devuelve el identificador para que
+        el cliente lo registre después en Spring con
+        POST /api/v1/productos/{id}/imagenes.
+
+        Se separa en dos pasos a propósito: el archivo y el registro del
+        documento son cosas distintas, y atar la subida a la FK era lo que
+        hacía imposible añadir imágenes a un producto de MongoDB.
+
+        No valida el límite de 5 imágenes por producto: ese conteo vive en
+        Spring. El formulario lo comprueba en cliente.
+        """
+        archivo = request.FILES.get('image')
+        if archivo is None:
+            return Response({'image': ['Este campo es obligatorio.']}, status=400)
+        if not getattr(archivo, 'size', 0):
+            return Response({'image': ['El archivo está vacío.']}, status=400)
+        if archivo.size > MAX_IMAGE_UPLOAD_BYTES:
+            return Response(
+                {'image': [f'El archivo supera los {MAX_IMAGE_UPLOAD_BYTES // (1024 * 1024)} MB.']},
+                status=400)
+
+        try:
+            # Se valida con Pillow antes de subir: Cloudinary acepta cualquier
+            # byte y guardaría un PDF renombrado como .jpg, que luego no se
+            # puede mostrar en el catálogo.
+            Image.open(archivo).verify()
+        except Exception:
+            return Response({'image': ['El archivo no es una imagen válida.']}, status=400)
+
+        # upload_to replica el del ImageField (products/%Y/%m) para que las
+        # imágenes nuevas convivan con las viejas en la misma carpeta.
+        destino = f'products/{now():%Y/%m}/{uuid4().hex}'
+        try:
+            nombre = default_storage.save(destino, archivo)
+        except Exception as exc:
+            logger.exception('Fallo al subir la imagen a Cloudinary: %s', exc)
+            return Response(
+                {'image': ['No se pudo subir la imagen. Intenta de nuevo.']}, status=502)
+
+        return Response({
+            'image': nombre,
+            'image_url': default_storage.url(nombre),
+        }, status=201)

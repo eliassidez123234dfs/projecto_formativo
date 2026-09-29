@@ -357,6 +357,21 @@ export const fetchProductAudits = async (id) => {
 };
 
 // ─────────── IMÁGENES de producto (admin) ───────────
+/**
+ * Sube el archivo a Cloudinary y devuelve { image: public_id, image_url }.
+ *
+ * NO crea la imagen del producto: en la rama java/mongoDB esa fila vive en
+ * MongoDB y la registra Spring. Aquí solo se sube el binario, que es la parte
+ * que Django y Cloudinary hacen bien, y el public_id se pasa después a
+ * POST /api/v1/productos/{id}/imagenes.
+ */
+export const uploadProductImageFile = async (file) => {
+  const form = new FormData();
+  form.append('image', file);
+  const response = await api.post('products/images/upload/', form);
+  return response.data;
+};
+
 export const createProductImage = async (id, formData) => {
   const response = await api.post(`products/${id}/images/`, formData);
   return response.data;

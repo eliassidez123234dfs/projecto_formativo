@@ -12,7 +12,7 @@
  *   wasDisapproved→was_disapproved, readyToPublish→ready_to_publish, etc.
  */
 import msApi from './microservice';
-import { fetchProductAdmin } from './api';
+import { fetchProductAdmin, uploadProductImageFile } from './api';
 
 // ─────────── MAPEO DE RESPUESTAS ───────────
 
@@ -330,6 +330,21 @@ export const disapproveMicroProduct = async (id, { motivo } = {}) => {
 export const toggleMicroProductActive = async (id) => {
   const response = await msApi.patch(`productos/${id}/activo`);
   return adaptProduct(response.data);
+};
+
+/**
+ * Sube una imagen nueva a Cloudinary y la registra en MongoDB.
+ *
+ * Son dos pasos porque las responsabilidades están repartidas: Django sube el
+ * binario (es donde está la configuración de Cloudinary) y Spring guarda el
+ * documento (es donde vive el producto). Antes se hacía todo contra Django con
+ * un id de ObjectId, y la FK no resolvía, así que subir una imagen a un
+ * producto de la rama MongoDB era imposible.
+ */
+export const uploadMicroProductImage = async (id, file, { esPrincipal = false } = {}) => {
+  const { image: publicId, image_url: url } = await uploadProductImageFile(file);
+  return addMicroProductImage(id, { image: publicId, esPrincipal })
+    .then((imagen) => ({ ...imagen, image_url: imagen.image_url || url }));
 };
 
 export const addMicroProductImage = async (id, { image, esPrincipal = false } = {}) => {
