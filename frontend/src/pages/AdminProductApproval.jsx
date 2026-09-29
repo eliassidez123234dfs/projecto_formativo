@@ -5,13 +5,29 @@ import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
-import { fetchProducts, publishProduct, disapproveProduct } from '../services/api'
+// `fetchProducts` y `purgarMicroProduct` vienen de productService.js, que
+// habla con el microservicio Spring Boot (:8082 vía proxy '/api/v1').
+// `publishProduct`/`disapproveProduct` sí van a Django: la aprobación de un
+// producto es un cambio de estado de negocio que Django valida con su checklist.
+import { publishProduct, disapproveProduct } from '../services/api'
+import { fetchProducts, purgarMicroProduct } from '../services/productService'
 
 function errMsg(error, fallback) {
   const data = error?.response?.data
   if (!data) return fallback
   if (typeof data === 'string') return data
-  return Object.values(data).flat().join(' | ') || fallback
+  return data.detail || data.message || Object.values(data).flat().join(' | ') || fallback
+}
+
+function estadoBadge(p) {
+  if (p.was_deleted || (!p.is_approved && p.was_published)) return { cls: 'badge-inactive', label: 'Borrado' }
+  if (p.was_disapproved) return { cls: 'badge-inactive', label: 'Rechazado' }
+  return { cls: 'badge-pending', label: 'Pendiente' }
+}
+
+function canHardDelete(p) {
+  // Solo desaprobados o soft-delete (publicado y borrado) — nunca pendientes puros
+  return !p.is_approved && (p.was_disapproved || p.was_published || p.was_deleted)
 }
 
 const CHECKLIST_LABELS = {
@@ -43,7 +59,7 @@ export default function AdminProductApproval() {
   const loadProducts = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await fetchProducts({ is_approved: 'false', page, page_size: pageSize })
+      const data = await fetchProducts({ is_approved: false, page, page_size: pageSize })
       setProducts(Array.isArray(data.results) ? data.results : Array.isArray(data) ? data : [])
       setCount(data.count || 0)
       setError(null)
@@ -88,6 +104,27 @@ export default function AdminProductApproval() {
     finally { setProcessing(null) }
   }
 
+  async function handleDelete(productId, productName) {
+    const ok = window.confirm(
+      `¿BORRAR DEFINITIVAMENTE "${productName}"?\n\n` +
+      `Esta acción es IRREVERSIBLE y no se puede deshacer.\n` +
+      `Se eliminará el producto de la base de datos de forma permanente.`
+    )
+    if (!ok) return
+    setProcessing(productId)
+    try {
+      // Purga física: DELETE /api/v1/productos/{id}/purgar → 204.
+      // No hay fallback a Django a propósito: este endpoint sólo existe en el
+      // microservicio Spring (es el único que hace JPA deleteById()).
+      await purgarMicroProduct(productId)
+      setModal({ type: 'success', title: 'Producto borrado', message: `"${productName}" fue eliminado permanentemente de la base de datos.` })
+      setTimeout(() => { setModal(null); loadProducts() }, 1500)
+    } catch (e) {
+      setModal({ type: 'error', title: 'No se pudo borrar', message: errMsg(e, 'Error al borrar el producto') })
+    }
+    finally { setProcessing(null) }
+  }
+
   const totalPages = Math.max(1, Math.ceil(count / pageSize))
 
   return (
@@ -127,6 +164,7 @@ export default function AdminProductApproval() {
                   <th>Precio</th>
                   <th>Stock</th>
                   <th>Checklist</th>
+                  <th>Estado</th>
                   <th>Creado</th>
                   <th>Acciones</th>
                 </tr>
@@ -158,9 +196,12 @@ export default function AdminProductApproval() {
                         {p.ready_to_publish ? 'Listo' : 'Incompleto'}
                       </span>
                     </td>
+                    <td>
+                      <span className={`badge ${estadoBadge(p).cls}`}>{estadoBadge(p).label}</span>
+                    </td>
                     <td>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         <button
                           className="btn btn-sm btn-primary"
                           disabled={processing === p.id || !p.ready_to_publish}
@@ -177,6 +218,16 @@ export default function AdminProductApproval() {
                         >
                           Rechazar
                         </button>
+                        {canHardDelete(p) && (
+                          <button
+                            className="btn btn-sm btn-danger"
+                            disabled={processing === p.id}
+                            onClick={() => handleDelete(p.id, p.name)}
+                            title="Borrado total de la base de datos — IRREVERSIBLE"
+                          >
+                            {processing === p.id ? '...' : 'Borrar'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

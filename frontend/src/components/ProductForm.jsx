@@ -1,19 +1,87 @@
 /**
  * ProductForm.jsx — Formulario modal para crear o editar productos (admin).
  *
- * Decisiones de diseño:
- * - Se usa un solo modal tanto para crear como para editar (prop product determina el modo).
- * - Las imágenes existentes se pueden reordenar, marcar como principal o eliminar.
- * - Los precios deben ser múltiplos de 50 COP (regla de negocio).
- * - Las variantes nuevas y existentes se gestionan por separado para simplificar el PATCH.
- * - Las operaciones de imagen (eliminar, reordenar, marcar principal) se difieren al submit.
- * - VALIDACIÓN COMPLETA client-side antes de cualquier llamada API (refleja reglas del backend).
- * - ROLLBACK automático: si falla cualquier paso después de guardar el producto, se revierte.
+ * ══════════════════════════════════════════════════════════════════════════
+ * POR QUÉ UN SOLO COMPONENTE PARA CREAR Y EDITAR
+ * ══════════════════════════════════════════════════════════════════════════
+ * La prop `product` decide el modo: si viene null se crea, con datos se edita.
+ * Son el mismo formulario porque los campos y las reglas son idénticos; lo que
+ * cambia es qué endpoints se llaman y qué se hace con las imágenes y variantes
+ * que ya existen. Separarlos would've duplicado ~400 líneas de validación.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * FLUJO DE CARGA (al abrir en modo editar)
+ * ══════════════════════════════════════════════════════════════════════════
+ *   AdminProducts.openEdit(id)
+ *     → productService.fetchMicroProductAdmin(id)
+ *         → GET /api/v1/productos/{id}      (Spring: datos base)      ─┐
+ *         → GET /api/products/{id}/         (Django: imágenes,       ─┴→ merge
+ *                                            variantes, categorías)
+ *     → setEditingProduct() + showForm
+ *     → ProductForm monta con `product` ya poblado
+ *
+ * El merge es híbrido a propósito: el producto base es del microservicio JPA,
+ * pero imágenes, variantes y categorías son modelos de Django.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * FLUJO DE CREAR (handleSubmit, rama `else`)
+ * ══════════════════════════════════════════════════════════════════════════
+ *  1. validate()            client-side: precio múltiplo de 50, nombre, etc.
+ *  2. validateAllImages()   JPG/PNG, <2MB, >=400x400
+ *  3. createMicroProduct()  POST  /api/v1/productos        → 201  (Spring)
+ *  4. syncProductCategories() PATCH /api/products/{id}/          (Django)
+ *  5. createProductImage()  POST  /api/products/{id}/images/     (Django)
+ *  6. createProductVariant()×N POST /api/products/{id}/variants/  (Django)
+ *  → toast.success → onSaved()
+ *
+ * Si un paso falla después del 3, el ROLLBACK hace soft-delete del producto
+ * creado (deleteMicroProduct) para no dejar un producto a medio crear.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * FLUJO DE EDITAR (handleSubmit, rama `if (isEditing)`)
+ * ══════════════════════════════════════════════════════════════════════════
+ *  1. deleteProductImage()×N  imágenes marcadas          (Django, idempotente)
+ *  2. updateMicroProduct()    PUT /api/v1/productos/{id} → 200 (Spring)
+ *  2b.syncProductCategories() PATCH /api/products/{id}/       (Django) *
+ *  3. updateProductVariant()×N                              (Django)
+ *  4. deleteProductVariant()×N                              (Django)
+ *  5. createProductVariant()×N                              (Django)
+ *  6. updateProductImage()   marcar principal               (Django)
+ *  7. reorderProductImages() reordenar                     (Django)
+ *  → toast.success → onSaved()
+ *
+ *   * sólo si el usuario cambió algo. Y va DESPUÉS del PUT de Spring porque
+ *     Product.save() en Django bumpea `version` con F('version')+1: si Django
+ *     escribiera primero, el PUT de Spring llegaría con versión obsoleta y
+ *     respondería 409 sin guardar nada.
+ *
+ * El orden importa también para el ROLLBACK: primero se borra lo que ya no va,
+ * después se actualiza. Al revés, un fallo dejaría datos ya borrados.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * BLOQUEO OPTIMISTA
+ * ══════════════════════════════════════════════════════════════════════════
+ * `basePayload.version` es la versión con la que se ABRIÓ el modal, no la
+ * vigente. Spring compara contra la fila y, si otro usuario guardó mientras
+ * tanto, responde 409. El handler de 409 no reintenta a ciegas: reintentar
+ * leería la versión nueva y sobrescribiría el trabajo ajeno, que es justo lo
+ * que el bloqueo existe para evitar. Cierra el modal y refresca la lista.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * DECISIONES DE DISEÑO
+ * ══════════════════════════════════════════════════════════════════════════
+ * - Las imágenes se difieren al submit: se acumulan en estado local y se
+ *   ejecutan todas juntas, para que un fallo no deje el producto a medias.
+ * - Las variantes nuevas y existentes se llevan por separado en vez de
+ *   mandar un diff: simplifica el caso de una variante recién creada.
+ * - VALIDACIÓN COMPLETA client-side antes de cualquier llamada, reflejando
+ *   las reglas que igual vuelven a comprobar los dos backends.
  */
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
   fetchCategories,
+  syncProductCategories,
   createProductImage,
   updateProductImage,
   deleteProductImage,
@@ -63,9 +131,12 @@ const inputStyle = {
 const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 2 }
 
 // ─── UTILIDADES ───
+const PRICE_MAX = 99999999.99
+const priceMaxLabel = '$99.999.999,99'
+
 function isValidCopPrice(value) {
   const n = Number(value)
-  return Number.isFinite(n) && Number.isInteger(n) && n >= 50 && n % 50 === 0
+  return Number.isFinite(n) && Number.isInteger(n) && n >= 50 && n <= PRICE_MAX && n % 50 === 0
 }
 
 function colorFor(value) {
@@ -141,7 +212,7 @@ function VariantRow({ v, onChange, onRemove }) {
       <div style={{ width: 96 }}>
         <label style={labelSm}>Precio (COP)</label>
         <input
-          type="number" min="50" step="50" placeholder="Vacío = base"
+          type="number" min="50" max={PRICE_MAX} step="50" placeholder="Vacío = base"
           value={v.price_variant ?? ''}
           onChange={e => onChange({ ...v, price_variant: e.target.value === '' ? null : Number(e.target.value) })}
           style={inputStyle}
@@ -170,6 +241,18 @@ function VariantRow({ v, onChange, onRemove }) {
 }
 
 // ─── COMPONENTE PRINCIPAL ───
+
+/**
+ * Extrae los ids de categoría de un producto, tolerando que la lista falte.
+ *
+ * `categories` la arma productService.fetchMicroProductAdmin y siempre llega
+ * como array, pero normalizar acá evita que un shape raro reviente el render
+ * con "Cannot read properties of undefined (reading 'map')".
+ */
+function categoryIdsOf(product) {
+  return (product?.categories || []).map(c => c.id)
+}
+
 export default function ProductForm({ product, onClose, onSaved }) {
   const isEditing = Boolean(product)
 
@@ -179,17 +262,44 @@ export default function ProductForm({ product, onClose, onSaved }) {
   const [referencia, setReferencia] = useState(() => product?.sku || '')
   const [isActive, setIsActive] = useState(() => product?.is_active ?? true)
   const [mainImage, setMainImageFile] = useState(null)
-  const [extraImages, setExtraImages] = useState([])
   const [imageItems, setImageItems] = useState(() => (product?.images || []).slice().sort((a, b) => a.order - b.order))
   const [deletedImageIds, setDeletedImageIds] = useState([])
+  const [createdImageIds, setCreatedImageIds] = useState([])
   const [pendingMainImageId, setPendingMainImageId] = useState(null)
   const [existingVariants, setExistingVariants] = useState(() => (product?.variants || []).map(v => ({ ...v, _dirty: false })))
   const [removedVariantIds, setRemovedVariantIds] = useState([])
   const [variants, setVariants] = useState([])
   const [categoryOptions, setCategoryOptions] = useState([])
-  const [categoryIds, setCategoryIds] = useState(() => (product?.categories || []).map(c => c.id))
+  // ── CATEGORÍAS: dos estados, no uno ───────────────────────────────────
+  // categoryIds  → lo que el usuario marcó AHORA (se envía al guardar).
+  // initialCategoryIds → lo que tenía el producto AL ABRIR el formulario.
+  // La diferencia entre ambos es lo que permite decidir si hace falta
+  // llamar a Django: si no cambió, se evita el PATCH (que además bumpea la
+  // columna `version`, ver Product.save() en Django).
+  const idsFromProduct = categoryIdsOf(product)
+  const [categoryIds, setCategoryIds] = useState(idsFromProduct)
+  const [initialCategoryIds, setInitialCategoryIds] = useState(idsFromProduct)
   const [saving, setSaving] = useState(false)
 
+  // El inicializador de useState sólo corre en el PRIMER montaje. Si la prop
+  // `product` llegara después (o cambiara), categoryIds se quedaría congelado
+  // en [] y el formulario abriría sin ninguna categoría marcada aunque el
+  // producto sí las tenga. Este efecto es el que cubre ese caso.
+  //
+  // La dependencia es `product?.id` y no `product` a propósito: AdminProductDetail
+  // vuelve a pedir el producto con cada cambio de estado, y depender del objeto
+  // reiniciaría los checkboxes bajo los dedos del usuario. Lo que importa es
+  // que esté ABRIENDO un producto distinto, no que el mismo llegue con otro
+  // objeto.
+  useEffect(() => {
+    const ids = categoryIdsOf(product)
+    setCategoryIds(ids)
+    setInitialCategoryIds(ids)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id])
+
+  // Catálogo de categorías para los checkboxes. Va a Django: es el único
+  // backend que tiene el modelo Category.
   useEffect(() => {
     fetchCategories()
       .then(data => setCategoryOptions(Array.isArray(data) ? data : data.results || []))
@@ -197,7 +307,12 @@ export default function ProductForm({ product, onClose, onSaved }) {
   }, [])
 
   function toggleCategory(id) {
-    setCategoryIds(ids => ids.includes(id) ? ids.filter(x => x.id !== id) : [...ids, id])
+    setCategoryIds(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
+  }
+
+  function categoriesChanged() {
+    if (categoryIds.length !== initialCategoryIds.length) return true
+    return categoryIds.some(id => !initialCategoryIds.includes(id))
   }
 
   function addVariant() {
@@ -224,6 +339,45 @@ export default function ProductForm({ product, onClose, onSaved }) {
     setImageItems(next)
   }
 
+  // Sube las imágenes adicionales al instante y las agrega al final de la
+  // lista del gestor para poder reordenarlas de inmediato.
+  async function handleAddImages(files) {
+    const storedCount = imageItems.length + deletedImageIds.length
+    if (storedCount >= MAX_IMAGES) {
+      toast.error(`Máximo ${MAX_IMAGES} imágenes por producto.`)
+      return
+    }
+    for (const file of Array.from(files || [])) {
+      try {
+        await validateImageFile(file)
+      } catch (e) {
+        toast.error(e.message)
+        continue
+      }
+      try {
+        const form = new FormData()
+        form.append('image', file)
+        form.append('is_main', 'false')
+        const created = await createProductImage(product.id, form)
+        setImageItems(items => [...items, created])
+        setCreatedImageIds(ids => [...ids, created.id])
+      } catch (e) {
+        toast.error(errMsg(e, `No se pudo subir "${file.name}"`))
+      }
+    }
+  }
+
+  // Cancelar también revierte las imágenes subidas en esta sesión.
+  async function handleCancel() {
+    if (saving) return
+    if (createdImageIds.length > 0) {
+      await Promise.allSettled(
+        createdImageIds.map(id => deleteProductImage(product.id, id).catch(() => {}))
+      )
+    }
+    onClose()
+  }
+
   // ─── VALIDACIÓN COMPLETA (refleja TODAS las reglas del backend) ───
   function validate() {
     // --- Producto ---
@@ -231,19 +385,19 @@ export default function ProductForm({ product, onClose, onSaved }) {
     if (name.trim().length > 100) return 'El nombre no puede superar 100 caracteres.'
     if (!description.trim()) return 'La descripción es requerida.'
     if (description.trim().length > 500) return 'La descripción no puede superar 500 caracteres.'
-    if (!isValidCopPrice(price)) return 'El precio base debe ser un múltiplo de 50 COP (mínimo $50).'
+    if (!isValidCopPrice(price)) return `El precio base debe ser un múltiplo de 50 COP (mínimo $50, máximo ${priceMaxLabel}).`
     if (!referencia.trim()) return 'La referencia (SKU) es requerida.'
     if (referencia.trim().length < 3 || referencia.trim().length > 20) return 'La referencia debe tener entre 3 y 20 caracteres.'
-    if (!/^[A-Z0-9\-]{3,20}$/.test(referencia.trim())) return 'La referencia solo puede contener letras mayúsculas, números y guiones.'
+    if (!/^[A-Z0-9-]{3,20}$/.test(referencia.trim())) return 'La referencia solo puede contener letras mayúsculas, números y guiones.'
 
     // --- Imágenes (crear) ---
     if (!isEditing && !mainImage) return 'La imagen principal es requerida.'
 
     // --- Imágenes (editar): max 5 total ---
     if (isEditing) {
-      const totalImages = imageItems.length + extraImages.length
+      const totalImages = imageItems.length + deletedImageIds.length
       if (totalImages > MAX_IMAGES) return `Máximo ${MAX_IMAGES} imágenes por producto (actualmente ${totalImages}).`
-      if (imageItems.length === 0 && !mainImage && extraImages.length === 0) {
+      if (imageItems.length === 0 && !mainImage) {
         return 'El producto debe tener al menos una imagen.'
       }
     }
@@ -269,7 +423,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
       if (v.stock < 0) return `${label}: El stock no puede ser negativo.`
 
       if (v.price_variant != null && v.price_variant !== '' && !isValidCopPrice(v.price_variant)) {
-        return `${label}: El precio de variante debe ser múltiplo de 50 COP (mínimo $50).`
+        return `${label}: El precio de variante debe ser múltiplo de 50 COP (mínimo $50, máximo ${priceMaxLabel}).`
       }
 
       // color_hex validation
@@ -293,12 +447,18 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
   async function validateAllImages() {
     if (mainImage) await validateImageFile(mainImage)
-    for (const file of extraImages) {
-      await validateImageFile(file)
-    }
   }
 
-  // ─── HANDLER DE ENVÍO (Validación completa + Rollback) ───
+  // ─── HANDLER DE ENVÍO ────────────────────────────────────────────────
+  // Orchestrador de los dos flujos. Ver el docstring de este archivo para el
+  // detalle paso a paso de "crear" y "editar".
+  //
+  // Dos ideas guían el orden:
+  //  1. PRIMERO BORRAR, DESPUÉS ACTUALIZAR. Al revés, un fallo dejaría
+  //     imágenes/variantes eliminadas de un producto que no se guardó.
+  //  2. SPRING ANTES QUE DJANGO EN EL PUT. Product.save() en Django bumpea
+  //     `version`; si Django escribiera primero, el PUT de Spring llegaría con
+  //     la versión obsoleta y respondería 409 sin guardar nada.
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -314,24 +474,56 @@ export default function ProductForm({ product, onClose, onSaved }) {
       await validateAllImages()
 
       let savedProduct = product
+      // Payload para el microservicio Spring Boot.
+      //
+      // `category_ids` NO va acá: ProductoRequest (el DTO de Spring) no tiene
+      // ese campo, así que mandarlo sería descartarlo en silencio. Las
+      // categorías viajan aparte, a Django, con syncProductCategories() en los
+      // pasos 1b / 2b. Ver el comentario de cada paso para el porqué del orden.
       const basePayload = {
         name: name.trim(),
         description: description.trim(),
         base_price: Number(price),
         referencia: referencia.trim(),
         is_active: isActive,
-        category_ids: categoryIds,
+        // Versión con la que se ABRIÓ el formulario, no la vigente: es la
+        // única que permite detectar que otro usuario guardó mientras este
+        // modal estaba abierto (si se mandara la actual, nunca habría 409).
+        version: product?.version,
       }
 
       if (isEditing) {
         // ─── FLUJO EDITAR ───
-        // Paso 1: Eliminar imágenes marcadas
+        // Paso 1: Eliminar imágenes marcadas (idempotente: si ya no existe, ok)
         for (const imageId of deletedImageIds) {
-          await deleteProductImage(product.id, imageId)
+          await deleteProductImage(product.id, imageId).catch(e => {
+            if (e?.response?.status !== 404) throw e
+          })
         }
+        setDeletedImageIds([])
 
         // Paso 2: Actualizar datos del producto (vía microservicio)
+        //   PUT /api/v1/productos/{id} → ProductoController.actualizarProducto
+        //   → ProductoServiceImpl.actualizarProducto → JPA save() → 200
         savedProduct = await updateMicroProduct(product.id, basePayload)
+
+        // Paso 2b: Sincronizar categorías (vía Django, si cambiaron).
+        //   PATCH /api/products/{id}/ con { category_ids }
+        //   → ProductWriteSerializer._set_categories() → replace en
+        //     products_productcategory.
+        //
+        // Va DESPUÉS del PUT de Spring a propósito. Product.save() en Django
+        // incrementa `version` con F('version') + 1, así que si Django
+        // escribiera primero, el PUT de Spring llegaría con una versión ya
+        // obsoleta y respondería 409 sin guardar nada. En este orden el PUT
+        // usa la versión con la que se abrió el formulario y el PATCH no
+        // invalida nada de lo que el usuario está viendo.
+        //
+        // Sólo se llama si el usuario realmente desmarcó/marcó algo: el PATCH
+        // es una escritura extra y no está gratis.
+        if (categoriesChanged()) {
+          await syncProductCategories(savedProduct.id, categoryIds)
+        }
 
         // Paso 3: Guardar variantes existentes
         for (const variant of existingVariants) {
@@ -364,30 +556,34 @@ export default function ProductForm({ product, onClose, onSaved }) {
           createdIds.variantIds.push(created.id)
         }
 
-        // Paso 6: Subir imágenes nuevas
-        for (const file of extraImages) {
-          const form = new FormData()
-          form.append('image', file)
-          form.append('is_main', 'false')
-          const createdImg = await createProductImage(savedProduct.id, form)
-          createdIds.imageIds.push(createdImg.id)
-        }
-
         // Paso 7: Marcar imagen principal si cambió
         if (pendingMainImageId) {
           await updateProductImage(savedProduct.id, pendingMainImageId, { is_main: true })
         }
 
-        // Paso 8: Reordenar imágenes
-        const nextImages = imageItems.slice().sort((a, b) => a.order - b.order)
+        // Paso 8: Reordenar imágenes (la lista ya incluye las subidas)
+        const nextImages = imageItems.slice()
         if (nextImages.length > 0) {
           await reorderProductImages(savedProduct.id, nextImages.map((img, i) => ({ id: img.id, order: i + 1 })))
         }
+
+        // Imágenes subidas en esta sesión quedan confirmadas
+        setCreatedImageIds([])
       } else {
         // ─── FLUJO CREAR ───
         // Paso 1: Crear producto (vía microservicio)
+        //   POST /api/v1/productos → ProductoController.crearProducto
+        //   → ProductoServiceImpl.crearProducto → JPA save() → 201
         savedProduct = await createMicroProduct(basePayload)
         createdIds.productId = savedProduct.id
+
+        // Paso 1b: Asociar las categorías (vía Django, si se marcó alguna).
+        //   Spring acaba de crear la fila, pero la tabla
+        //   products_productcategory es de Django: sin este paso el producto
+        //   nacía sin categorías aunque el usuario las hubiera elegido.
+        if (categoryIds.length > 0) {
+          await syncProductCategories(savedProduct.id, categoryIds)
+        }
 
         // Paso 2: Subir imagen principal
         const mainForm = new FormData()
@@ -414,11 +610,28 @@ export default function ProductForm({ product, onClose, onSaved }) {
       toast.success(isEditing ? 'Producto actualizado' : 'Producto creado')
       onSaved && onSaved()
     } catch (err) {
+      // ─── CONFLICTO DE VERSIÓN (409): otro usuario editó el producto ───
+      // No es un error de validación: los datos pueden estar bien, pero la
+      // versión que tenía el formulario quedó vieja. Se cierra el modal y se
+      // refresca la lista en vez de reintentar: reintentar a ciegas leería la
+      // versión nueva y sobrescribiría el trabajo ajeno, que es justo lo que
+      // el bloqueo optimista existe para evitar.
+      if (err?.response?.status === 409) {
+        toast.error(
+          'El producto fue modificado por otro usuario. ' +
+          'Recargá el formulario para ver los cambios más recientes.',
+          { duration: 6000 },
+        )
+        onSaved && onSaved()
+        onClose()
+        return
+      }
+
       // ─── ROLLBACK: Si se creó algo, eliminarlo ───
       if (createdIds.productId) {
         try {
           await deleteMicroProduct(createdIds.productId)
-        } catch (_) { /* ignorar error de rollback */ }
+        } catch { /* ignorar error de rollback */ }
       }
       toast.error(errMsg(err, 'Error al guardar'))
     } finally {
@@ -432,12 +645,12 @@ export default function ProductForm({ product, onClose, onSaved }) {
   }
 
     return (
-    <div className="form-modal-backdrop" onClick={onClose}>
+    <div className="form-modal-backdrop" onClick={handleCancel}>
       <div className="form-modal" onClick={e => e.stopPropagation()} style={{ width: 'min(860px, 95vw)' }}>
         {/* ─── CABECERA DEL MODAL ─── */}
         <div className="form-modal-header">
           <h2>{isEditing ? 'Editar Producto' : 'Crear Producto'}</h2>
-          <button className="form-modal-close" onClick={onClose}>✕</button>
+          <button className="form-modal-close" onClick={handleCancel}>✕</button>
         </div>
 
         {/* ─── CUERPO DEL FORMULARIO ─── */}
@@ -450,8 +663,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
             </div>
             <div className="form-group">
               <label style={labelStyle}>Precio base (COP)</label>
-              <input style={{ ...inputStyle, fontSize: 14 }} type="number" value={price} onChange={e => setPrice(e.target.value)} min="50" step="50" placeholder="Múltiplo de 50" />
-              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Mínimo $50 COP, múltiplo de 50.</small>
+              <input style={{ ...inputStyle, fontSize: 14 }} type="number" value={price} onChange={e => setPrice(e.target.value)} min="50" max={PRICE_MAX} step="50" placeholder="Múltiplo de 50" />
+              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Mínimo $50 COP, máximo ${priceMaxLabel}, múltiplo de 50.</small>
             </div>
             <div className="form-group">
               <label style={labelStyle}>Referencia (SKU)</label>
@@ -501,9 +714,16 @@ export default function ProductForm({ product, onClose, onSaved }) {
           {isEditing && (
             <div className="form-group">
               <label style={labelStyle}>Agregar imágenes adicionales</label>
-              <input type="file" multiple accept="image/png, image/jpeg" onChange={e => setExtraImages(Array.from(e.target.files || []))} style={inputStyle} />
+              <input
+                type="file" multiple accept="image/png, image/jpeg"
+                onChange={e => {
+                  handleAddImages(e.target.files)
+                  e.target.value = ''
+                }}
+                style={inputStyle}
+              />
               <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
-                Max {MAX_IMAGES} imagenes, JPG/PNG, max 2MB, min 400x400px. ({imageItems.length + extraImages.length}/{MAX_IMAGES})
+                Max {MAX_IMAGES} imagenes, JPG/PNG, max 2MB, min 400x400px. ({imageItems.length}/{MAX_IMAGES})
               </small>
             </div>
           )}
@@ -605,7 +825,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
           {/* ─── PIE DEL MODAL: BOTONES ─── */}
           <div className="form-modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>
+            <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={saving}>
               Cancelar
             </button>
             <button type="submit" className="btn btn-primary" disabled={saving}>
