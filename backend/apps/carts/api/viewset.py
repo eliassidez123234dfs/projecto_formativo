@@ -110,30 +110,52 @@ class CartViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'], url_path='add')
     def add(self, request):
         """Agrega un producto/variante al carrito.
-        Si ya existe, suma la cantidad. Valida stock disponible."""
+        Si ya existe, suma la cantidad. Valida stock disponible.
+
+        Funciona en los dos modos de referencia: por FK local (rama
+        PostgreSQL) o por ObjectId de MongoDB (rama java/mongoDB), donde el
+        producto y la variante no están en esta base de datos y el stock se
+        valida en el microservicio."""
         cart = self._get_cart(request)
         serializer = CartAddSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        product = serializer.validated_data['product']
-        variant = serializer.validated_data['variant']
-        quantity = serializer.validated_data['quantity']
+        data = serializer.validated_data
+        product = data['product']
+        variant = data['variant']
+        product_ref = data.get('product_ref')
+        variant_ref = data.get('variant_ref')
+        quantity = data['quantity']
 
         if quantity < 1:
             return Response({'quantity': 'La cantidad mínima permitida es 1.'}, status=status.HTTP_400_BAD_REQUEST)
-        if quantity > variant.stock:
+        # El stock solo es comprobable cuando la variante es local. En modo
+        # MongoDB el variante es None y lo valida el microservicio.
+        if variant and quantity > variant.stock:
             return Response({'quantity': 'La cantidad no puede superar el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        item, created = CartItem.objects.get_or_create(
-            cart=cart,
-            product=product,
-            variant=variant,
-            defaults={'quantity': quantity, 'unit_price': variant.effective_price},
-        )
+        lookup = {
+            'cart': cart,
+            'product': product,
+            'variant': variant,
+            'product_ref': product_ref,
+            'variant_ref': variant_ref,
+        }
+        defaults = {'quantity': quantity}
+        if variant is not None:
+            defaults['unit_price'] = variant.effective_price
+        elif data.get('unit_price') is not None:
+            defaults['unit_price'] = data['unit_price']
+        if data.get('product_name'):
+            defaults['product_name'] = data['product_name']
+        if data.get('variant_label'):
+            defaults['variant_label'] = data['variant_label']
+
+        item, created = CartItem.objects.get_or_create(**lookup, defaults=defaults)
 
         if not created:
             new_quantity = item.quantity + quantity
-            if new_quantity > variant.stock:
+            if variant is not None and new_quantity > variant.stock:
                 return Response(
                     {'quantity': 'La cantidad no puede superar el stock disponible.'},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -160,7 +182,9 @@ class CartViewSet(viewsets.ViewSet):
             return Response({'quantity': 'La cantidad mínima permitida es 1.'}, status=status.HTTP_400_BAD_REQUEST)
         if quantity > 999:
             return Response({'quantity': 'La cantidad máxima permitida es 999.'}, status=status.HTTP_400_BAD_REQUEST)
-        if quantity > item.variant.stock:
+        # Solo hay stock local cuando la variante es una fila de esta BD; en la
+        # rama java/mongoDB la variante es None y el stock vive en MongoDB.
+        if item.variant_id and quantity > item.variant.stock:
             return Response({'quantity': 'La cantidad no puede superar el stock disponible.'}, status=status.HTTP_400_BAD_REQUEST)
 
         item.quantity = quantity

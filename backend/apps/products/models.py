@@ -345,7 +345,10 @@ class ProductAudit(models.Model):
 
 
 class Review(models.Model):
-	product = models.ForeignKey(Product, related_name='reviews', on_delete=models.CASCADE)
+	# NULLABLE a propósito: en la rama java/mongoDB el producto vive en MongoDB
+	# y no hay fila local que apuntar, así que la relación real va en product_ref
+	# con el ObjectId. Con la FK NOT NULL esa reseña no se podría guardar.
+	product = models.ForeignKey(Product, related_name='reviews', on_delete=models.CASCADE, null=True, blank=True)
 	# ObjectId de MongoDB (rama java/mongoDB): la FK queda nula porque el
 	# producto vive en Mongo, no en products_product.
 	product_ref = models.CharField(max_length=24, blank=True, null=True, db_index=True)
@@ -362,7 +365,13 @@ class Review(models.Model):
 			# Rama java/mongoDB: con product_id NULL la restricción anterior
 			# no protege nada (NULL != NULL). Esta sí, vía product_ref.
 			models.UniqueConstraint(fields=['product_ref', 'user'], name='unique_productref_user_review'),
+			# Una reseña tiene que apuntar a un producto, del lado que sea.
+			models.CheckConstraint(
+				condition=models.Q(product__isnull=False) | models.Q(product_ref__isnull=False),
+				name='review_tiene_producto',
+			),
 		]
 
 	def __str__(self) -> str:
-		return f'{self.product.name} - {self.user} ({self.rating})'
+		nombre = self.product.name if self.product_id else f'producto {self.product_ref}'
+		return f'{nombre} - {self.user} ({self.rating})'

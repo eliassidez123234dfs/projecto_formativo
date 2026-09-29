@@ -67,9 +67,50 @@ function adaptProduct(spring) {
     was_deleted: spring.wasDeleted ?? false,
     created_at: spring.createdAt,
     updated_at: spring.updatedAt,
+    // En los listados Spring solo devuelve los conteos, no las listas. Por eso
+    // aquí se cae a la imagen principal: el catálogo no necesita la galería
+    // completa y pedirla sería una respuesta desproporcionada.
     images: mainImage ? [{ image_url: mainImage, is_main: true }] : [],
     variants: [],
   };
+}
+
+/**
+ * Adapta las imágenes que devuelve Spring a la forma que espera la vista admin.
+ *
+ * Spring expone `image` (URL cruda) y `cloudinaryUrl` ya resuelto; la vista
+ * espera `image_url` + `is_main`.
+ */
+function adaptImages(springImages, fallbackMainImage) {
+  if (Array.isArray(springImages) && springImages.length > 0) {
+    return springImages.map((img) => ({
+      id: img.id,
+      image_url: img.cloudinaryUrl || cloudinaryImageUrl(img.image),
+      is_main: Boolean(img.esPrincipal),
+    }));
+  }
+  return fallbackMainImage ? [{ image_url: fallbackMainImage, is_main: true }] : [];
+}
+
+/**
+ * Adapta las variantes de Spring a la forma de la vista admin, replicando la
+ * etiqueta que armaba Django con `Talla {size} — {color}`.
+ *
+ * `price_variant` puede venir null: entonces el precio efectivo es el del
+ * producto, que Spring ya calcula y devuelve como `precio_efectivo`.
+ */
+function adaptVariants(springVariants) {
+  if (!Array.isArray(springVariants)) return [];
+  return springVariants.map((v) => ({
+    id: v.id,
+    size: v.size,
+    color: v.color,
+    color_hex: v.colorHex,
+    color_nombre: v.colorNombre,
+    stock: v.stock,
+    price_variant: v.priceVariant,
+    precio_efectivo: v.precioEfectivo,
+  }));
 }
 
 function parseBool(v) {
@@ -129,26 +170,31 @@ export const fetchMicroProducts = async (params = {}) => {
 };
 
 /**
- * Detalle admin: base desde Spring + imagenes/variantes/categorias desde Django
- * (esos sub-recursos siguen en Django: DELETE /images/{id}, /variants/{id}).
+ * Detalle admin.
+ *
+ * Imágenes y variantes salen de Spring: en la rama java/mongoDB viven en
+ * MongoDB y Django no puede resolverlas por ObjectId (su FK de producto apunta
+ * a products_product). Pedirlas a Django con un ObjectId devolvía 404 y la
+ * vista se quedaba sin galería ni variantes, sin error visible.
+ *
+ * De Django solo se conserva lo que sí vive en PostgreSQL: las categorías
+ * (catalog_productcategory, por product_ref) y el checklist de publicación.
+ * Si esa llamada falla, el detalle se muestra igualmente con los datos de
+ * Spring en vez de romperse.
  */
 export const fetchMicroProductAdmin = async (id) => {
-  const micro = adaptProduct((await msApi.get(`productos/${id}`)).data);
+  const springRaw = (await msApi.get(`productos/${id}`)).data;
+  const micro = adaptProduct(springRaw);
+  micro.images = adaptImages(springRaw.imagenes, micro.main_image);
+  micro.variants = adaptVariants(springRaw.variantes);
+
   try {
     const django = await fetchProductAdmin(id);
     return {
       ...micro,
       sku: micro.sku || django.referencia,
-      is_active: django.is_active ?? micro.is_active,
-      is_approved: django.is_approved ?? micro.is_approved,
-      images: Array.isArray(django.images) ? django.images : micro.images,
-      variants: Array.isArray(django.variants) ? django.variants : micro.variants,
       categories: Array.isArray(django.categories) ? django.categories : [],
       checklist: django.checklist,
-      ready_to_publish: django.ready_to_publish ?? micro.ready_to_publish,
-      was_disapproved: django.was_disapproved ?? micro.was_disapproved,
-      was_published: django.was_published ?? micro.was_published,
-      was_deleted: django.was_deleted ?? micro.was_deleted,
     };
   } catch {
     return micro;

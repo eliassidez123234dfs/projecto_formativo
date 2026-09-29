@@ -42,7 +42,10 @@ class ProductCategory(models.Model):
     """Tabla intermedia para la relación muchos-a-muchos (N:M) entre productos y categorías.
     Permite que un producto tenga múltiples categorías y viceversa.
     unique_together garantiza que un producto solo se asigne una vez por categoría."""
-    product = models.ForeignKey('products.Product', related_name='categories', on_delete=models.CASCADE)
+    # NULLABLE a propósito: en la rama java/mongoDB el producto vive en MongoDB
+    # y no hay fila local que apuntar, así que la relación real va en product_ref
+    # con el ObjectId. Con la FK NOT NULL esa fila no se podría guardar.
+    product = models.ForeignKey('products.Product', related_name='categories', on_delete=models.CASCADE, null=True, blank=True)
     # ObjectId de MongoDB (rama java/mongoDB): la FK queda nula porque el
     # producto vive en Mongo, no en products_product.
     product_ref = models.CharField(max_length=24, blank=True, null=True, db_index=True)
@@ -59,12 +62,18 @@ class ProductCategory(models.Model):
                 fields=['product_ref', 'category'],
                 name='unique_productref_category',
             ),
+            # Una fila tiene que apuntar a un producto, del lado que sea.
+            models.CheckConstraint(
+                condition=models.Q(product__isnull=False) | models.Q(product_ref__isnull=False),
+                name='productcategory_tiene_producto',
+            ),
         ]
         verbose_name = 'Product Category'
         verbose_name_plural = 'Product Categories'
 
     def __str__(self) -> str:
-        return f'{self.product.name} - {self.category.name}'
+        nombre = self.product.name if self.product_id else f'producto {self.product_ref}'
+        return f'{nombre} - {self.category.name}'
 
 
 class SearchHistory(models.Model):
