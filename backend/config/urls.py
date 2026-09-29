@@ -5,6 +5,7 @@ Define la estructura de rutas URL del sistema, incluyendo:
   - Router DRF para ViewSets (usuarios, autenticación, admin, contacto).
   - Endpoints manuales (health check, sesión del editor 3D, verificación de email).
   - Inclusión de URLs de módulos: products, catalog, models3d, carts, checkout, orders, monitoring.
+  - Endpoints internos servicio-a-servicio (Spring Boot), bajo /api/internal/.
   - JWT (obtención y refresh de tokens).
   - Archivos media en desarrollo.
 
@@ -413,6 +414,11 @@ urlpatterns = [
 
     # ── Módulos de negocio (cada app incluye sus propias URLs) ──
     path('api/products/', include('apps.products.api.urls')),
+
+    # ── Endpoints internos servicio-a-servicio (Spring Boot → Django) ──
+    # Namespace separado de la API pública: exigen header X-Internal-Token.
+    path('api/internal/products/', include('apps.products.internal_urls')),
+
     path('api/catalog/', include('apps.catalog.api.urls')),
     path('api/models3d/', include('apps.models3d.api.urls')),
     path('api/cart/', include('apps.carts.api.urls')),
