@@ -96,7 +96,7 @@ class ContactoAPITests(TestCase):
     def tearDown(self):
         self.throttle_patch.stop()
 
-    @patch("apps.landing.api.viewset.ContactoViewSet._enviar_email_admin")
+    @patch("apps.landing.api.viewset.EmailService.send_contact_notification")
     def test_contact_form_submission_success(self, mock_email):
         url = reverse("contacto-list")
         data = {
@@ -156,7 +156,7 @@ class ContactoAPITests(TestCase):
         response = self.client.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    @patch("apps.landing.api.viewset.ContactoViewSet._enviar_email_admin")
+    @patch("apps.landing.api.viewset.EmailService.send_contact_notification")
     def test_contact_form_stores_ip(self, mock_email):
         url = reverse("contacto-list")
         data = {
@@ -210,7 +210,7 @@ class ContactoAdminAPITests(TestCase):
 
     def test_regular_user_cannot_list(self):
         client2 = APIClient()
-        user = Usuario.objects.create(usuario="regular", correo="regular@test.com", contrasena="dummy")
+        user = Usuario.objects.create(usuario="regular", correo="regular@test.com", contrasena="dummy", estado="Activo")
         tokens = _get_tokens(user)
         client2.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
         url = reverse("contacto-list")
@@ -220,7 +220,7 @@ class ContactoAdminAPITests(TestCase):
 
     def test_regular_user_cannot_mark_as_read(self):
         client2 = APIClient()
-        user = Usuario.objects.create(usuario="regular2", correo="regular2@test.com", contrasena="dummy")
+        user = Usuario.objects.create(usuario="regular2", correo="regular2@test.com", contrasena="dummy", estado="Activo")
         tokens = _get_tokens(user)
         client2.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
         c = Contacto.objects.create(nombre="Regular", correo="reg@test.com", mensaje="Test")
@@ -230,7 +230,7 @@ class ContactoAdminAPITests(TestCase):
 
     def test_regular_user_cannot_delete(self):
         client2 = APIClient()
-        user = Usuario.objects.create(usuario="regular3", correo="regular3@test.com", contrasena="dummy")
+        user = Usuario.objects.create(usuario="regular3", correo="regular3@test.com", contrasena="dummy", estado="Activo")
         tokens = _get_tokens(user)
         client2.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
         c = Contacto.objects.create(nombre="Regular Del", correo="regdel@test.com", mensaje="Test")
@@ -248,7 +248,7 @@ class ContactoRateLimitTests(TestCase):
     def tearDown(self):
         self.throttle_patch.stop()
 
-    @patch("apps.landing.api.viewset.ContactoViewSet._enviar_email_admin")
+    @patch("apps.landing.api.viewset.EmailService.send_contact_notification")
     def test_rate_limit_not_exceeded(self, mock_email):
         url = reverse("contacto-list")
         data = {

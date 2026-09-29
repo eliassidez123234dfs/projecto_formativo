@@ -192,9 +192,30 @@ export const fetchProductDetail = async (productId) => {
   return response.data;
 };
 
-export const fetchCategories = async () => {
-  const response = await publicApi.get('catalog/categories/');
+/** Detalle de producto para admin (Django: imagenes, variantes, categories, audits). */
+export const fetchProductAdmin = async (productId) => {
+  const response = await api.get(`products/${productId}/`);
   return response.data;
+};
+
+export const fetchCategories = async (params = {}) => {
+  const response = await publicApi.get('catalog/categories/', { params });
+  return response.data;
+};
+
+// ─────────── CATEGORÍAS (CRUD admin, con token) ───────────
+export const createCategory = async (data) => {
+  const response = await api.post('catalog/categories/', data);
+  return response.data;
+};
+
+export const updateCategory = async (id, data) => {
+  const response = await api.patch(`catalog/categories/${id}/`, data);
+  return response.data;
+};
+
+export const deleteCategory = async (id) => {
+  await api.delete(`catalog/categories/${id}/`);
 };
 
 // ─────────── CHECKOUT (sesión) ───────────
@@ -299,30 +320,16 @@ export const payOrderWompiSandbox = async (orderId) => {
 };
 
 
-// ─────────── PRODUCTS (gestión admin, con token) ───────────
-export const fetchProducts = async (params = {}) => {
-  const response = await api.get('products/', { params });
-  return response.data;
-};
-
-export const fetchProductAdmin = async (id) => {
-  const response = await api.get(`products/${id}/`);
-  return response.data;
-};
-
-export const createProduct = async (data) => {
-  const response = await api.post('products/', data);
-  return response.data;
-};
-
-export const updateProduct = async (id, data) => {
-  const response = await api.patch(`products/${id}/`, data);
-  return response.data;
-};
-
-export const deleteProduct = async (id) => {
-  await api.delete(`products/${id}/`);
-};
+// ─────────── PRODUCTS CRUD base ───────────
+// El CRUD del producto base (list/search/create/update/delete) vive en Spring
+// (productService.js). Estos aliases mantienen la API histórica de api.js.
+export {
+  fetchProducts,
+  createMicroProduct as createProduct,
+  updateMicroProduct as updateProduct,
+  deleteMicroProduct as deleteProduct,
+  purgarMicroProduct,
+} from './productService';
 
 export const fetchProductChecklist = async (id) => {
   const response = await api.get(`products/${id}/checklist/`);

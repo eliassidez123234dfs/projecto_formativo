@@ -10,14 +10,27 @@ from apps.users.api.admin_viewset import AdminPermission
 
 
 class AdminOrderItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_name = serializers.SerializerMethodField()
     product_image = serializers.SerializerMethodField(read_only=True)
+    variant_size = serializers.SerializerMethodField()
+    variant_color = serializers.SerializerMethodField()
+
+    def get_product_name(self, obj):
+        if obj.product_id and obj.product:
+            return obj.product.name
+        return obj.product_name or 'Producto eliminado'
 
     def get_product_image(self, obj):
+        if not (obj.product_id and obj.product):
+            return None
         main = obj.product.main_image
         return main.image.url if main and main.image else None
-    variant_size = serializers.CharField(source='variant.size', read_only=True)
-    variant_color = serializers.CharField(source='variant.color', read_only=True)
+
+    def get_variant_size(self, obj):
+        return obj.variant.size if obj.variant_id and obj.variant else ''
+
+    def get_variant_color(self, obj):
+        return obj.variant.color if obj.variant_id and obj.variant else ''
 
     class Meta:
         model = OrderItem

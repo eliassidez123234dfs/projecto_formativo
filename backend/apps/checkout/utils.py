@@ -211,7 +211,7 @@ def generate_order_invoice_pdf(order) -> bytes:
     for item in order.items.select_related('product', 'variant').all():
         subtotal = item.quantity * item.unit_price
         table_rows.append([
-            Paragraph(item.product.name, table_cell_style),
+            Paragraph(item.display_name, table_cell_style),
             Paragraph(f"{item.variant.size} / {item.variant.color}", table_cell_style),
             Paragraph(str(item.quantity), table_cell_right),
             Paragraph(f"${item.unit_price:,.2f} COP", table_cell_right),

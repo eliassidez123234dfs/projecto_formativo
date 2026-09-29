@@ -46,7 +46,7 @@ async function safeChecklist(productId, onResult) {
   try {
     const data = await fetchProductChecklist(productId)
     onResult({ checklist: formatChecklist(data), ready: data.ready_to_publish })
-  } catch (err) {
+  } catch {
     onResult({ error: 'Error al cargar el checklist' })
   }
 }
@@ -70,7 +70,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle, onRefresh })
     setPublishConfirmation(null)
     setPublishing(productId)
     publishProduct(productId)
-      .then(d => {
+      .then(() => {
         setModal({ type: 'success', title: '', message: 'Producto publicado exitosamente' })
         setTimeout(() => window.location.reload(), 1200)
       })

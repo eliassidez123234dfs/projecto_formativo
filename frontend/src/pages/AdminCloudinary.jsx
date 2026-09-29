@@ -88,7 +88,6 @@ export default function AdminCloudinary() {
 
   const handleDelete = async (publicIds = selected) => {
     if (!publicIds.length) return
-    const many = publicIds.length > 1
     if (!window.confirm(`¿Eliminar ${publicIds.length} recurso(s) de Cloudinary permanentemente?`)) return
     setDeleting(true)
     try {

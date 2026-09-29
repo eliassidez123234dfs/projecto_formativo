@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
-import { getAccessToken, clearAuth, isAuthenticated, getCurrentUser } from '../services/authService'
+import { clearAuth, isAuthenticated, getCurrentUser } from '../services/authService'
 import useAppStore from '../store/appStore'
 import { fetchCurrentUser, buildApiUrl } from '../services/api'
 import { Breadcrumbs } from './Breadcrumbs'
@@ -157,7 +157,7 @@ export default function MainLayout({ children, title, subtitle }) {
     } else {
       setLoadingUser(false)
     }
-  }, [navigate])
+  }, [navigate, usuario])
 
   const isAdmin = usuario?.rol === 'Administrador' || usuario?.is_superuser
   const isActive = usuario?.estado === 'Activo'
@@ -206,7 +206,9 @@ export default function MainLayout({ children, title, subtitle }) {
   const handleLogout = async () => {
     try {
       await fetch(buildApiUrl('login/logout/'), { method: 'POST', credentials: 'include' })
-    } catch {}
+    } catch (e) {
+      console.warn('Error al cerrar sesión en el servidor', e)
+    }
     clearAuth()
     navigate('/login')
   }

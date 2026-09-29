@@ -13,7 +13,8 @@
  * - El carrito se carga automáticamente al montar el provider.
  * - Se usa cookie de sesión (no JWT) para las operaciones del carrito.
  */
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { fetchCart, addToCart, updateCartItemQuantity, removeCartItem, clearCart as clearCartApi } from '../services/api';
 
 // ─── CREACIÓN DEL CONTEXTO ───
@@ -45,36 +46,32 @@ export const CartProvider = ({ children }) => {
 
   // ─── OPERACIÓN: AGREGAR ITEM ───
   const addItem = async (productId, variantId, quantity = 1) => {
-    try {
-      const response = await addToCart(productId, variantId, quantity);
-      // Actualizamos el carrito local sin recargar
-      setCart(prev => {
-        // Buscar si el item ya existe en el carrito
-        const existingItemIndex = prev.items.findIndex(
-          item => item.product === productId && item.variant === variantId
-        );
-        let newItems;
-        if (existingItemIndex >= 0) {
-          // Actualizar cantidad del item existente
-          newItems = [...prev.items];
-          newItems[existingItemIndex] = response;
-        } else {
-          // Agregar nuevo item
-          newItems = [...prev.items, response];
-        }
-        // Recalcular totales manualmente (opcional, o se puede recargar el carrito)
-        const totalItems = newItems.reduce((sum, item) => sum + item.quantity, 0);
-        const totalAmount = newItems.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2);
-        return {
-          ...prev,
-          items: newItems,
-          total_items: totalItems,
-          total_amount: totalAmount,
-        };
-      });
-    } catch (error) {
-      throw error;
-    }
+    const response = await addToCart(productId, variantId, quantity);
+    // Actualizamos el carrito local sin recargar
+    setCart(prev => {
+      // Buscar si el item ya existe en el carrito
+      const existingItemIndex = prev.items.findIndex(
+        item => item.product === productId && item.variant === variantId
+      );
+      let newItems;
+      if (existingItemIndex >= 0) {
+        // Actualizar cantidad del item existente
+        newItems = [...prev.items];
+        newItems[existingItemIndex] = response;
+      } else {
+        // Agregar nuevo item
+        newItems = [...prev.items, response];
+      }
+      // Recalcular totales manualmente (opcional, o se puede recargar el carrito)
+      const totalItems = newItems.reduce((sum, item) => sum + item.quantity, 0);
+      const totalAmount = newItems.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2);
+      return {
+        ...prev,
+        items: newItems,
+        total_items: totalItems,
+        total_amount: totalAmount,
+      };
+    });
   };
 
   // ─── OPERACIÓN: ACTUALIZAR CANTIDAD ───

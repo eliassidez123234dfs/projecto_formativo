@@ -43,7 +43,7 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
     Soporta búsqueda textual, filtros combinables, ordenación, paginación,
     registro de sesión, historial y búsquedas populares."""
     queryset = Product.objects.filter(is_active=True, is_approved=True).select_related().prefetch_related(
-        'images', 'variants'
+        'images', 'variants', 'categories__category'
     )
     pagination_class = CatalogPagination
 

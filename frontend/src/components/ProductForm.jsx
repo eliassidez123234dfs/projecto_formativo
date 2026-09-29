@@ -63,9 +63,12 @@ const inputStyle = {
 const labelSm = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 2 }
 
 // ─── UTILIDADES ───
+const PRICE_MAX = 99999999.99
+const priceMaxLabel = '$99.999.999,99'
+
 function isValidCopPrice(value) {
   const n = Number(value)
-  return Number.isFinite(n) && Number.isInteger(n) && n >= 50 && n % 50 === 0
+  return Number.isFinite(n) && Number.isInteger(n) && n >= 50 && n <= PRICE_MAX && n % 50 === 0
 }
 
 function colorFor(value) {
@@ -141,7 +144,7 @@ function VariantRow({ v, onChange, onRemove }) {
       <div style={{ width: 96 }}>
         <label style={labelSm}>Precio (COP)</label>
         <input
-          type="number" min="50" step="50" placeholder="Vacío = base"
+          type="number" min="50" max={PRICE_MAX} step="50" placeholder="Vacío = base"
           value={v.price_variant ?? ''}
           onChange={e => onChange({ ...v, price_variant: e.target.value === '' ? null : Number(e.target.value) })}
           style={inputStyle}
@@ -179,9 +182,9 @@ export default function ProductForm({ product, onClose, onSaved }) {
   const [referencia, setReferencia] = useState(() => product?.sku || '')
   const [isActive, setIsActive] = useState(() => product?.is_active ?? true)
   const [mainImage, setMainImageFile] = useState(null)
-  const [extraImages, setExtraImages] = useState([])
   const [imageItems, setImageItems] = useState(() => (product?.images || []).slice().sort((a, b) => a.order - b.order))
   const [deletedImageIds, setDeletedImageIds] = useState([])
+  const [createdImageIds, setCreatedImageIds] = useState([])
   const [pendingMainImageId, setPendingMainImageId] = useState(null)
   const [existingVariants, setExistingVariants] = useState(() => (product?.variants || []).map(v => ({ ...v, _dirty: false })))
   const [removedVariantIds, setRemovedVariantIds] = useState([])
@@ -224,6 +227,45 @@ export default function ProductForm({ product, onClose, onSaved }) {
     setImageItems(next)
   }
 
+  // Sube las imágenes adicionales al instante y las agrega al final de la
+  // lista del gestor para poder reordenarlas de inmediato.
+  async function handleAddImages(files) {
+    const storedCount = imageItems.length + deletedImageIds.length
+    if (storedCount >= MAX_IMAGES) {
+      toast.error(`Máximo ${MAX_IMAGES} imágenes por producto.`)
+      return
+    }
+    for (const file of Array.from(files || [])) {
+      try {
+        await validateImageFile(file)
+      } catch (e) {
+        toast.error(e.message)
+        continue
+      }
+      try {
+        const form = new FormData()
+        form.append('image', file)
+        form.append('is_main', 'false')
+        const created = await createProductImage(product.id, form)
+        setImageItems(items => [...items, created])
+        setCreatedImageIds(ids => [...ids, created.id])
+      } catch (e) {
+        toast.error(errMsg(e, `No se pudo subir "${file.name}"`))
+      }
+    }
+  }
+
+  // Cancelar también revierte las imágenes subidas en esta sesión.
+  async function handleCancel() {
+    if (saving) return
+    if (createdImageIds.length > 0) {
+      await Promise.allSettled(
+        createdImageIds.map(id => deleteProductImage(product.id, id).catch(() => {}))
+      )
+    }
+    onClose()
+  }
+
   // ─── VALIDACIÓN COMPLETA (refleja TODAS las reglas del backend) ───
   function validate() {
     // --- Producto ---
@@ -231,19 +273,19 @@ export default function ProductForm({ product, onClose, onSaved }) {
     if (name.trim().length > 100) return 'El nombre no puede superar 100 caracteres.'
     if (!description.trim()) return 'La descripción es requerida.'
     if (description.trim().length > 500) return 'La descripción no puede superar 500 caracteres.'
-    if (!isValidCopPrice(price)) return 'El precio base debe ser un múltiplo de 50 COP (mínimo $50).'
+    if (!isValidCopPrice(price)) return `El precio base debe ser un múltiplo de 50 COP (mínimo $50, máximo ${priceMaxLabel}).`
     if (!referencia.trim()) return 'La referencia (SKU) es requerida.'
     if (referencia.trim().length < 3 || referencia.trim().length > 20) return 'La referencia debe tener entre 3 y 20 caracteres.'
-    if (!/^[A-Z0-9\-]{3,20}$/.test(referencia.trim())) return 'La referencia solo puede contener letras mayúsculas, números y guiones.'
+    if (!/^[A-Z0-9-]{3,20}$/.test(referencia.trim())) return 'La referencia solo puede contener letras mayúsculas, números y guiones.'
 
     // --- Imágenes (crear) ---
     if (!isEditing && !mainImage) return 'La imagen principal es requerida.'
 
     // --- Imágenes (editar): max 5 total ---
     if (isEditing) {
-      const totalImages = imageItems.length + extraImages.length
+      const totalImages = imageItems.length + deletedImageIds.length
       if (totalImages > MAX_IMAGES) return `Máximo ${MAX_IMAGES} imágenes por producto (actualmente ${totalImages}).`
-      if (imageItems.length === 0 && !mainImage && extraImages.length === 0) {
+      if (imageItems.length === 0 && !mainImage) {
         return 'El producto debe tener al menos una imagen.'
       }
     }
@@ -269,7 +311,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
       if (v.stock < 0) return `${label}: El stock no puede ser negativo.`
 
       if (v.price_variant != null && v.price_variant !== '' && !isValidCopPrice(v.price_variant)) {
-        return `${label}: El precio de variante debe ser múltiplo de 50 COP (mínimo $50).`
+        return `${label}: El precio de variante debe ser múltiplo de 50 COP (mínimo $50, máximo ${priceMaxLabel}).`
       }
 
       // color_hex validation
@@ -293,9 +335,6 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
   async function validateAllImages() {
     if (mainImage) await validateImageFile(mainImage)
-    for (const file of extraImages) {
-      await validateImageFile(file)
-    }
   }
 
   // ─── HANDLER DE ENVÍO (Validación completa + Rollback) ───
@@ -321,14 +360,21 @@ export default function ProductForm({ product, onClose, onSaved }) {
         referencia: referencia.trim(),
         is_active: isActive,
         category_ids: categoryIds,
+        // Versión con la que se ABRIÓ el formulario, no la vigente: es la
+        // única que permite detectar que otro usuario guardó mientras este
+        // modal estaba abierto (si se mandara la actual, nunca habría 409).
+        version: product?.version,
       }
 
       if (isEditing) {
         // ─── FLUJO EDITAR ───
-        // Paso 1: Eliminar imágenes marcadas
+        // Paso 1: Eliminar imágenes marcadas (idempotente: si ya no existe, ok)
         for (const imageId of deletedImageIds) {
-          await deleteProductImage(product.id, imageId)
+          await deleteProductImage(product.id, imageId).catch(e => {
+            if (e?.response?.status !== 404) throw e
+          })
         }
+        setDeletedImageIds([])
 
         // Paso 2: Actualizar datos del producto (vía microservicio)
         savedProduct = await updateMicroProduct(product.id, basePayload)
@@ -364,25 +410,19 @@ export default function ProductForm({ product, onClose, onSaved }) {
           createdIds.variantIds.push(created.id)
         }
 
-        // Paso 6: Subir imágenes nuevas
-        for (const file of extraImages) {
-          const form = new FormData()
-          form.append('image', file)
-          form.append('is_main', 'false')
-          const createdImg = await createProductImage(savedProduct.id, form)
-          createdIds.imageIds.push(createdImg.id)
-        }
-
         // Paso 7: Marcar imagen principal si cambió
         if (pendingMainImageId) {
           await updateProductImage(savedProduct.id, pendingMainImageId, { is_main: true })
         }
 
-        // Paso 8: Reordenar imágenes
-        const nextImages = imageItems.slice().sort((a, b) => a.order - b.order)
+        // Paso 8: Reordenar imágenes (la lista ya incluye las subidas)
+        const nextImages = imageItems.slice()
         if (nextImages.length > 0) {
           await reorderProductImages(savedProduct.id, nextImages.map((img, i) => ({ id: img.id, order: i + 1 })))
         }
+
+        // Imágenes subidas en esta sesión quedan confirmadas
+        setCreatedImageIds([])
       } else {
         // ─── FLUJO CREAR ───
         // Paso 1: Crear producto (vía microservicio)
@@ -414,11 +454,28 @@ export default function ProductForm({ product, onClose, onSaved }) {
       toast.success(isEditing ? 'Producto actualizado' : 'Producto creado')
       onSaved && onSaved()
     } catch (err) {
+      // ─── CONFLICTO DE VERSIÓN (409): otro usuario editó el producto ───
+      // No es un error de validación: los datos pueden estar bien, pero la
+      // versión que tenía el formulario quedó vieja. Se cierra el modal y se
+      // refresca la lista en vez de reintentar: reintentar a ciegas leería la
+      // versión nueva y sobrescribiría el trabajo ajeno, que es justo lo que
+      // el bloqueo optimista existe para evitar.
+      if (err?.response?.status === 409) {
+        toast.error(
+          'El producto fue modificado por otro usuario. ' +
+          'Recargá el formulario para ver los cambios más recientes.',
+          { duration: 6000 },
+        )
+        onSaved && onSaved()
+        onClose()
+        return
+      }
+
       // ─── ROLLBACK: Si se creó algo, eliminarlo ───
       if (createdIds.productId) {
         try {
           await deleteMicroProduct(createdIds.productId)
-        } catch (_) { /* ignorar error de rollback */ }
+        } catch { /* ignorar error de rollback */ }
       }
       toast.error(errMsg(err, 'Error al guardar'))
     } finally {
@@ -432,12 +489,12 @@ export default function ProductForm({ product, onClose, onSaved }) {
   }
 
     return (
-    <div className="form-modal-backdrop" onClick={onClose}>
+    <div className="form-modal-backdrop" onClick={handleCancel}>
       <div className="form-modal" onClick={e => e.stopPropagation()} style={{ width: 'min(860px, 95vw)' }}>
         {/* ─── CABECERA DEL MODAL ─── */}
         <div className="form-modal-header">
           <h2>{isEditing ? 'Editar Producto' : 'Crear Producto'}</h2>
-          <button className="form-modal-close" onClick={onClose}>✕</button>
+          <button className="form-modal-close" onClick={handleCancel}>✕</button>
         </div>
 
         {/* ─── CUERPO DEL FORMULARIO ─── */}
@@ -450,8 +507,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
             </div>
             <div className="form-group">
               <label style={labelStyle}>Precio base (COP)</label>
-              <input style={{ ...inputStyle, fontSize: 14 }} type="number" value={price} onChange={e => setPrice(e.target.value)} min="50" step="50" placeholder="Múltiplo de 50" />
-              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Mínimo $50 COP, múltiplo de 50.</small>
+              <input style={{ ...inputStyle, fontSize: 14 }} type="number" value={price} onChange={e => setPrice(e.target.value)} min="50" max={PRICE_MAX} step="50" placeholder="Múltiplo de 50" />
+              <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Mínimo $50 COP, máximo ${priceMaxLabel}, múltiplo de 50.</small>
             </div>
             <div className="form-group">
               <label style={labelStyle}>Referencia (SKU)</label>
@@ -501,9 +558,16 @@ export default function ProductForm({ product, onClose, onSaved }) {
           {isEditing && (
             <div className="form-group">
               <label style={labelStyle}>Agregar imágenes adicionales</label>
-              <input type="file" multiple accept="image/png, image/jpeg" onChange={e => setExtraImages(Array.from(e.target.files || []))} style={inputStyle} />
+              <input
+                type="file" multiple accept="image/png, image/jpeg"
+                onChange={e => {
+                  handleAddImages(e.target.files)
+                  e.target.value = ''
+                }}
+                style={inputStyle}
+              />
               <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
-                Max {MAX_IMAGES} imagenes, JPG/PNG, max 2MB, min 400x400px. ({imageItems.length + extraImages.length}/{MAX_IMAGES})
+                Max {MAX_IMAGES} imagenes, JPG/PNG, max 2MB, min 400x400px. ({imageItems.length}/{MAX_IMAGES})
               </small>
             </div>
           )}
@@ -605,7 +669,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
           {/* ─── PIE DEL MODAL: BOTONES ─── */}
           <div className="form-modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>
+            <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={saving}>
               Cancelar
             </button>
             <button type="submit" className="btn btn-primary" disabled={saving}>

@@ -14,7 +14,7 @@ Lectura pública, escritura solo para administradores autenticados.
 """
 from __future__ import annotations
 
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.utils.timezone import now
@@ -76,7 +76,31 @@ class ProductViewSet(viewsets.ModelViewSet):
     Incluye filtros por búsqueda, precio, estado (active/approved) y ordenamiento.
     Todas las mutaciones generan registros de auditoría (ProductAudit).
     """
-    queryset = Product.objects.all().prefetch_related('images', 'variants', 'audit_entries')
+    queryset = (
+        Product.objects
+        .all()
+        .prefetch_related('images', 'variants', 'audit_entries')
+        .annotate(
+            was_disapproved=Exists(
+                ProductAudit.objects.filter(
+                    product=OuterRef('pk'),
+                    action=ProductAudit.ACTION_DISAPPROVED,
+                )
+            ),
+            was_published=Exists(
+                ProductAudit.objects.filter(
+                    product=OuterRef('pk'),
+                    action=ProductAudit.ACTION_PUBLISHED,
+                )
+            ),
+            was_deleted=Exists(
+                ProductAudit.objects.filter(
+                    product=OuterRef('pk'),
+                    action=ProductAudit.ACTION_DELETED,
+                )
+            ),
+        )
+    )
     pagination_class = ProductPagination
 
     def get_permissions(self):
@@ -138,6 +162,36 @@ class ProductViewSet(viewsets.ModelViewSet):
         if self.kwargs.get('pk'):
             context['product'] = self.get_object()
         return context
+
+    def destroy(self, request, *args, **kwargs):
+        """Hard delete: elimina la fila de products_product de forma total.
+
+        Solo permite borrar productos:
+          - desaprobados (audit disapproved), o
+          - soft-delete (audit deleted / publicado y ahora inactivo/no aprobado).
+
+        Los pendientes de aprobación NO se pueden borrar desde aquí.
+        Si el producto tiene órdenes con FK PROTECT, responde 409.
+        """
+        product = self.get_object()
+        audit_actions = product.audit_entries.values_list('action', flat=True)
+        was_disapproved = ProductAudit.ACTION_DISAPPROVED in audit_actions
+        was_published = ProductAudit.ACTION_PUBLISHED in audit_actions
+        was_deleted = ProductAudit.ACTION_DELETED in audit_actions
+        eligible = (not product.is_approved) and (was_disapproved or was_published or was_deleted)
+        if not eligible:
+            return Response(
+                {'detail': 'Solo se pueden borrar productos desaprobados o con soft delete.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            product.delete()
+        except ProtectedError:
+            return Response(
+                {'detail': 'No se puede eliminar el producto porque tiene órdenes asociadas.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     # ── CRUD con auditoría ──
     def create(self, request, *args, **kwargs):

@@ -191,8 +191,12 @@ def generate_invoice_pdf(order, invoice=None):
     items = order.items.select_related('product', 'variant').all()
 
     for item in items:
-        prod_name = item.product.name if item.product else "Prenda Personalizada"
-        variant_desc = f"{item.variant.size} / {item.variant.color}" if item.variant else "Estándar"
+        prod_name = item.display_name
+        variant_desc = (
+            f"{item.variant.size} / {item.variant.color}"
+            if item.variant_id and item.variant
+            else "Estándar"
+        )
         unit_p = f"${item.unit_price:,.0f} COP"
         sub_p = f"${item.subtotal:,.0f} COP"
         subtotal_calculado += item.subtotal

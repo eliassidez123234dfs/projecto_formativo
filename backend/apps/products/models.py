@@ -58,6 +58,15 @@ class Product(models.Model):
 	approved_at = models.DateTimeField(null=True, blank=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
+	# Optimistic locking. La tabla products_product es COMPARTIDA con el
+	# microservicio Spring Boot, que mapea esta columna con @Version.
+	# Django es el dueño del esquema pero NO incrementa el valor: para que el
+	# bloqueo optimista no se rompa en escrituras mixtas, Django debe
+	# incrementarlo también en cada save(). Ver save() más abajo.
+	version = models.BigIntegerField(
+		default=0,
+		help_text='Optimistic locking. Lo incrementa Spring Boot (@Version) y Django.',
+	)
 	images: Any
 
 	class Meta:
@@ -117,7 +126,30 @@ class Product(models.Model):
 
 	def save(self, *args, **kwargs):
 		self.full_clean()
+		# La tabla es compartida con Spring Boot, que mapea `version` con
+		# @Version. Si Django NO incrementara la columna, una escritura de
+		# Django dejaría la versión igual y el UPDATE ... WHERE version = N de
+		# Spring no detectaría el conflicto: dos admins editando a la vez se
+		# pisarían en silencio. Por eso Django también incrementa.
+		#
+		# F() hace el +1 dentro de la propia sentencia (atómico, sin ventana
+		# de lectura-modificación-escritura). No se usa select_for_update
+		# porque el bloqueo pesimista mezclaría dos estilos de concurrencia
+		# sobre la misma tabla.
+		es_actualizacion = self.pk is not None and not self._state.adding
+		if es_actualizacion:
+			self.version = models.F('version') + 1
+			update_fields = kwargs.get('update_fields')
+			if update_fields is not None and 'version' not in update_fields:
+				kwargs['update_fields'] = [*update_fields, 'version']
+
 		super().save(*args, **kwargs)
+
+		if es_actualizacion:
+			# F() deja una expresión en el atributo, no un número. Se relee el
+			# valor real para que el objeto en memoria (y la respuesta de la
+			# API) expongan la versión correcta.
+			self.refresh_from_db(fields=['version'])
 
 
 class ProductImage(models.Model):
@@ -276,15 +308,26 @@ class ProductAudit(models.Model):
 	ACTION_UPDATED = 'updated'
 	ACTION_PUBLISHED = 'published'
 	ACTION_DISAPPROVED = 'disapproved'
+	# Soft delete realizado por el microservicio Spring (estado BORRADO)
+	ACTION_DELETED = 'deleted'
 
 	ACTION_CHOICES = [
 		(ACTION_CREATED, 'Creado'),
 		(ACTION_UPDATED, 'Actualizado'),
 		(ACTION_PUBLISHED, 'Publicado'),
 		(ACTION_DISAPPROVED, 'Desaprobado'),
+		(ACTION_DELETED, 'Soft delete'),
 	]
 
-	product = models.ForeignKey(Product, related_name='audit_entries', on_delete=models.CASCADE)
+	# SET_NULL: el hard delete del producto no destruye la auditoría
+	# (product_id queda NULL; before_data/after_data conservan el snapshot).
+	product = models.ForeignKey(
+		Product,
+		related_name='audit_entries',
+		on_delete=models.SET_NULL,
+		null=True,
+		blank=True,
+	)
 	action = models.CharField(max_length=20, choices=ACTION_CHOICES)
 	actor = models.CharField(max_length=150, blank=True)
 	before_data = models.JSONField(default=dict, blank=True)
@@ -297,7 +340,8 @@ class ProductAudit(models.Model):
 		ordering = ['-created_at']
 
 	def __str__(self) -> str:
-		return f'{self.product.name} - {self.action}'
+		name = self.product.name if self.product_id and self.product else f'#{self.product_id}'
+		return f'{name} - {self.action}'
 
 
 class Review(models.Model):

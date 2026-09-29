@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.conf import settings
+from django.db.models import Exists, OuterRef, Q
 
 from .models import Product, ProductAudit, ProductImage, Variant
 
@@ -32,6 +33,23 @@ class ProductAdmin(admin.ModelAdmin):
 	search_fields = ('name', 'description')
 	readonly_fields = ('creator', 'approved_by', 'approved_at')
 	inlines = [ProductImageInline, VariantInline, ProductAuditInline]
+
+	def get_queryset(self, request):
+		"""Excluye soft-delete (Spring BORRADO): ambos flags false y con
+		historial de publicación, desaprobación o soft delete. Los pendientes
+		(nunca publicados/desaprobados/borrados) permanecen visibles."""
+		qs = super().get_queryset(request)
+		history = ProductAudit.objects.filter(
+			product_id=OuterRef('pk'),
+			action__in=[
+				ProductAudit.ACTION_PUBLISHED,
+				ProductAudit.ACTION_DISAPPROVED,
+				ProductAudit.ACTION_DELETED,
+			],
+		)
+		return qs.annotate(_has_history=Exists(history)).exclude(
+			is_active=False, is_approved=False, _has_history=True
+		)
 
 	def changelist_view(self, request, extra_context=None):
 		extra_context = extra_context or {}

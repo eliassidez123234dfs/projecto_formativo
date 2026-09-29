@@ -44,6 +44,7 @@ import AdminOrders from './pages/AdminOrders';
 import AdminOrderDetail from './pages/AdminOrderDetail';
 import AdminProductApproval from './pages/AdminProductApproval';
 import AdminCloudinary from './pages/AdminCloudinary';
+import AdminCategories from './pages/AdminCategories';
 import UserProfile from './pages/UserProfile';
 import UserOrders from './pages/UserOrders';
 import CheckoutPage from './pages/CheckoutPage';
@@ -108,6 +109,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin-products" element={<AdminProducts />} />
+              <Route path="/admin-categories" element={<AdminCategories />} />
               <Route path="/admin-products/detail/:id" element={<AdminProductDetail />} />
               <Route path="/admin-users" element={<AdminUsers />} />
               <Route path="/admin-cart" element={<AdminCart />} />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useParams, Link, useLocation } from 'react-router-dom'
 import { fetchProductDetail } from '../services/api'
 import { Button, Card } from '../components/ui'
 import Product3DViewer from '../components/Product3DViewer'
@@ -10,15 +10,12 @@ const EDITOR_URL = import.meta.env.VITE_3D_EDITOR_URL || 'http://localhost:5174'
 export const Product3D = () => {
   const { id } = useParams()
   const { search } = useLocation()
-  const navigate = useNavigate()
   const params = new URLSearchParams(search)
   const mode = params.get('mode') || 'view'
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [viewMode, setViewMode] = useState('3d')
-  const [selectedSize, setSelectedSize] = useState('')
-  const [selectedColor, setSelectedColor] = useState('')
 
   useEffect(() => {
     if (!id) { setLoading(false); return }
@@ -38,22 +35,6 @@ export const Product3D = () => {
       </div>
     )
   }
-
-  const selectedVariant = product?.variants?.find(v => v.size === selectedSize && v.color === selectedColor);
-
-  const openEditor = () => {
-    const base = import.meta.env.VITE_TSHIRT3D_URL || (
-      import.meta.env.DEV ? 'http://127.0.0.1:5174/' : '/editor/'
-    );
-    const qs = new URLSearchParams({ mode });
-    if (id) qs.set('productId', id);
-    if (selectedVariant) {
-      qs.set('variantId', String(selectedVariant.id));
-      if (selectedVariant.color_hex) qs.set('color', selectedVariant.color_hex);
-      qs.set('colorName', selectedVariant.color);
-    }
-    window.open(`${base}?${qs.toString()}`, '_blank');
-  };
 
   return (
     <div className="container py-4">

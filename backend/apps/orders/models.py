@@ -163,13 +163,19 @@ class Invoice(models.Model):
 
 class OrderItem(models.Model):
 	"""Línea de pedido. Producto + variante con cantidad y precio congelado.
-	El precio se congela al añadirse al carrito (unit_price) para evitar
-	que cambios futuros de precio afecten pedidos ya realizados.
-	on_delete=PROTECT impide eliminar productos o variantes del catálogo
-	si tienen pedidos activos asociados."""
+
+	Snapshot (product_name / product_price): se rellena al crear la línea y
+	permite eliminar (hard delete) el producto del catálogo sin perder el
+	histórico de compras. FKs product/variant usan SET_NULL: al purgar el
+	producto, la orden conserva nombre, precio unitario y cantidad.
+	unit_price se congela al añadirse al carrito para evitar que cambios
+	futuros de precio afecten pedidos ya realizados."""
 	order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-	product = models.ForeignKey(Product, on_delete=models.PROTECT)
-	variant = models.ForeignKey(Variant, on_delete=models.PROTECT)
+	product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+	variant = models.ForeignKey(Variant, on_delete=models.SET_NULL, null=True, blank=True)
+	# Snapshot del producto al momento de la compra (sobrevive al hard delete)
+	product_name = models.CharField(max_length=200, blank=True, default='')
+	product_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 	quantity = models.PositiveIntegerField(default=1)
 	unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 
@@ -178,5 +184,20 @@ class OrderItem(models.Model):
 		"""Subtotal de la línea: unit_price × quantity."""
 		return self.unit_price * self.quantity
 
+	@property
+	def display_name(self) -> str:
+		"""Nombre para UI/PDF: FK viva o snapshot congelado."""
+		if self.product_id and self.product:
+			return self.product.name
+		return self.product_name or 'Producto eliminado'
+
+	def save(self, *args, **kwargs):
+		"""Rellena el snapshot desde el producto si aún no existe."""
+		if self.product_id and not self.product_name:
+			self.product_name = self.product.name
+		if self.product_id and self.product_price is None:
+			self.product_price = self.product.base_price
+		super().save(*args, **kwargs)
+
 	def __str__(self) -> str:
-		return f'{self.product.name} x {self.quantity}'
+		return f'{self.display_name} x {self.quantity}'

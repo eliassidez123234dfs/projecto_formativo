@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { buildApiUrl } from '../services/api';
 
@@ -31,7 +31,7 @@ export const RecuperarPassword = () => {
         setMessage('✓ Se ha enviado un enlace de recuperación a tu correo.');
         setCorreo('');
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'Error al conectar con el servidor' });
     } finally {
       setLoading(false);
@@ -120,7 +120,7 @@ export const NuevaPassword = () => {
           navigate('/login');
         }, 2000);
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'Error al conectar con el servidor' });
     } finally {
       setLoading(false);

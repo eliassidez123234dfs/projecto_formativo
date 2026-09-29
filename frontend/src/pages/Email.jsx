@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { buildApiUrl } from '../services/api';
 
@@ -38,7 +38,7 @@ export const VerificarEmail = () => {
             navigate('/login');
           }, 2000);
         }
-      } catch (err) {
+      } catch {
         setError('Error al conectar con el servidor');
       } finally {
         setLoading(false);
@@ -89,7 +89,7 @@ export const VerificacionPendiente = () => {
       } else {
         setMessage('✓ Email de verificación reenviado. Revisa tu bandeja de entrada.');
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'Error al conectar con el servidor' });
     } finally {
       setLoading(false);

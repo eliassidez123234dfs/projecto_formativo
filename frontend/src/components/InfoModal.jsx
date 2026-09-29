@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 const CHECKLIST_LABELS = {
   name: 'Nombre del producto',
   description: 'Descripción del producto',

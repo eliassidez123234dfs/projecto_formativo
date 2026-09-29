@@ -45,7 +45,7 @@ function flush() {
       credentials: 'omit',
       body: JSON.stringify({ errors: batch }),
     }).catch(() => {});
-  } catch (e) {
+  } catch {
     queue = batch;
   }
 }

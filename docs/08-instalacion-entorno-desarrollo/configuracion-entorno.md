@@ -169,11 +169,10 @@ cd frontend
   
 # 2. Instalar dependencias  
 npm install  
-npm install-scripts approve --all  
-  
+   
 # 3. Configurar variables de entorno  
 # El frontend lee el .env de la RAÍZ del proyecto (configurado en vite.config.js con envDir)  
-# No hace falta frontend/.env  
+# No hace falta frontend/.env
   
 # 4. Iniciar servidor de desarrollo  
 npm run dev -- --host
@@ -199,8 +198,7 @@ cd microservices/Tshirt3D
   
 # 2. Instalar dependencias  
 npm install  
-npm install-scripts approve --all  
-  
+   
 # 4. Iniciar servidor de desarrollo  
 npm run dev -- --host
 ```
