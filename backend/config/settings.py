@@ -397,6 +397,12 @@ elif DB_TYPE in ['postgres_local', 'postgres_docker', 'neon']:
             'default': env.db('DATABASE_URL'),
         }
         DATABASES['default']['ATOMIC_REQUESTS'] = True
+        # Reutilizar la conexión entre peticiones: evita el coste de
+        # handshake/reactivación de la compute de Neon en cada request.
+        DATABASES['default']['CONN_MAX_AGE'] = int(env('CONN_MAX_AGE', default=120))
+        # Neon puede cerrar conexiones inactivas; un timeout corto de
+        # conexión evita cuelgues por red/pausa de la compute.
+        DATABASES['default']['OPTIONS'] = {'connect_timeout': 10}
     else:
         if ENVIRONMENT == 'production':
             raise RuntimeError('DATABASE_URL es obligatoria en producción; configura Neon antes de iniciar Django.')
@@ -641,6 +647,23 @@ SESSION_COOKIE_HTTPONLY = True
 # URLs para enlaces en emails
 FRONTEND_URL = env('FRONTEND_URL', default='http://127.0.0.1:5173')
 BACKEND_URL = env('BACKEND_URL', default='http://127.0.0.1:8000')
+
+# =============================================================================
+#  COMUNICACIÓN SERVICIO-A-SERVICIO — InterServiceClient (Spring Boot)
+# =============================================================================
+# Token compartido (máquina-a-máquina) que Spring Boot envía en el header
+# `X-Internal-Token` para consumir los endpoints internos de Django:
+#   - GET /api/orders/check-product/{id}/   (guardia de purga física)
+#   - GET /api/internal/products/health/    (health check)
+#   - GET /api/internal/products/stats/     (agregados)
+#   - GET /api/internal/products/recent/    (sync incremental)
+#   - GET /api/internal/products/exists/    (referencia duplicada)
+#
+# NO es JWT: no existe un "usuario" detrás de la llamada, es el microservicio
+# hablando con Django. El token es estático y rotable desde el .env.
+# En producción debe cambiarse y complementarse con TLS + restricción por IP.
+# =============================================================================
+INTERNAL_API_TOKEN = env('INTERNAL_API_TOKEN', default='')
 
 # =============================================================================
 #  CORREO ELECTRÓNICO — EmailService

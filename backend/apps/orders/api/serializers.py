@@ -60,16 +60,26 @@ class OrderSerializer(serializers.ModelSerializer):
 # ═══════════════════════════════════════════════════════════════════════
 
 class MyOrderItemSerializer(serializers.ModelSerializer):
-    """Ítem de orden para la vista del usuario — nombre, variante, cantidad y precio."""
-    product_name = serializers.CharField(source='product.name', read_only=True)
+    """Ítem de orden para la vista del usuario — nombre, variante, cantidad y precio.
+
+    product_name usa el FK si existe; si el producto fue purgado (SET_NULL),
+    cae al snapshot product_name congelado al momento de la compra."""
+    product_name = serializers.SerializerMethodField()
     variant_label = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
         fields = ['id', 'product_name', 'variant_label', 'quantity', 'unit_price']
 
+    def get_product_name(self, obj):
+        if obj.product_id and obj.product:
+            return obj.product.name
+        return obj.product_name or 'Producto eliminado'
+
     def get_variant_label(self, obj):
-        return f'Talla {obj.variant.size} — {obj.variant.color}'
+        if obj.variant_id and obj.variant:
+            return f'Talla {obj.variant.size} — {obj.variant.color}'
+        return 'Estándar'
 
 
 class MyOrderSerializer(serializers.ModelSerializer):
@@ -100,8 +110,9 @@ class MyOrderSerializer(serializers.ModelSerializer):
 # ═══════════════════════════════════════════════════════════════════════
 
 class AdminOrderItemSerializer(serializers.ModelSerializer):
-    """Ítem de orden para admin — incluye subtotales calculados."""
-    product_name = serializers.CharField(source='product.name', read_only=True)
+    """Ítem de orden para admin — incluye subtotales calculados.
+    Null-safe ante producto/variante purgados (SET_NULL + snapshot)."""
+    product_name = serializers.SerializerMethodField()
     variant_label = serializers.SerializerMethodField()
     subtotal = serializers.SerializerMethodField()
 
@@ -109,8 +120,15 @@ class AdminOrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = ['id', 'product_name', 'variant_label', 'quantity', 'unit_price', 'subtotal']
 
+    def get_product_name(self, obj):
+        if obj.product_id and obj.product:
+            return obj.product.name
+        return obj.product_name or 'Producto eliminado'
+
     def get_variant_label(self, obj):
-        return f'Talla {obj.variant.size} — {obj.variant.color}'
+        if obj.variant_id and obj.variant:
+            return f'Talla {obj.variant.size} — {obj.variant.color}'
+        return 'Estándar'
 
     def get_subtotal(self, obj):
         return str(obj.subtotal)

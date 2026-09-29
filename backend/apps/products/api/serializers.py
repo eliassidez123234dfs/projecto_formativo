@@ -147,6 +147,9 @@ class ProductListSerializer(serializers.ModelSerializer):
     checklist = serializers.SerializerMethodField()
     ready_to_publish = serializers.SerializerMethodField()
     categories = serializers.SerializerMethodField()
+    was_disapproved = serializers.SerializerMethodField()
+    was_published = serializers.SerializerMethodField()
+    was_deleted = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -155,6 +158,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'is_active', 'is_approved',
             'main_image', 'images_count', 'variants_count', 'total_stock',
             'checklist', 'ready_to_publish', 'categories',
+            'was_disapproved', 'was_published', 'was_deleted',
             'created_at', 'updated_at',
         ]
 
@@ -185,6 +189,31 @@ class ProductListSerializer(serializers.ModelSerializer):
 
     def get_ready_to_publish(self, obj):
         return obj.can_be_published
+
+    def get_was_disapproved(self, obj):
+        """True si el producto fue rechazado alguna vez (auditoría disapproved).
+
+        Usa la anotación Exists del viewset cuando existe; si no (p.ej. en
+        related_products), consulta los audits del objeto prefetchado.
+        """
+        annotated = getattr(obj, 'was_disapproved', None)
+        if annotated is not None:
+            return bool(annotated)
+        return obj.audit_entries.filter(action=ProductAudit.ACTION_DISAPPROVED).exists()
+
+    def get_was_published(self, obj):
+        """True si el producto fue publicado alguna vez (auditoría published)."""
+        annotated = getattr(obj, 'was_published', None)
+        if annotated is not None:
+            return bool(annotated)
+        return obj.audit_entries.filter(action=ProductAudit.ACTION_PUBLISHED).exists()
+
+    def get_was_deleted(self, obj):
+        """True si el producto sufrió soft delete (auditoría deleted / Spring BORRADO)."""
+        annotated = getattr(obj, 'was_deleted', None)
+        if annotated is not None:
+            return bool(annotated)
+        return obj.audit_entries.filter(action=ProductAudit.ACTION_DELETED).exists()
 
 
 # ═══════════════════════════════════════════════════════════════════════
