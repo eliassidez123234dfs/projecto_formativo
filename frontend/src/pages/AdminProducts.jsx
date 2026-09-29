@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchAdminStats, toggleProductActive } from '../services/api'
-import { fetchMicroProductAdmin } from '../services/productService'
+import { fetchAdminStats } from '../services/api'
+import { fetchMicroProductAdmin, toggleMicroProductActive } from '../services/productService'
 import AdminLayout from '../components/AdminLayout'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
@@ -45,7 +45,7 @@ export default function AdminProducts() {
   }
 
   async function toggleActive(productId) {
-    await toggleProductActive(productId)
+    await toggleMicroProductActive(productId)
     setRefreshKey(k => k + 1)
   }
 

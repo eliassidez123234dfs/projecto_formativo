@@ -4,7 +4,11 @@ import ProductForm from '../components/ProductForm'
 import AdminLayout from '../components/AdminLayout'
 import ErrorState from '../components/ErrorState'
 import { formatCOP } from '../utils/format'
-import { fetchProductAdmin, fetchProductAudits, disapproveProduct } from '../services/api'
+import {
+  fetchMicroProductAdmin,
+  fetchMicroProductAudits,
+  disapproveMicroProduct,
+} from '../services/productService'
 
 const ACTION_LABELS = {
   created: 'Creado',
@@ -75,8 +79,8 @@ export default function AdminProductDetail() {
     setLoading(true)
     try {
       const [productData, auditsData] = await Promise.all([
-        fetchProductAdmin(productId),
-        fetchProductAudits(productId),
+        fetchMicroProductAdmin(productId),
+        fetchMicroProductAudits(productId),
       ])
       // Normalize product data to avoid null reads in render
       const normalized = {
@@ -112,7 +116,7 @@ export default function AdminProductDetail() {
     if (!motivo.trim()) return
     setDisapproving(true)
     try {
-      await disapproveProduct(productId, { motivo: motivo.trim() })
+      await disapproveMicroProduct(productId, { motivo: motivo.trim() })
       setShowDisapprove(false)
       setMotivo('')
       await loadProduct()

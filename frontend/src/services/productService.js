@@ -67,11 +67,49 @@ function adaptProduct(spring) {
     was_deleted: spring.wasDeleted ?? false,
     created_at: spring.createdAt,
     updated_at: spring.updatedAt,
+    // Siempre un array, incluso vacío. El formulario hace .map() sobre esto
+    // al inicializar las casillas, y un null aquí lo rompe con un
+    // "cannot read properties of null" en vez de mostrar el producto sin
+    // categorías marcadas.
+    categories: adaptCategories(spring.categorias),
+    checklist: null,
     // En los listados Spring solo devuelve los conteos, no las listas. Por eso
     // aquí se cae a la imagen principal: el catálogo no necesita la galería
     // completa y pedirla sería una respuesta desproporcionada.
     images: mainImage ? [{ image_url: mainImage, is_main: true }] : [],
     variants: [],
+  };
+}
+
+/**
+ * Adapta las categorías que Spring sirve desde Django.
+ *
+ * Spring ya devuelve `categorias` con la forma {id, name} porque las pide por
+ * product_ref al endpoint interno de Django; aquí solo se normaliza a lista
+ * vacía cuando no vienen.
+ */
+function adaptCategories(springCategories) {
+  if (!Array.isArray(springCategories)) return [];
+  return springCategories
+    .filter((c) => c && c.id != null)
+    .map((c) => ({ id: c.id, name: c.name }));
+}
+
+/**
+ * Adapta una entrada de auditoría de Spring a la forma que pintaba Django.
+ *
+ * Spring usa beforeData/afterData; la vista lee before_data/after_data para
+ * armar el diff. Sin esta traducción la sección de historial salía vacía.
+ */
+function adaptAudit(springAudit) {
+  return {
+    id: springAudit.id,
+    action: springAudit.action,
+    actor: springAudit.actor,
+    before_data: springAudit.beforeData ?? {},
+    after_data: springAudit.afterData ?? {},
+    motivo: springAudit.motivo ?? '',
+    created_at: springAudit.createdAt,
   };
 }
 
@@ -172,28 +210,29 @@ export const fetchMicroProducts = async (params = {}) => {
 /**
  * Detalle admin.
  *
- * Imágenes y variantes salen de Spring: en la rama java/mongoDB viven en
- * MongoDB y Django no puede resolverlas por ObjectId (su FK de producto apunta
- * a products_product). Pedirlas a Django con un ObjectId devolvía 404 y la
- * vista se quedaba sin galería ni variantes, sin error visible.
+ * Todo el producto (base, imágenes, variantes y categorías) sale de Spring.
+ * Antes las categorías se pedían a Django con el ObjectId y llegaban vacías:
+ * Django no tiene ese producto en products_product, así que el formulario de
+ * edición abría sin ninguna casilla marcada y, al guardar, el conjunto vacío
+ * se traducía en "producto sin categorías". Por eso ahora las categorías van
+ * dentro de ProductoResponse.
  *
- * De Django solo se conserva lo que sí vive en PostgreSQL: las categorías
- * (catalog_productcategory, por product_ref) y el checklist de publicación.
- * Si esa llamada falla, el detalle se muestra igualmente con los datos de
- * Spring en vez de romperse.
+ * De Django solo se conserva el checklist de publicación, que sí vive en su
+ * PostgreSQL. Si esa llamada falla, el detalle se muestra igualmente con los
+ * datos de Spring en vez de romperse.
  */
 export const fetchMicroProductAdmin = async (id) => {
   const springRaw = (await msApi.get(`productos/${id}`)).data;
   const micro = adaptProduct(springRaw);
   micro.images = adaptImages(springRaw.imagenes, micro.main_image);
   micro.variants = adaptVariants(springRaw.variantes);
+  micro.categories = adaptCategories(springRaw.categorias);
 
   try {
     const django = await fetchProductAdmin(id);
     return {
       ...micro,
       sku: micro.sku || django.referencia,
-      categories: Array.isArray(django.categories) ? django.categories : [],
       checklist: django.checklist,
     };
   } catch {
@@ -212,6 +251,12 @@ export const createMicroProduct = async (data) => {
     referencia: data.referencia || data.sku || 'SIN-REF',
     stock: data.stock || 0,
   };
+  // Se manda el conjunto completo, no solo las altas: Spring lo reenvía a
+  // Django como reemplazo, y omitirlo dejaría el producto recién creado sin
+  // las categorías que el usuario marcó.
+  const categoriaIds = data.category_ids ?? data.categoriaIds;
+  if (categoriaIds !== undefined) springData.categoriaIds = categoriaIds;
+
   const response = await msApi.post('productos', springData);
   return adaptProduct(response.data);
 };
@@ -232,6 +277,12 @@ export const updateMicroProduct = async (id, data) => {
     version: data.version ?? existing.version,
   };
 
+  // Igual que al crear: si el formulario envió el conjunto, se replica entero.
+  // Omitirlo (undefined) deja las categorías como estaban, que es distinto de
+  // enviarlas todas desmarcadas.
+  const categoriaIds = data.category_ids ?? data.categoriaIds;
+  if (categoriaIds !== undefined) springData.categoriaIds = categoriaIds;
+
   const response = await msApi.put(`productos/${id}`, springData);
   return adaptProduct(response.data);
 };
@@ -248,3 +299,99 @@ export const purgarMicroProduct = async (id) => {
 
 /** Alias naming para el panel de aprobaciones. */
 export const deleteProduct = purgarMicroProduct;
+
+// ─────────── PANEL DE ADMINISTRACIÓN ───────────
+//
+// Estas operaciones vivían en Django y dejaron de funcionar al mover los
+// productos a MongoDB: Django no puede resolver un ObjectId, así que cada
+// llamada devolvía 404. Ahora las resuelve Spring, que es quien tiene el
+// documento. Se mantienen aquí, junto al resto del CRUD, en vez de en api.js
+// para que quede claro de qué backend depende cada operación.
+
+/** Historial de auditoría del producto, del más nuevo al más antiguo. */
+export const fetchMicroProductAudits = async (id) => {
+  const response = await msApi.get(`productos/${id}/auditorias`);
+  return (response.data || []).map(adaptAudit);
+};
+
+/** Desaprueba el producto y deja constancia del motivo en la auditoría. */
+export const disapproveMicroProduct = async (id, { motivo } = {}) => {
+  const response = await msApi.post(`productos/${id}/desaprobar`, { motivo: motivo || '' });
+  return adaptProduct(response.data);
+};
+
+/**
+ * Alterna el estado activo.
+ *
+ * Alterna en vez de aceptar un valor porque es lo que hace el botón del panel,
+ * y evita la carrera de "leí inactivo → mandé inactivo" cuando otro usuario lo
+ * activó entre la lectura del listado y el clic.
+ */
+export const toggleMicroProductActive = async (id) => {
+  const response = await msApi.patch(`productos/${id}/activo`);
+  return adaptProduct(response.data);
+};
+
+export const addMicroProductImage = async (id, { image, esPrincipal = false } = {}) => {
+  const response = await msApi.post(`productos/${id}/imagenes`, {
+    image,
+    esPrincipal,
+  });
+  const img = response.data || {};
+  return {
+    id: img.id,
+    image_url: img.cloudinaryUrl || cloudinaryImageUrl(img.image),
+    is_main: Boolean(img.esPrincipal),
+  };
+};
+
+export const deleteMicroProductImage = async (id, imageId) => {
+  await msApi.delete(`productos/${id}/imagenes/${imageId}`);
+};
+
+/**
+ * Promueve una imagen ya existente a portada.
+ *
+ * Es un PATCH y no "borrar y volver a subir" porque la imagen ya está
+ * subida a Cloudinary y su public_id es el que se guarda en MongoDB: rehacer
+ * la subida cambiaría la URL pública del producto sin motivo.
+ */
+export const setMicroProductMainImage = async (id, imageId) => {
+  const response = await msApi.patch(`productos/${id}/imagenes/${imageId}`);
+  const img = response.data || {};
+  return {
+    id: img.id,
+    image_url: img.cloudinaryUrl || cloudinaryImageUrl(img.image),
+    is_main: Boolean(img.esPrincipal),
+  };
+};
+
+/** @param varianteId null para crear; si viene, actualiza esa variante. */
+export const saveMicroProductVariant = async (id, variant, varianteId = null) => {
+  const cuerpo = {
+    size: variant.size,
+    color: variant.color,
+    colorHex: variant.color_hex || variant.colorHex,
+    colorNombre: variant.color_nombre || variant.colorNombre,
+    stock: variant.stock ?? 0,
+    priceVariant: variant.price_variant ?? variant.priceVariant,
+  };
+  const response = varianteId
+    ? await msApi.put(`productos/${id}/variantes/${varianteId}`, cuerpo)
+    : await msApi.post(`productos/${id}/variantes`, cuerpo);
+  const v = response.data || {};
+  return {
+    id: v.id,
+    size: v.size,
+    color: v.color,
+    color_hex: v.colorHex,
+    color_nombre: v.colorNombre,
+    stock: v.stock,
+    price_variant: v.priceVariant,
+    precio_efectivo: v.precioEfectivo,
+  };
+};
+
+export const deleteMicroProductVariant = async (id, varianteId) => {
+  await msApi.delete(`productos/${id}/variantes/${varianteId}`);
+};

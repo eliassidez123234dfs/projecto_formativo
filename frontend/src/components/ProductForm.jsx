@@ -12,17 +12,22 @@
  */
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+// fetchCategories y createProductImage siguen viniendo de Django: el catálogo de
+// categorías y la subida de archivos a Cloudinary viven en su PostgreSQL. Todo
+// lo demás que toca un producto pasa por Spring, que es quien tiene el
+// documento en MongoDB; Django no puede resolver un ObjectId y devolvía 404
+// sin mensaje, con lo que la edición de un producto existente no guardaba ni
+// variantes ni imágenes.
+import { fetchCategories, createProductImage } from '../services/api'
 import {
-  fetchCategories,
-  createProductImage,
-  updateProductImage,
-  deleteProductImage,
-  reorderProductImages,
-  createProductVariant,
-  updateProductVariant,
-  deleteProductVariant,
-} from '../services/api'
-import { createMicroProduct, updateMicroProduct, deleteMicroProduct } from '../services/productService'
+  createMicroProduct,
+  updateMicroProduct,
+  deleteMicroProduct,
+  saveMicroProductVariant,
+  deleteMicroProductVariant,
+  deleteMicroProductImage,
+  setMicroProductMainImage,
+} from '../services/productService'
 import { formatError as errMsg } from '../utils/formatError'
 
 // ─── CONSTANTES: TALLAS Y COLORES ───
@@ -200,7 +205,10 @@ export default function ProductForm({ product, onClose, onSaved }) {
   }, [])
 
   function toggleCategory(id) {
-    setCategoryIds(ids => ids.includes(id) ? ids.filter(x => x.id !== id) : [...ids, id])
+    // categoryIds es una lista de ids, no de objetos. Comparar contra x.id
+    // daba siempre true, así que la casilla se activaba pero no se desactivaba
+    // y al guardar se reenviaban categorías que el usuario había quitado.
+    setCategoryIds(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])
   }
 
   function addVariant() {
@@ -260,7 +268,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
     if (saving) return
     if (createdImageIds.length > 0) {
       await Promise.allSettled(
-        createdImageIds.map(id => deleteProductImage(product.id, id).catch(() => {}))
+        createdImageIds.map(id => deleteMicroProductImage(product.id, id).catch(() => {}))
       )
     }
     onClose()
@@ -370,7 +378,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
         // ─── FLUJO EDITAR ───
         // Paso 1: Eliminar imágenes marcadas (idempotente: si ya no existe, ok)
         for (const imageId of deletedImageIds) {
-          await deleteProductImage(product.id, imageId).catch(e => {
+          await deleteMicroProductImage(product.id, imageId).catch(e => {
             if (e?.response?.status !== 404) throw e
           })
         }
@@ -381,45 +389,44 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
         // Paso 3: Guardar variantes existentes
         for (const variant of existingVariants) {
-          await updateProductVariant(savedProduct.id, variant.id, {
+          await saveMicroProductVariant(savedProduct.id, {
             size: variant.size.trim(),
             color: variant.color.trim(),
             color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
             color_nombre: variant.color_nombre || variant.color,
             stock: variant.stock,
             price_variant: variant.price_variant,
-          })
+          }, variant.id)
         }
 
         // Paso 4: Eliminar variantes marcadas
         for (const variantId of removedVariantIds) {
-          await deleteProductVariant(savedProduct.id, variantId)
+          await deleteMicroProductVariant(savedProduct.id, variantId)
         }
 
         // Paso 5: Crear variantes nuevas
         for (const variant of variants) {
           if (!variant.size || !variant.color) continue
-          const created = await createProductVariant(savedProduct.id, {
+          const created = await saveMicroProductVariant(savedProduct.id, {
             size: variant.size.trim(),
             color: variant.color.trim(),
             color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
             color_nombre: variant.color_nombre || variant.color,
             stock: variant.stock,
             price_variant: variant.price_variant,
-          })
+          }, null)
           createdIds.variantIds.push(created.id)
         }
 
         // Paso 7: Marcar imagen principal si cambió
         if (pendingMainImageId) {
-          await updateProductImage(savedProduct.id, pendingMainImageId, { is_main: true })
+          await setMicroProductMainImage(savedProduct.id, pendingMainImageId)
         }
 
-        // Paso 8: Reordenar imágenes (la lista ya incluye las subidas)
-        const nextImages = imageItems.slice()
-        if (nextImages.length > 0) {
-          await reorderProductImages(savedProduct.id, nextImages.map((img, i) => ({ id: img.id, order: i + 1 })))
-        }
+        // No hay paso de reordenar: en MongoDB la galería se ordena por fecha
+        // de creación y ProductoImagen no tiene campo `order`. La vista las
+        // muestra en ese orden; si el orden manual llegara a importar, sería
+        // un campo nuevo en Spring, no una llamada a Django que ya no aplica.
 
         // Imágenes subidas en esta sesión quedan confirmadas
         setCreatedImageIds([])
@@ -439,14 +446,14 @@ export default function ProductForm({ product, onClose, onSaved }) {
         // Paso 3: Crear variantes
         for (const variant of variants) {
           if (!variant.size || !variant.color) continue
-          const created = await createProductVariant(savedProduct.id, {
+          const created = await saveMicroProductVariant(savedProduct.id, {
             size: variant.size.trim(),
             color: variant.color.trim(),
             color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
             color_nombre: variant.color_nombre || variant.color,
             stock: variant.stock,
             price_variant: variant.price_variant,
-          })
+          }, null)
           createdIds.variantIds.push(created.id)
         }
       }

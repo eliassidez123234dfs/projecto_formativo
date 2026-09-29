@@ -11,6 +11,7 @@ hacía el puente inútil: con la FK en NOT NULL, la fila con product_ref nunca
 llegaba a guardarse, y todo el diseño pasaba los `manage.py check` mientras no
 servía para nada.
 """
+import json
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -233,3 +234,193 @@ class PuenteObjectIdTest(TestCase):
 		self.assertIn('has_orders', datos)
 		self.assertEqual(datos['product_ref'], OBJETID_A)
 		self.assertIs(datos['has_orders'], False)
+
+	# ── Categorías por ObjectId (lo que arregla la edición de productos) ─────
+
+	def test_las_categorias_se_leen_por_objectid(self):
+		"""GET devuelve las marcadas, para que el formulario abra con ellas."""
+		cafes = Category.objects.create(name='Cafes')
+		ropa = Category.objects.create(name='Ropa')
+		ProductCategory.objects.create(product_ref=OBJETID_A, category=cafes)
+
+		url = reverse('internal-products-categories', args=[OBJETID_A])
+		respuesta = self.client.get(url, headers={'X-Internal-Token': TOKEN})
+
+		self.assertEqual(respuesta.status_code, 200)
+		datos = respuesta.json()
+		self.assertEqual(datos['product_ref'], OBJETID_A)
+		self.assertEqual(datos['categories'], [{'id': cafes.id, 'name': 'Cafes'}])
+		self.assertNotIn(ropa.id, [c['id'] for c in datos['categories']])
+
+	def test_editar_categorias_reemplaza_el_conjunto(self):
+		"""PUT: las nuevas quedan, las desmarcadas desaparecen.
+
+		Este es el caso exacto del bug reportado: el producto tenía 'Cafes' y al
+		guardar el formulario se quedaba sin categorías. Aquí se comprueba que
+		desmarcar Cafe y marcar Ropa deja solo Ropa.
+		"""
+		cafes = Category.objects.create(name='Cafes')
+		ropa = Category.objects.create(name='Ropa')
+		ProductCategory.objects.create(product_ref=OBJETID_A, category=cafes)
+
+		url = reverse('internal-products-categories-set', args=[OBJETID_A])
+		respuesta = self.client.put(
+			url,
+			data=json.dumps({'categoria_ids': [ropa.id]}),
+			content_type='application/json',
+			headers={'X-Internal-Token': TOKEN},
+		)
+
+		self.assertEqual(respuesta.status_code, 200)
+		self.assertEqual([c['name'] for c in respuesta.json()['categories']], ['Ropa'])
+		self.assertEqual(
+			sorted(ProductCategory.objects.filter(product_ref=OBJETID_A)
+			        .values_list('category_id', flat=True)),
+			[ropa.id],
+		)
+
+	def test_editar_categorias_es_idempotente(self):
+		"""Reenviar el mismo conjunto no duplica filas: Spring puede reintentar."""
+		cafes = Category.objects.create(name='Cafes')
+		url = reverse('internal-products-categories-set', args=[OBJETID_A])
+		cuerpo = json.dumps({'categoria_ids': [cafes.id]})
+
+		primera = self.client.put(
+			url, data=cuerpo, content_type='application/json',
+			headers={'X-Internal-Token': TOKEN})
+		segunda = self.client.put(
+			url, data=cuerpo, content_type='application/json',
+			headers={'X-Internal-Token': TOKEN})
+
+		self.assertEqual(primera.status_code, 200)
+		self.assertEqual(segunda.status_code, 200)
+		self.assertEqual(
+			ProductCategory.objects.filter(product_ref=OBJETID_A).count(), 1)
+
+	def test_lista_vacia_quita_todas_las_categorias(self):
+		"""[] significa "quítamelas todas", no "no me digas nada".
+
+		El distinction importa: es lo que permite que el cliente diga "este
+		producto ya no tiene categorías" sin que el servicio lo interprete como
+		"no toques las categorías".
+		"""
+		cafes = Category.objects.create(name='Cafes')
+		ProductCategory.objects.create(product_ref=OBJETID_A, category=cafes)
+		url = reverse('internal-products-categories-set', args=[OBJETID_A])
+
+		respuesta = self.client.put(
+			url,
+			data=json.dumps({'categoria_ids': []}),
+			content_type='application/json',
+			headers={'X-Internal-Token': TOKEN},
+		)
+
+		self.assertEqual(respuesta.status_code, 200)
+		self.assertEqual(
+			ProductCategory.objects.filter(product_ref=OBJETID_A).count(), 0)
+
+	def test_una_categoria_inexistente_se_ignora_sin_tirar_el_resto(self):
+		"""Un id obsoleto no debe abortar el guardado entero.
+
+		Si alguien desactivó una categoría entre que el formulario se abrió y se
+		guardó, perder todos los demás cambios por eso sería peor que perder esa
+		categoría. Se ignora y se reporta en 'ignorados'.
+		"""
+		cafes = Category.objects.create(name='Cafes')
+		url = reverse('internal-products-categories-set', args=[OBJETID_A])
+
+		respuesta = self.client.put(
+			url,
+			data=json.dumps({'categoria_ids': [cafes.id, 999999]}),
+			content_type='application/json',
+			headers={'X-Internal-Token': TOKEN},
+		)
+
+		datos = respuesta.json()
+		self.assertEqual([c['name'] for c in datos['categories']], ['Cafes'])
+		self.assertEqual(datos['ignorados'], [999999])
+
+	def test_una_categoria_desactivada_no_se_re_asigna(self):
+		"""Una categoría desactivada no se ofrece ni se guarda."""
+		cafes = Category.objects.create(name='Cafes', is_active=False)
+		url = reverse('internal-products-categories-set', args=[OBJETID_A])
+
+		respuesta = self.client.put(
+			url,
+			data=json.dumps({'categoria_ids': [cafes.id]}),
+			content_type='application/json',
+			headers={'X-Internal-Token': TOKEN},
+		)
+
+		self.assertEqual(respuesta.json()['categories'], [])
+		self.assertEqual(
+			ProductCategory.objects.filter(product_ref=OBJETID_A).count(), 0)
+
+	def test_editar_categorias_no_toca_otros_productos(self):
+		"""Un producto no puede robar las de otro's categorías al guardar."""
+		cafes = Category.objects.create(name='Cafes')
+		ropa = Category.objects.create(name='Ropa')
+		ProductCategory.objects.create(product_ref=OBJETID_B, category=ropa)
+		url = reverse('internal-products-categories-set', args=[OBJETID_A])
+
+		self.client.put(
+			url,
+			data=json.dumps({'categoria_ids': [cafes.id]}),
+			content_type='application/json',
+			headers={'X-Internal-Token': TOKEN},
+		)
+
+		self.assertEqual(
+			[rel.category.name for rel in ProductCategory.objects
+			 .filter(product_ref=OBJETID_B).select_related('category')],
+			['Ropa'])
+
+	def test_editar_categorias_rechaza_json_invalido(self):
+		"""Un body roto da 400 con mensaje, no un 500."""
+		url = reverse('internal-products-categories-set', args=[OBJETID_A])
+
+		roto = self.client.put(
+			url, data='{no es json', content_type='application/json',
+			headers={'X-Internal-Token': TOKEN})
+		lista = self.client.put(
+			url, data=json.dumps({'categoria_ids': 'no-es-lista'}),
+			content_type='application/json', headers={'X-Internal-Token': TOKEN})
+
+		self.assertEqual(roto.status_code, 400)
+		self.assertEqual(lista.status_code, 400)
+
+	def test_las_categorias_exigen_token(self):
+		"""Ni lectura ni escritura sin el token interno."""
+		cafes = Category.objects.create(name='Cafes')
+		ProductCategory.objects.create(product_ref=OBJETID_A, category=cafes)
+		leer = reverse('internal-products-categories', args=[OBJETID_A])
+		escribir = reverse('internal-products-categories-set', args=[OBJETID_A])
+		cuerpo = json.dumps({'categoria_ids': [cafes.id]})
+
+		sin_token = self.client.get(leer)
+		token_malo = self.client.put(
+			escribir, data=cuerpo, content_type='application/json',
+			headers={'X-Internal-Token': 'incorrecto'})
+
+		self.assertEqual(sin_token.status_code, 401)
+		self.assertEqual(token_malo.status_code, 401)
+		self.assertEqual(
+			ProductCategory.objects.filter(product_ref=OBJETID_A).count(), 1)
+
+	@override_settings(INTERNAL_API_TOKEN='')
+	def test_las_categorias_quedan_cerradas_sin_token_configurado(self):
+		"""Fail-closed también aquí: sin INTERNAL_API_TOKEN no se sirve nada."""
+		leer = reverse('internal-products-categories', args=[OBJETID_A])
+		escribir = reverse('internal-products-categories-set', args=[OBJETID_A])
+
+		respuesta = self.client.get(
+			leer, headers={'X-Internal-Token': 'cualquiera'})
+		escritura = self.client.put(
+			escribir,
+			data=json.dumps({'categoria_ids': []}),
+			content_type='application/json',
+			headers={'X-Internal-Token': 'cualquiera'},
+		)
+
+		self.assertEqual(respuesta.status_code, 401)
+		self.assertEqual(escritura.status_code, 401)
