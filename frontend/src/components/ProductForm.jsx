@@ -27,7 +27,7 @@
  * FLUJO DE CREAR (handleSubmit, rama `else`)
  * ══════════════════════════════════════════════════════════════════════════
  *  1. validate()            client-side: precio múltiplo de 50, nombre, etc.
- *  2. validateAllImages()   JPG/PNG, <2MB, >=400x400
+ *  2. validateAllImages()   JPG/PNG/WebP, <2MB, >=400x400
  *  3. createMicroProduct()  POST  /api/v1/productos        → 201  (Spring)
  *  4. syncProductCategories() PATCH /api/products/{id}/          (Django)
  *  5. createProductImage()  POST  /api/products/{id}/images/     (Django)
@@ -143,7 +143,7 @@ function colorFor(value) {
   return COLOR_OPTIONS.find(c => c.value.toLowerCase() === String(value).toLowerCase())
 }
 
-const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png']
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
 const MAX_FILE_SIZE = 2 * 1024 * 1024
 const MIN_RESOLUTION = 400
 const MAX_IMAGES = 5
@@ -153,7 +153,7 @@ const MAX_COLORS_PER_PRODUCT = 10
 async function validateImageFile(file) {
   const ext = '.' + file.name.split('.').pop().toLowerCase()
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    throw new Error(`"${file.name}": Solo se permiten imagenes JPG o PNG.`)
+    throw new Error(`"${file.name}": Solo se permiten imagenes JPG, PNG o WebP.`)
   }
   if (file.size > MAX_FILE_SIZE) {
     throw new Error(`"${file.name}": La imagen no puede superar 2MB.`)
@@ -629,6 +629,11 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
       // ─── ROLLBACK: Si se creó algo, eliminarlo ───
       if (createdIds.productId) {
+        await Promise.all(
+          createdIds.imageIds.map(imageId =>
+            deleteProductImage(createdIds.productId, imageId).catch(() => {}),
+          ),
+        )
         try {
           await deleteMicroProduct(createdIds.productId)
         } catch { /* ignorar error de rollback */ }
@@ -715,7 +720,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
             <div className="form-group">
               <label style={labelStyle}>Agregar imágenes adicionales</label>
               <input
-                type="file" multiple accept="image/png, image/jpeg"
+                type="file" multiple accept="image/png, image/jpeg, image/webp"
                 onChange={e => {
                   handleAddImages(e.target.files)
                   e.target.value = ''
@@ -723,7 +728,7 @@ export default function ProductForm({ product, onClose, onSaved }) {
                 style={inputStyle}
               />
               <small style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
-                Max {MAX_IMAGES} imagenes, JPG/PNG, max 2MB, min 400x400px. ({imageItems.length}/{MAX_IMAGES})
+                Max {MAX_IMAGES} imagenes, JPG/PNG/WebP, max 2MB, min 400x400px. ({imageItems.length}/{MAX_IMAGES})
               </small>
             </div>
           )}

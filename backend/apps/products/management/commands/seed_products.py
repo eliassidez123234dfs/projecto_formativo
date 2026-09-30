@@ -1,4 +1,3 @@
-import ssl
 from decimal import Decimal
 from io import BytesIO
 from random import randint
@@ -97,12 +96,9 @@ PRODUCTS = [
 
 
 def _download(url):
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    download_url = url.replace("/upload/", "/upload/w_800,h_800,c_pad/")
-    resp = urlopen(download_url, timeout=15, context=ctx)
-    return BytesIO(resp.read())
+    download_url = url.replace("/upload/", "/upload/f_jpg,w_800,h_800,c_pad/")
+    with urlopen(download_url, timeout=15) as response:
+        return BytesIO(response.read())
 
 
 class Command(BaseCommand):
@@ -154,15 +150,13 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS("nuevo"))
             else:
                 skipped += 1
-                self.stdout.write("ya existe, saltando")
-                continue
+                self.stdout.write("ya existe, verificando imágenes y variantes")
 
             if not skip_images and not product.images.exists():
                 try:
                     data = _download(IMAGES[pdata["img"]])
                     img = ProductImage(product=product, is_main=True, order=1)
-                    ext = IMAGES[pdata["img"]].rsplit(".", 1)[-1].split("?")[0]
-                    img.image.save(f"{product.name}.{ext}", File(data), save=True)
+                    img.image.save(f"seed-product-{idx + 1}.jpg", File(data), save=True)
                     images_ok += 1
                 except Exception as e:
                     images_fail += 1
