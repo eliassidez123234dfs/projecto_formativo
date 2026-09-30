@@ -314,6 +314,7 @@ export {
   deleteMicroProduct as deleteProduct,
 
   purgarMicroProduct,
+} from './productService';
 
 /** Detalle de producto para admin (Django: imagenes, variantes, categories, audits). */
 export const fetchProductAdmin = async (productId) => {
@@ -335,7 +336,6 @@ export const updateCategory = async (id, data) => {
 export const deleteCategory = async (id) => {
   await api.delete(`catalog/categories/${id}/`);
 };
-} from './productService';
 
 export const fetchProductChecklist = async (id) => {
   const response = await api.get(`products/${id}/checklist/`);

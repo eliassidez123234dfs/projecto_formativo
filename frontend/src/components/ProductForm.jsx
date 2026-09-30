@@ -377,20 +377,28 @@ export default function ProductForm({ product, onClose, onSaved }) {
 
       if (isEditing) {
         // ─── FLUJO EDITAR ───
+        // Los pasos 1, 3, 4 y 5 se paralelizan con Promise.all porque cada
+        // peticion toca un documento distinto y no hay @Version en Variante
+        // ni en ProductoImagen, asi que no pueden pisarse. Antes iban en
+        // for + await: guardar un producto con 8 variantes y 3 imagenes
+        // marcadas hacia 11 viajes de ida y vuelta en serie.
+        // El paso 2 (los datos del producto) sigue siendo secuencial porque
+        // ahi si se manda la version con optimistic locking.
+
         // Paso 1: Eliminar imágenes marcadas (idempotente: si ya no existe, ok)
-        for (const imageId of deletedImageIds) {
-          await deleteMicroProductImage(product.id, imageId).catch(e => {
+        await Promise.all(deletedImageIds.map(imageId =>
+          deleteMicroProductImage(product.id, imageId).catch(e => {
             if (e?.response?.status !== 404) throw e
           })
-        }
+        ))
         setDeletedImageIds([])
 
         // Paso 2: Actualizar datos del producto (vía microservicio)
         savedProduct = await updateMicroProduct(product.id, basePayload)
 
         // Paso 3: Guardar variantes existentes
-        for (const variant of existingVariants) {
-          await saveMicroProductVariant(savedProduct.id, {
+        await Promise.all(existingVariants.map(variant =>
+          saveMicroProductVariant(savedProduct.id, {
             size: variant.size.trim(),
             color: variant.color.trim(),
             color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
@@ -398,17 +406,17 @@ export default function ProductForm({ product, onClose, onSaved }) {
             stock: variant.stock,
             price_variant: variant.price_variant,
           }, variant.id)
-        }
+        ))
 
         // Paso 4: Eliminar variantes marcadas
-        for (const variantId of removedVariantIds) {
-          await deleteMicroProductVariant(savedProduct.id, variantId)
-        }
+        await Promise.all(removedVariantIds.map(variantId =>
+          deleteMicroProductVariant(savedProduct.id, variantId)
+        ))
 
         // Paso 5: Crear variantes nuevas
-        for (const variant of variants) {
-          if (!variant.size || !variant.color) continue
-          const created = await saveMicroProductVariant(savedProduct.id, {
+        const nuevasVariantes = variants.filter(v => v.size && v.color)
+        const creadas = await Promise.all(nuevasVariantes.map(variant =>
+          saveMicroProductVariant(savedProduct.id, {
             size: variant.size.trim(),
             color: variant.color.trim(),
             color_hex: variant.color_hex || (colorFor(variant.color)?.hex || '#6B7280'),
@@ -416,8 +424,8 @@ export default function ProductForm({ product, onClose, onSaved }) {
             stock: variant.stock,
             price_variant: variant.price_variant,
           }, null)
-          createdIds.variantIds.push(created.id)
-        }
+        ))
+        creadas.forEach(v => createdIds.variantIds.push(v.id))
 
         // Paso 7: Marcar imagen principal si cambió
         if (pendingMainImageId) {

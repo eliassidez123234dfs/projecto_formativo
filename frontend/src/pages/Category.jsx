@@ -36,8 +36,9 @@ export const Category = () => {
   }, [filters, id]);
 
   useEffect(() => {
-    const t = setTimeout(() => { loadProducts() }, 0);
-    return () => clearTimeout(t);
+    // Sin setTimeout(..., 0): useEffect ya se ejecuta despues del commit, que
+    // era justo lo que el timeout pretendia esquivar. Solo retrasaba la carga.
+    loadProducts()
   }, [loadProducts]);
 
   const handleFilterChange = (e) => {

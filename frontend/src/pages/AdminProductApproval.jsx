@@ -64,16 +64,25 @@ export default function AdminProductApproval() {
   }, [page])
 
   useEffect(() => {
-    const t = setTimeout(() => { loadProducts() }, 0);
-    return () => clearTimeout(t);
+    // El setTimeout(..., 0) de antes no hacia falta: useEffect ya corre
+    // despues del commit, que es justo lo que se queria esquivar. Solo
+    // anadia un turno de retardo en la primera carga de cada pagina.
+    loadProducts()
   }, [loadProducts])
+
+  // Tras una accion hay que recargar la lista de pendientes, pero sin dejar
+  // el modal bloqueado 1,5 s ni recargar la pagina: se refresca de inmediato
+  // y el modal de exito queda encima hasta que el usuario lo cierra.
+  async function refrescarTrasExito(modalData) {
+    setModal(modalData)
+    await loadProducts()
+  }
 
   async function handleApprove(productId) {
     setProcessing(productId)
     try {
       const data = await publishProduct(productId)
-      setModal({ type: 'success', title: 'Producto aprobado', message: `"${data.name}" fue aprobado y publicado exitosamente.` })
-      setTimeout(() => { setModal(null); loadProducts() }, 1500)
+      await refrescarTrasExito({ type: 'success', title: 'Producto aprobado', message: `"${data.name}" fue aprobado y publicado exitosamente.` })
     } catch (e) {
       const d = e?.response?.data
       setModal({
@@ -92,8 +101,7 @@ export default function AdminProductApproval() {
     if (motivo === null) { setProcessing(null); return }
     try {
       await disapproveProduct(productId, { motivo: motivo.trim() })
-      setModal({ type: 'success', title: 'Producto rechazado', message: 'El producto ha sido desaprobado y desactivado.' })
-      setTimeout(() => { setModal(null); loadProducts() }, 1500)
+      await refrescarTrasExito({ type: 'success', title: 'Producto rechazado', message: 'El producto ha sido desaprobado y desactivado.' })
     } catch (e) {
       setModal({ type: 'error', title: 'Error', message: errMsg(e, 'Error al rechazar el producto') })
     }
@@ -114,8 +122,7 @@ export default function AdminProductApproval() {
         if (e?.response) throw e
         return deleteProduct(productId)
       })
-      setModal({ type: 'success', title: 'Producto borrado', message: `"${productName}" fue eliminado permanentemente de la base de datos.` })
-      setTimeout(() => { setModal(null); loadProducts() }, 1500)
+      await refrescarTrasExito({ type: 'success', title: 'Producto borrado', message: `"${productName}" fue eliminado permanentemente de la base de datos.` })
     } catch (e) {
       setModal({ type: 'error', title: 'No se pudo borrar', message: errMsg(e, 'Error al borrar el producto') })
     }

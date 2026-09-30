@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchAdminStats } from '../services/api'
 import { fetchMicroProductAdmin, toggleMicroProductActive } from '../services/productService'
-import { fetchAdminStats, toggleProductActive } from '../services/api'
-import { fetchMicroProductAdmin } from '../services/productService'
 import AdminLayout from '../components/AdminLayout'
 import ProductList from '../components/ProductList'
 import ProductForm from '../components/ProductForm'
@@ -108,7 +106,11 @@ export default function AdminProducts() {
 
       <div className="card">
         <div className="card-body">
-          <ProductList key={refreshKey} refreshKey={refreshKey} onEdit={openEdit} onToggle={toggleActive} onRefresh={() => setRefreshKey(k => k + 1)} />
+          {/* Sin key={refreshKey}: la key remontaba el componente entero en
+              cada refresco, tirando la busqueda, la pagina y la posicion del
+              scroll. refreshKey basta por si solo, porque es dependencia del
+              efecto que pide los datos dentro de ProductList. */}
+          <ProductList refreshKey={refreshKey} onEdit={openEdit} onToggle={toggleActive} onRefresh={() => setRefreshKey(k => k + 1)} />
         </div>
       </div>
 

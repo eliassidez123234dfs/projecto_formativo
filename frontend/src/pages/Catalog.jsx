@@ -116,8 +116,9 @@ export const Catalog = () => {
 
   // ── Recargar al cambiar filtros/orden ──
   useEffect(() => {
-    const timer = setTimeout(() => loadProducts(1), 0);
-    return () => clearTimeout(timer);
+    // Sin setTimeout(..., 0): useEffect ya corre despues del commit, que era
+    // lo que el timeout pretendia esquivar. Solo anadia un turno de retardo.
+    loadProducts(1)
   }, [loadProducts]);
 
   // ── Mobile drawer: abrir = crear borrador, aplicar = confirmar, cerrar/✕/Escape = cancelar ──

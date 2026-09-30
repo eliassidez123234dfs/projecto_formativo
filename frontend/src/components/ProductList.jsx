@@ -61,6 +61,15 @@ export default function ProductList({ refreshKey, onEdit, onToggle, onRefresh })
   const [checklistModal, setChecklistModal] = useState(null)
   const totalPages = Math.max(1, Math.ceil((data.count || 0) / 20))
 
+  // Refresca la lista sin recargar la pagina. Antes esto era
+  // window.location.reload(), que ademas de tirar todo el estado del SPA
+  // (busqueda, pagina, scroll) hacia otra peticion completa de los assets.
+  // El padre ya expone onRefresh, que sube refreshKey y useProducts vuelve a
+  // pedir los datos por el efecto.
+  function refrescar() {
+    if (onRefresh) onRefresh()
+  }
+
   function handlePublish(productId) {
     setPublishConfirmation(productId)
   }
@@ -72,7 +81,9 @@ export default function ProductList({ refreshKey, onEdit, onToggle, onRefresh })
     publishProduct(productId)
       .then(() => {
         setModal({ type: 'success', title: '', message: 'Producto publicado exitosamente' })
-        setTimeout(() => window.location.reload(), 1200)
+        // Se refresca ya, en vez de esperar 1,2 s a recargar la pagina: el
+        // modal de exito sigue abierto encima y lo cierra quien quiera.
+        refrescar()
       })
       .catch(e => {
         const d = e?.response?.data
@@ -108,10 +119,7 @@ export default function ProductList({ refreshKey, onEdit, onToggle, onRefresh })
         // deleteMicroProduct ({ success, status, id, operation }). Si status
         // fuese distinto de 204 la petición habría caído en el .catch.
         setModal({ type: 'success', title: '', message: 'Producto eliminado exitosamente' })
-        setTimeout(() => {
-          setModal(null)
-          onRefresh ? onRefresh() : window.location.reload()
-        }, 1200)
+        refrescar()
       })
       .catch(e => {
         const d = e?.response?.data
