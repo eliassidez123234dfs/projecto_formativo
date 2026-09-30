@@ -2,6 +2,11 @@
 # .gitignore unificado - Python, Django, Node, React, macOS, Linux e IDEs
 # =============================================================================
 
+.serena/
+.serena/*
+.github/
+.github/*
+
 # Seguridad y secretos
 .env
 .env.*
