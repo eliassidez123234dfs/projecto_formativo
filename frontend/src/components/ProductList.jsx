@@ -86,16 +86,27 @@ export default function ProductList({ refreshKey, onEdit, onToggle, onRefresh })
       .finally(() => setPublishing(null))
   }
 
+  // ── Flujo del botón "Eliminar" ───────────────────────────────────────
+  // Paso 1: el click en <button onClick={() => handleDelete(p.id)}> guarda el
+  // id en estado para abrir el modal de confirmación. Aquí NO se hace red:
+  // pedir confirmación antes de tocar la base de datos es lo correcto.
   function handleDelete(productId) {
     setDeleteConfirmation(productId)
   }
 
+  // Paso 2: el usuario confirma en el modal y recién acá se dispara la
+  // petición al microservicio Spring Boot.
   function confirmDelete() {
     const productId = deleteConfirmation
     setDeleteConfirmation(null)
     setDeleting(productId)
+    // → msApi.delete('productos/{id}') → proxy Vite → :8082
+    //   → @DeleteMapping("/{id}") → estado = BORRADO (soft delete) → 204
     deleteMicroProduct(productId)
       .then(() => {
+        // La respuesta del microservicio llega en el objeto que retorna
+        // deleteMicroProduct ({ success, status, id, operation }). Si status
+        // fuese distinto de 204 la petición habría caído en el .catch.
         setModal({ type: 'success', title: '', message: 'Producto eliminado exitosamente' })
         setTimeout(() => {
           setModal(null)

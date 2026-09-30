@@ -2,6 +2,11 @@
 # .gitignore unificado - Python, Django, Node, React, macOS, Linux e IDEs
 # =============================================================================
 
+.serena/
+.serena/*
+.github/
+.github/*
+
 # Seguridad y secretos
 .env
 .env.*
@@ -11,7 +16,6 @@
 *.cert
 *.crt
 .cache_ggshield
->>>>>>> origin/main
 
 # =============================================================================
 #  Python / Django
@@ -92,7 +96,6 @@ $RECYCLE.BIN/
 .vs/
 *.swp
 *.swo
-*~
 *.code-workspace
 .history/
 .ntvs_analysis.dat
@@ -103,21 +106,14 @@ $RECYCLE.BIN/
 # Python / Django
 # =============================================================================
 # Byte‑compiled / optimizados / DLL
-*.py[cod]
-*$py.class
-__pycache__/
 
 # Extensiones C
-*.so
 
 # Empaquetado y distribución
 .Python
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
-.eggs/
 lib/
 lib64/
 parts/
@@ -125,9 +121,7 @@ sdist/
 var/
 wheels/
 share/python-wheels/
-*.egg-info/
 .installed.cfg
-*.egg
 MANIFEST
 
 # PyInstaller
@@ -155,28 +149,13 @@ cover/
 
 # Traducciones
 *.mo
-*.pot
 
 # Django
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-db.sqlite3.backup
-*.sql
-*.sql.gz
-*.dump
-media/
-staticfiles/
-static_root/
 
 # Variables de entorno
-.env
-.env.*
-!.env.example
 !.env.template
 
 # Logs y archivos de proceso
-*.log
 *.pid
 *.seed
 *.pid.lock
@@ -225,19 +204,14 @@ celerybeat.pid
 # Entornos virtuales
 .venv/
 venv/
-=======
 #  Entorno virtual
 # =============================================================================
-venv/
-.venv/
->>>>>>> origin/main
 env/
 ENV/
 env.bak/
 venv.bak/
 .virtualenvs/
 
-<<<<<<< HEAD
 # Spyder
 .spyderproject
 .spyproject
@@ -269,30 +243,22 @@ cython_debug/
 pyrightconfig.json
 
 # Claves y certificados
-*.key
-*.pem
-*.cert
-*.crt
-.cache_ggshield
 
 # =============================================================================
 # Node.js / JavaScript / Frontend
 # =============================================================================
 # Logs
 logs
-=======
 # =============================================================================
 #  Node.js / Frontend
 # =============================================================================
 node_modules/
->>>>>>> origin/main
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .lh/
 
-<<<<<<< HEAD
 # Reportes de diagnóstico
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
@@ -318,7 +284,6 @@ bower_components
 build/Release
 
 # Directorios de dependencias
-node_modules/
 jspm_packages/
 web_modules/
 
@@ -407,7 +372,6 @@ thumb
 sketch
 
 # Otros frontend
-.lh/
 
 # =============================================================================
 # Herramientas de IA y automatización
@@ -431,8 +395,6 @@ AGENTS.md
 AI_AGENTS_STRATEGY.md
 
 # GitHub Copilot y agentes
-.github/
-.github/*
 copilot-instructions.md
 
 # Aider
@@ -498,56 +460,23 @@ allure-results/
 *.orig
 *.tmp
 *.temp
-=======
 # =============================================================================
 #  IDEs y editores
 # =============================================================================
-.vscode/
-.idea/
-.vs/
-*.swp
-*.swo
-*~
-*.code-workspace
-.history/
-.ntvs_analysis.dat
-*.sublime-workspace
-*.sublime-project
 
 # =============================================================================
 #  OS archivos temporales
 # =============================================================================
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-Desktop.ini
-$RECYCLE.BIN/
 
 # =============================================================================
 #  Herramientas IA y automatización (no código del proyecto)
 # =============================================================================
-.agents/
-.auxly/
-.claude/
-.cursor/
-.cursorrules
-.goose/
-.kiro/
-.specify/
-.agents/*
 .auxly/*
 .claude/*
 .cursor/*
 .goose/*
 .kiro/*
 .specify/*
-skills-lock.json
-AGENTS.md
-AI_AGENTS_STRATEGY.md
 .github/agents/
 .github/instructions/
 .github/prompts/
@@ -558,82 +487,47 @@ AI_AGENTS_STRATEGY.md
 # =============================================================================
 #  Datos personales y documentación sensible
 # =============================================================================
-Ficha Proyecto RED.md
-estructura_proyecto_completo.txt
-taiga.json
-COMPONENTS_EXAMPLES.jsx
 
 # =============================================================================
 #  Matriz de requerimientos (dump Excel)
 # =============================================================================
-Matrix\ de\ requerimientos.xlsx/
-Matrix\ de\ requerimientos.xlsx.zip
-lista\ de\ chequeos/
 
 # =============================================================================
 #  Backend específico
 # =============================================================================
-backend/.coverage
-backend/htmlcov/
-backend/.pytest_cache/
-backend/*.db
-backend/media/
-backend/static/
 
 # =============================================================================
 #  Microservicios
 # =============================================================================
-microservices/*/node_modules/
-microservices/*/.env
-microservices/*/.venv/
-microservices/*/venv/
 
 # =============================================================================
 #  Contenedores / Docker
 # =============================================================================
-.docker/
 
 # =============================================================================
 #  Neon / Base de datos
 # =============================================================================
-.neon*
-.neon/
 
 # =============================================================================
 #  Archivos de testing y reportes
 # =============================================================================
-test-reports/
-allure-results/
-*.test.js.snap
 coverage/
 .nyc_output/
 
 # =============================================================================
 #  Miscelánea
 # =============================================================================
-*.bak
-*.orig
-*.tmp
-*.temp
-*.swp
-*.swo
-*~
-*.pid
-*.seed
 
->>>>>>> origin/main
 .ejemplos_codigo/
 .ejemplos_codigo/*
 ejemplos_codigo/
 ejemplos_codigo/*
 ejemplos_codigo
-<<<<<<< HEAD
 
 # =============================================================================
 # Notas adicionales (comentarios de la versión original)
 # =============================================================================
 # Si usas collectstatic, descomenta la siguiente línea:
 <django-project-name>/staticfiles/
-=======
-.aider*
->>>>>>> origin/main
+
+.~lock.*

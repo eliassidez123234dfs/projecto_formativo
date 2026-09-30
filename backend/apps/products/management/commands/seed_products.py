@@ -97,12 +97,12 @@ PRODUCTS = [
 
 
 def _download(url):
+    download_url = url.replace("/upload/", "/upload/w_800,h_800,c_pad/")
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    download_url = url.replace("/upload/", "/upload/w_800,h_800,c_pad/")
-    resp = urlopen(download_url, timeout=15, context=ctx)
-    return BytesIO(resp.read())
+    with urlopen(download_url, timeout=15, context=ctx) as resp:
+        return BytesIO(resp.read())
 
 
 class Command(BaseCommand):

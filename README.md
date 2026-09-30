@@ -23,6 +23,7 @@ Toda la documentación del proyecto está en **[`docs/`](./docs/README.md)**, or
 | **Backend** | Python 3.12+, Django 5.2, DRF, SimpleJWT |
 | **Microservicio** | Java 21, Spring Boot 4, JPA/MongoDB, Jakarta Validation |
 | **Frontend** | React 19, Vite 8, Axios, React Router DOM, React Three Fiber |
+// refused_by: merge_ladder_exhausted · collision: `| **NoSQL** | MongoDB (diseños 3D, logs de auditoría y telemetr…`
 | **SQL** | PostgreSQL 16 (Neon en producción, SQLite en desarrollo) |
 | **NoSQL** | MongoDB (diseños 3D, logs de auditoría, microservicio productos) |
 | **Imágenes / 3D** | Cloudinary |
@@ -86,6 +87,27 @@ projecto_formativo/
 Proyecto2_JPA/
 ├── servicio/           # Microservicio Spring Boot
 │   ├── src/            # Código fuente Java
+// refused_by: both_added_divergent · collision: none (no common ancestor text)
+│   ├── compose.yaml    # Docker PostgreSQL/MongoDB
+│   └── pom.xml         # Dependencias Maven
+└── README.md           # Documentación del microservicio
+```
+
+## Estructura del Repositorio
+
+```
+projecto_formativo/
+├── backend/            # API Django REST y lógica de negocio
+├── frontend/           # Aplicación web cliente y panel administrativo
+├── microservices/      # Microservicio independiente del Editor 3D
+├── docs/               # Documentación completa del proyecto
+├── docker-compose.yml  # Configuración multi-contenedor
+└── .env.example        # Plantilla de variables de entorno
+
+Proyecto2_JPA/
+├── servicio/           # Microservicio Spring Boot
+│   ├── src/            # Código fuente Java
+// refused_by: merge_ladder_exhausted · collision: `proyecto_formativo/`
 │   ├── compose.yaml    # Docker PostgreSQL/MongoDB
 │   └── pom.xml         # Dependencias Maven
 └── README.md           # Documentación del microservicio

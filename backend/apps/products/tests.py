@@ -10,11 +10,17 @@ from PIL import Image
 from apps.products.models import Product, ProductImage, Variant
 
 
-def build_test_image(name: str = 'test.png', size: tuple[int, int] = (400, 400), color: str = 'white'):
+def build_test_image(
+    name: str = 'test.png',
+    size: tuple[int, int] = (400, 400),
+    color: str = 'white',
+    image_format: str = 'PNG',
+):
     buffer = BytesIO()
     image = Image.new('RGB', size, color=color)
-    image.save(buffer, format='PNG')
-    return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/png')
+    image.save(buffer, format=image_format)
+    content_type = 'image/webp' if image_format == 'WEBP' else 'image/png'
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type=content_type)
 
 
 class ProductModelTests(TestCase):
@@ -55,3 +61,14 @@ class ProductModelTests(TestCase):
 
         self.assertTrue(product.has_main_image)
         self.assertTrue(product.can_be_published is False)
+
+    def test_image_accepts_webp(self):
+        product = Product.objects.create(name='Producto WebP', description='Desc', base_price='40000')
+        image = ProductImage(
+            product=product,
+            image=build_test_image(name='test.webp', image_format='WEBP'),
+        )
+
+        image.full_clean()
+
+        self.assertEqual(image.image.name, 'test.webp')

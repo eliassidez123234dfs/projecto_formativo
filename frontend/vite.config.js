@@ -22,6 +22,8 @@ export default ({ mode }) => {
       strictPort: true,
       proxy: {
         '/api/v1': {
+          // 8083 es el microservicio Spring de ESTA rama (java/mongoDB).
+          // La rama java/microservicio usa el de PostgreSQL en 8082.
           target: 'http://localhost:8083',
           changeOrigin: true,
         },

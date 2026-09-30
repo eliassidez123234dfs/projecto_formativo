@@ -17,6 +17,7 @@ import { getAccessToken } from './authService';
 
 // ─── CONFIGURACIÓN BASE ───
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/';
+
 export const buildApiUrl = (endpoint) => `${API_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
 
 // ─── LOGGING DE ERRORES HTTP ───
@@ -41,6 +42,7 @@ function logHttpError(error) {
 // isRefreshing evita múltiples refreshes simultáneos.
 // failedQueue encola peticiones que fallaron con 401 mientras se refresca.
 let isRefreshing = false;
+
 let failedQueue = [];
 
 function processQueue(error, token = null) {
@@ -192,30 +194,9 @@ export const fetchProductDetail = async (productId) => {
   return response.data;
 };
 
-/** Detalle de producto para admin (Django: imagenes, variantes, categories, audits). */
-export const fetchProductAdmin = async (productId) => {
-  const response = await api.get(`products/${productId}/`);
-  return response.data;
-};
-
 export const fetchCategories = async (params = {}) => {
   const response = await publicApi.get('catalog/categories/', { params });
   return response.data;
-};
-
-// ─────────── CATEGORÍAS (CRUD admin, con token) ───────────
-export const createCategory = async (data) => {
-  const response = await api.post('catalog/categories/', data);
-  return response.data;
-};
-
-export const updateCategory = async (id, data) => {
-  const response = await api.patch(`catalog/categories/${id}/`, data);
-  return response.data;
-};
-
-export const deleteCategory = async (id) => {
-  await api.delete(`catalog/categories/${id}/`);
 };
 
 // ─────────── CHECKOUT (sesión) ───────────
@@ -325,10 +306,35 @@ export const payOrderWompiSandbox = async (orderId) => {
 // (productService.js). Estos aliases mantienen la API histórica de api.js.
 export {
   fetchProducts,
+
   createMicroProduct as createProduct,
+
   updateMicroProduct as updateProduct,
+
   deleteMicroProduct as deleteProduct,
+
   purgarMicroProduct,
+
+/** Detalle de producto para admin (Django: imagenes, variantes, categories, audits). */
+export const fetchProductAdmin = async (productId) => {
+  const response = await api.get(`products/${productId}/`);
+  return response.data;
+};
+
+// ─────────── CATEGORÍAS (CRUD admin, con token) ───────────
+export const createCategory = async (data) => {
+  const response = await api.post('catalog/categories/', data);
+  return response.data;
+};
+
+export const updateCategory = async (id, data) => {
+  const response = await api.patch(`catalog/categories/${id}/`, data);
+  return response.data;
+};
+
+export const deleteCategory = async (id) => {
+  await api.delete(`catalog/categories/${id}/`);
+};
 } from './productService';
 
 export const fetchProductChecklist = async (id) => {
@@ -348,6 +354,35 @@ export const disapproveProduct = async (id, data = {}) => {
 
 export const toggleProductActive = async (id) => {
   const response = await api.patch(`products/${id}/toggle-active/`);
+  return response.data;
+};
+
+/**
+ * Sincroniza las categorías de un producto.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * POR QUÉ VA A DJANGO Y NO AL MICROSERVICIO
+ * ══════════════════════════════════════════════════════════════════════════
+ * Las categorías viven en Django: el modelo `Category` y la tabla intermedia
+ * `ProductCategory` (`products_productcategory`) son de ese lado, y el
+ * microservicio Spring Boot no los mapea en ninguna entidad JPA. La escritura
+ * de esa relación sólo existe en `ProductWriteSerializer._set_categories()`,
+ * que hace replace: borra los vínculos anteriores y recrea los nuevos.
+ *
+ * El CRUD base del producto (nombre, precio, stock, estado) sí va a Spring.
+ * Por eso editar un producto son DOS peticiones a DOS backends distintos, y
+ * por eso el orden importa (ver ProductForm.handleSubmit).
+ *
+ * Se usa PATCH y no PUT para tocar sólo la relación: mandar el producto
+ * completo por Django saltaría su validación de precio COP y su `full_clean()`,
+ * que es una segunda barrera distinta a la de Spring.
+ *
+ * @param {number|string} id
+ * @param {Array<number>} categoryIds - Vacío desasocia todas las categorías.
+ * @returns {Promise<Object>} Producto actualizado según ProductWriteSerializer
+ */
+export const syncProductCategories = async (id, categoryIds) => {
+  const response = await api.patch(`products/${id}/`, { category_ids: categoryIds });
   return response.data;
 };
 
