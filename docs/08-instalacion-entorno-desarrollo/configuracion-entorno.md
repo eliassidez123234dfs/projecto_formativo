@@ -54,8 +54,8 @@ cp .env.example .env
 
 | Variable | Descripción |
 | - | - |
-| `VITE\_API\_URL` | URL base de la API backend (ej: `http://localhost:8000/api/`) |
-| `VITE\_MEDIA\_URL` | URL base para archivos multimedia |
+| `VITE_API_URL` | URL base de la API backend (ej: `http://localhost:8000/api/`) |
+| `VITE_MEDIA_URL` | URL base para archivos multimedia |
 
 
 ## Seed Data (Datos de Ejemplo)
@@ -188,11 +188,11 @@ cd microservices/Tshirt3D
   
 # 2. Configurar variables de entorno  
 # Copiar microservices/Tshirt3D/.env.example a microservices/Tshirt3D/.env (archivo propio del editor):  
-# VITE\_CLOUDINARY\_CLOUD\_NAME=tu\_cloud\_name  
-# VITE\_CLOUDINARY\_UPLOAD\_PRESET=tu\_upload\_preset  
-# VITE\_CLOUDINARY\_URL=https://api.cloudinary.com/v1\_1/tu\_cloud\_name/image/upload  
-# VITE\_MODELS3D\_API\_URL=http://127.0.0.1:8000/api/models3d/models/  
-# VITE\_API\_URL=http://127.0.0.1:8000/api/orders/  
+# VITE_CLOUDINARY_CLOUD_NAME=tu_cloud_name  
+# VITE_CLOUDINARY_UPLOAD_PRESET=tu_upload_preset  
+# VITE_CLOUDINARY_URL=https://api.cloudinary.com/v1_1/tu_cloud_name/image/upload  
+# VITE_MODELS3D_API_URL=http://127.0.0.1:8000/api/models3d/models/  
+# VITE_API_URL=http://127.0.0.1:8000/api/orders/  
   
 # 3. Backend (Django) ya deberia estar activado en otra terminal como se explico antes.  
   
