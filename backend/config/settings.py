@@ -400,6 +400,13 @@ elif DB_TYPE in ['postgres_local', 'postgres_docker', 'neon']:
         # Reutilizar la conexión entre peticiones: evita el coste de
         # handshake/reactivación de la compute de Neon en cada request.
         DATABASES['default']['CONN_MAX_AGE'] = int(env('CONN_MAX_AGE', default=120))
+        # Sin esto, Django reutiliza durante CONN_MAX_AGE una conexion que la
+        # compute de Neon ya habia cerrado por inactividad y psycopg lanza
+        # "connection already closed" -> InterfaceError. Se observa al correr
+        # la suite, donde hay pruebas lentas entre una consulta y la siguiente.
+        # Con CONN_HEALTH_CHECKS Django valida la conexion antes de reutilizarla
+        # y la reabre si el servidor la cerro, en lugar de propagar el error.
+        DATABASES['default']['CONN_HEALTH_CHECKS'] = True
         # Neon puede cerrar conexiones inactivas; un timeout corto de
         # conexión evita cuelgues por red/pausa de la compute.
         DATABASES['default']['OPTIONS'] = {'connect_timeout': 10}

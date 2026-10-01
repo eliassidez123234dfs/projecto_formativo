@@ -1,4 +1,3 @@
-import ssl
 from decimal import Decimal
 from io import BytesIO
 from random import randint
@@ -96,30 +95,25 @@ PRODUCTS = [
 ]
 
 
-def _download(url, insecure=False):
+def _download(url):
     """
-    Descarga una imagen de Cloudinary.
+    Descarga una imagen de Cloudinary validando el certificado TLS.
 
-    Antes este trailing era
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-    es decir, la descarga aceptaba cualquier certificado de cualquiera, lo que
-    deja la llamada abierta a intercepcion. Ahora se valida el certificado y el
-    hostname contra la cadena publica, que es lo que corresponde: Cloudinary
-    tiene un certificado valido y no hay motivo para saltarse la comprobacion.
+    Antes este trailing creaba un contexto SSL propio con la comprobacion del
+    certificado y del hostname desactivadas, es decir aceptaba cualquier
+    certificado de cualquiera y dejaba la descarga abierta a intercepcion.
 
-    insecure=True existe solo para entornos con una cadena de CA rota o un proxy
-    corporativo que intercepte el trafico. Es un opt-in explicito por comando
-    (--insecure-images) y avisa por stderr, no el comportamiento por defecto.
+    Ahora se delega en urllib, que por defecto valida el certificado y el
+    hostname contra la cadena publica del sistema. Cloudinary tiene un
+    certificado valido, asi que no hay motivo para saltarse la comprobacion
+    y no queda ninguna via para desactivarla.
+
+    Si un entorno tiene una CA corporativa rota, lo correcto es instalar esa
+    CA en el almacen del sistema (update-ca-certificates / cacert), no
+    desactivar la verificacion.
     """
     download_url = url.replace("/upload/", "/upload/w_800,h_800,c_pad/")
-    kwargs = {"timeout": 15}
-    if insecure:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        kwargs["context"] = ctx
-    with urlopen(download_url, **kwargs) as resp:
+    with urlopen(download_url, timeout=15) as resp:
         return BytesIO(resp.read())
 
 
@@ -133,30 +127,10 @@ class Command(BaseCommand):
                             help='No descargar imágenes (más rápido)')
         parser.add_argument('--skip-variants', action='store_true',
                             help='No crear variantes (más rápido)')
-        parser.add_argument(
-            '--insecure-images',
-            action='store_true',
-            help=(
-                'NO verificar el certificado TLS al descargar imágenes. Solo para '
-                'entornos con CA rota o proxy que intercepte el tráfico: la '
-                'descarga queda expuesta a intercepción.'
-            ),
-        )
 
     def handle(self, *args, **options):
         skip_images = options['skip_images']
         skip_variants = options['skip_variants']
-        insecure_images = options['insecure_images']
-
-        if insecure_images and not skip_images:
-            self.stderr.write(
-                self.style.WARNING(
-                    'AVISO: --insecure-images desactiva la verificación del '
-                    'certificado TLS. Las imágenes descargadas pueden haber sido '
-                    'sustituidas en tránsito. No lo uses salvo que sepas que tu '
-                    'entorno rompe la validación.'
-                )
-            )
 
         if options['clean']:
             Product.objects.all().delete()
@@ -197,7 +171,7 @@ class Command(BaseCommand):
 
             if not skip_images and not product.images.exists():
                 try:
-                    data = _download(IMAGES[pdata["img"]], insecure=insecure_images)
+                    data = _download(IMAGES[pdata["img"]])
                     img = ProductImage(product=product, is_main=True, order=1)
                     ext = IMAGES[pdata["img"]].rsplit(".", 1)[-1].split("?")[0]
                     img.image.save(f"{product.name}.{ext}", File(data), save=True)
